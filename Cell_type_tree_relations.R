@@ -10,14 +10,14 @@ CalculateCooccurrence <- function(tree_sample){
   CTN <- acast(node_counts, Cell_type ~ Node, value.var = "Type_count")
   CTN <- ifelse(CTN == 0, 0, 1)
   Cooc_M <- CTN %*% t(CTN)
-  Occ <- data.frame(Cell_type = colnames(Cooc_M),
-                    Occurrence = diag(Cooc_M), stringsAsFactors = F)
-  Cooc <- data.frame(t(combn(Occ$Cell_type, 2)))
-  colnames(Cooc) <- c("Cell_type", "Co_occurring_celltype")
-  Cooc$Co_occurrence_count <- Cooc_M[lower.tri(Cooc_M)]
-  Cooc <- merge(Occ, Cooc)
-  Cooc <- Cooc[, c("Cell_type", "Co_occurring_celltype", "Occurrence", "Co_occurrence_count")]
-  Cooc$Co_occurrence_freq <- Cooc$Co_occurrence_count/Cooc$Occurrence
+  # Occ <- data.frame(Cell_type = colnames(Cooc_M),
+  #                   Occurrence = diag(Cooc_M), stringsAsFactors = F)
+  # Cooc <- data.frame(t(combn(Occ$Cell_type, 2)))
+  # colnames(Cooc) <- c("Cell_type", "Co_occurring_celltype")
+  # Cooc$Co_occurrence_count <- Cooc_M[lower.tri(Cooc_M)]
+  # Cooc <- merge(Occ, Cooc)
+  # Cooc <- Cooc[, c("Cell_type", "Co_occurring_celltype", "Occurrence", "Co_occurrence_count")]
+  # Cooc$Co_occurrence_freq <- Cooc$Co_occurrence_count/Cooc$Occurrence
   Cooc_f_M <- Cooc_M/diag(Cooc_M)
   
   tree_sample$Relative_cooccurrence <- Cooc_f_M
@@ -32,6 +32,8 @@ CalculateProgenitors <- function(tree_sample, zoom_types){
   prog_potential$Pot_prog <- (prog_potential$Cooc_freq == 1)
   prog_potential_graph <- 
     simplify(graph_from_edgelist(as.matrix(prog_potential[prog_potential$Pot_prog, c("Progenitor", "Child")])))
+  
+  plot(prog_potential_graph)
   
   tree_sample$Progenitor_potential <- prog_potential
   tree_sample$Progenitor_graph <- prog_potential_graph
@@ -148,19 +150,19 @@ ReadTree <- function(library_name, reference_set){
   return(list_out)
 }
 
-MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ...){
+MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ct_colors){
   tree_to_plot <- Clone(tree_sample$Tree)
   if(!is.null(types)){
     tree_to_plot$Do(ZoomCellTypes, 
                            zoom_types = types)
   }
   tree_sample$CTree <-    
-    collapsibleTree(df = tree_to_plot, root = tree_to_plot$scar, ...) #pieNode = T,
-  # pieSummary = T, collapsed = F,
-  # width = 600, height = 500,
-  # ctypes = type_colors$celltype,linkLength=60,
-  # ct_colors = type_colors$Color2, angle = pi/2,fontSize = 0,
-  # nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+    collapsibleTree(df = tree_to_plot, root = tree_to_plot$scar, pieNode = T,
+                    pieSummary = T, collapsed = F,
+                    width = 600, height = 500,
+                    ctypes = type_colors$celltype,linkLength=60, 
+                    ct_colors = ct_colors, angle = pi/2,fontSize = 0,
+                    nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6)) 
 
   names(tree_sample)[which(names(tree_sample) == "CTree")] <- pie_tree_name
   
@@ -188,57 +190,85 @@ vertex_colors <- merge(vertex_colors, type_colors[, c("celltype", "colo1")])
 vertex_colors <- vertex_colors[order(vertex_colors$Order), ]
 vertex_colors$Label <-
   c("Epi A", "Epi V", "cfd", "col11", "col12", "cxcl12", "prolif", "spock3", "F")
+rownames(vertex_colors) <- vertex_colors$celltype
 
 # New code ####
 # Read in tree object and append cell types
+Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ])
+Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ])
+Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr12", ])
+Hr24 <- ReadTree("Hr24", reference_set = cell_types[cell_types$orig.ident == "Hr24", ])
+Hr26 <- ReadTree("Hr26", reference_set = cell_types[cell_types$orig.ident == "Hr26", ])
 Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr27", ])
 # Create tree visualization and zoom visualization
-Hr27 <- MakePieTree(Hr27, "Full_tree",
-                    pieNode = T,
-                    pieSummary = T, collapsed = F,
-                    width = 600, height = 500,
-                    ctypes = type_colors$celltype,linkLength=60, 
-                    ct_colors = type_colors$Color2, angle = pi/2,fontSize = 0,
-                    nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+Hr10 <- MakePieTree(Hr10, "Full_tree", ct_colors = type_colors$Color2)
+Hr11 <- MakePieTree(Hr11, "Full_tree", ct_colors = type_colors$Color2)
+Hr12 <- MakePieTree(Hr12, "Full_tree", ct_colors = type_colors$Color2)
+Hr24 <- MakePieTree(Hr24, "Full_tree", ct_colors = type_colors$Color2)
+Hr26 <- MakePieTree(Hr26, "Full_tree", ct_colors = type_colors$Color2)
+Hr27 <- MakePieTree(Hr27, "Full_tree", ct_colors = type_colors$Color2)
+Hr10$Full_tree
+Hr11$Full_tree
+Hr12$Full_tree
+Hr24$Full_tree
+Hr26$Full_tree
 Hr27$Full_tree
-# htmlwidgets::saveWidget(
-#   LINNAEUS.pie.wg,
-#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
-Hr27 <- MakePieTree(Hr27, "Fibrozoom_tree", types = type_colors$celltype[type_colors$colo1 != ""],
-                    pieNode = T,
-                    pieSummary = T, collapsed = F,
-                    width = 600, height = 500,
-                    ctypes = type_colors$celltype,linkLength=60, 
-                    ct_colors = type_colors$colo1, angle = pi/2,fontSize = 0,
-                    nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+htmlwidgets::saveWidget(
+  Hr27$Full_tree,
+  file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
+Hr10 <- MakePieTree(Hr10, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+Hr11 <- MakePieTree(Hr11, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+Hr12 <- MakePieTree(Hr12, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+Hr24 <- MakePieTree(Hr24, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+Hr26 <- MakePieTree(Hr26, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+Hr27 <- MakePieTree(Hr27, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+Hr10$Fibrozoom_tree
+Hr11$Fibrozoom_tree
+Hr12$Fibrozoom_tree
+Hr24$Fibrozoom_tree
+Hr26$Fibrozoom_tree
 Hr27$Fibrozoom_tree
-# htmlwidgets::saveWidget(
-#   LINNAEUS.pie.zoom.wg,
-#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
+htmlwidgets::saveWidget(
+  Hr27$Fibrozoom_tree,
+  file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
 
 # Calculate co-occurrences
+Hr10 <- CalculateCooccurrence(Hr10)
+Hr11 <- CalculateCooccurrence(Hr11)
+Hr12 <- CalculateCooccurrence(Hr12)
+Hr24 <- CalculateCooccurrence(Hr24)
+Hr26 <- CalculateCooccurrence(Hr26)
 Hr27 <- CalculateCooccurrence(Hr27)
 # png("./Images/Hr27_celltype_cooccurrence.png")
-pheatmap(Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0, 
-         fontsize_row = 8, fontsize_col = 8, 
-         annotation_col = ph_annotation, annotation_row = ph_annotation,
-         annotation_colors = ann_colors, annotation_legend = F)
+# pheatmap(Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0, 
+#          fontsize_row = 8, fontsize_col = 8, 
+#          annotation_col = ph_annotation, annotation_row = ph_annotation,
+#          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
 # png("./Images/Hr27_celltype_cooccurrence_fibrozoom.png")
-pheatmap(Hr27$Relative_cooccurrence[rownames(Hr27$Relative_cooccurrence) %in% type_colors$celltype[type_colors$colo1 != ""], 
-                  colnames(Hr27$Relative_cooccurrence) %in% type_colors$celltype[type_colors$colo1 != ""]], 
+pheatmap(Hr10$Relative_cooccurrence[rownames(Hr10$Relative_cooccurrence) %in% zoom_types, 
+                  colnames(Hr10$Relative_cooccurrence) %in% zoom_types], 
          treeheight_row = 0, treeheight_col = 0, 
          fontsize_row = 12, fontsize_col = 12, 
          annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
-
+View(Hr10$Relative_cooccurrence[rownames(Hr10$Relative_cooccurrence) %in% zoom_types, 
+                                colnames(Hr10$Relative_cooccurrence) %in% zoom_types])
 # Create potential progenitors and pp-graph
+Hr10 <- CalculateProgenitors(Hr10, zoom_types)
+Hr11 <- CalculateProgenitors(Hr11, zoom_types)
+Hr12 <- CalculateProgenitors(Hr12, zoom_types)
+Hr24 <- CalculateProgenitors(Hr24, zoom_types)
+Hr26 <- CalculateProgenitors(Hr26, zoom_types)
 Hr27 <- CalculateProgenitors(Hr27, zoom_types)
 
-# png("./Images/Hr27_progenitor_potential_fibrozoom.png", width = 640, height = 640)
-plot(Hr27$Progenitor_graph, vertex.color = vertex_colors$colo1,
-     vertex.size = 35, vertex.label = vertex_colors$Label, vertex.label.cex = 2,
+plot(Hr10$Progenitor_graph)
+
+png("./Images/Hr27_progenitor_potential_fibrozoom.png", width = 640, height = 640)
+vertex_colors_graph <- vertex_colors[names(V(Hr27$Progenitor_graph)), ]
+plot(Hr27$Progenitor_graph, vertex.color = vertex_colors_graph$colo1,
+     vertex.size = 35, vertex.label = vertex_colors_graph$Label, vertex.label.cex = 2,
      edge.color = "black", edge.width = 2)
-# dev.off()
+dev.off()
 
