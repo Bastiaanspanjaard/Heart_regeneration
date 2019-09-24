@@ -4,8 +4,52 @@ library(reshape2)
 require(pheatmap)
 require(RColorBrewer)
 require(igraph)
+
+# tree_sample <- Hr27
 CalculateCooccurrence <- function(tree_sample){
   node_counts <- count_cumulative(tree_sample$Tree)
+  
+  # NEW
+  # Nodes that our descendants appear in
+  type_counts <- 
+    node_counts[node_counts$Type_count != 0, 
+                c("Cell_type", "Node", "Parent_node")]
+  # Potential precursor node counts
+  parent_counts <- node_counts[, c("Node", "Cell_type", "Ccount", "Parent_node")]
+  colnames(parent_counts) <-  c("Node", "Precursor", "Precursor_count", "Parent_node")
+  # Full node counts
+  full_node_counts <- aggregate(node_counts$Ccount,
+                                by = list(Node = node_counts$Node),
+                                sum)
+  colnames(full_node_counts)[2] <- "Total"
+  # Cell type proportions
+  proportions <- merge(node_counts[, c("Cell_type", "Node", "Ccount")], full_node_counts)
+  proportions$Frequency <- proportions$Ccount/proportions$Total
+  # Merge so that we have for each node and descendant type: potential precursors, their
+  # counts in the node, the node size and the precursor frequency in the parent node.
+  descendancy <- 
+    merge(
+      merge(
+        merge(type_counts, parent_counts), 
+        full_node_counts),
+      proportions[, c("Node", "Cell_type", "Frequency")], by.x = c("Parent_node", "Precursor"),
+      by.y = c("Node", "Cell_type"))[, c("Cell_type", "Precursor", 
+                                         "Node", "Parent_node", "Precursor_count", 
+                                         "Total", "Frequency")]
+  descendancy$Precursor_presence_p <- 
+    apply(descendancy[, c("Precursor_count", "Total", "Frequency")], 1,
+          function(x){
+            if(x[1] > 0){
+              output <- 1
+            }else{
+              output <- pbinom(q = 0, size = x[2], prob = x[3], lower.tail = T)
+            }
+            return(output)
+          }
+    )
+    
+
+  # END NEW
   
   CTN <- acast(node_counts, Cell_type ~ Node, value.var = "Type_count")
   CTN <- ifelse(CTN == 0, 0, 1)
@@ -21,19 +65,20 @@ CalculateCooccurrence <- function(tree_sample){
   Cooc_f_M <- Cooc_M/diag(Cooc_M)
   
   tree_sample$Relative_cooccurrence <- Cooc_f_M
+  tree_sample$Descendancy <- descendancy
   return(tree_sample)
 }
 
-CalculateProgenitors <- function(tree_sample, zoom_types){
+CalculateProgenitors <- function(tree_sample, zoom_to, zoom_from){
   Cooc_f_M <- tree_sample$Relative_cooccurrence
-  prog_potential <- melt(Cooc_f_M[rownames(Cooc_f_M) %in% zoom_types, 
-                                  colnames(Cooc_f_M) %in% zoom_types])
+  prog_potential <- melt(Cooc_f_M[rownames(Cooc_f_M) %in% zoom_to, 
+                                  colnames(Cooc_f_M) %in% zoom_from])
   colnames(prog_potential) <- c("Child", "Progenitor", "Cooc_freq")
   prog_potential$Pot_prog <- (prog_potential$Cooc_freq == 1)
   prog_potential_graph <- 
     simplify(graph_from_edgelist(as.matrix(prog_potential[prog_potential$Pot_prog, c("Progenitor", "Child")])))
   
-  plot(prog_potential_graph)
+  # plot(prog_potential_graph)
   
   tree_sample$Progenitor_potential <- prog_potential
   tree_sample$Progenitor_graph <- prog_potential_graph
@@ -191,6 +236,9 @@ vertex_colors <- vertex_colors[order(vertex_colors$Order), ]
 vertex_colors$Label <-
   c("Epi A", "Epi V", "cfd", "col11", "col12", "cxcl12", "prolif", "spock3", "F")
 rownames(vertex_colors) <- vertex_colors$celltype
+zoom_to <- c("Fibroblast (col11a1a)", "Fibroblast (col12a1a)", "Fibroblast (proliferating)",
+             "Fibroblasts (spock3)")
+zoom_from <- setdiff(zoom_types, zoom_to)
 
 # New code ####
 # Read in tree object and append cell types
@@ -213,9 +261,9 @@ Hr12$Full_tree
 Hr24$Full_tree
 Hr26$Full_tree
 Hr27$Full_tree
-htmlwidgets::saveWidget(
-  Hr27$Full_tree,
-  file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
+# htmlwidgets::saveWidget(
+#   Hr27$Full_tree,
+#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
 Hr10 <- MakePieTree(Hr10, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
 Hr11 <- MakePieTree(Hr11, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
 Hr12 <- MakePieTree(Hr12, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
@@ -228,9 +276,9 @@ Hr12$Fibrozoom_tree
 Hr24$Fibrozoom_tree
 Hr26$Fibrozoom_tree
 Hr27$Fibrozoom_tree
-htmlwidgets::saveWidget(
-  Hr27$Fibrozoom_tree,
-  file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
+# htmlwidgets::saveWidget(
+#   Hr27$Fibrozoom_tree,
+#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
 
 # Calculate co-occurrences
 Hr10 <- CalculateCooccurrence(Hr10)
@@ -246,8 +294,8 @@ Hr27 <- CalculateCooccurrence(Hr27)
 #          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
 # png("./Images/Hr27_celltype_cooccurrence_fibrozoom.png")
-pheatmap(Hr10$Relative_cooccurrence[rownames(Hr10$Relative_cooccurrence) %in% zoom_types, 
-                  colnames(Hr10$Relative_cooccurrence) %in% zoom_types], 
+pheatmap(Hr27$Relative_cooccurrence[rownames(Hr27$Relative_cooccurrence) %in% zoom_to, 
+                  colnames(Hr27$Relative_cooccurrence) %in% zoom_from], 
          treeheight_row = 0, treeheight_col = 0, 
          fontsize_row = 12, fontsize_col = 12, 
          annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
@@ -256,19 +304,28 @@ pheatmap(Hr10$Relative_cooccurrence[rownames(Hr10$Relative_cooccurrence) %in% zo
 View(Hr10$Relative_cooccurrence[rownames(Hr10$Relative_cooccurrence) %in% zoom_types, 
                                 colnames(Hr10$Relative_cooccurrence) %in% zoom_types])
 # Create potential progenitors and pp-graph
-Hr10 <- CalculateProgenitors(Hr10, zoom_types)
-Hr11 <- CalculateProgenitors(Hr11, zoom_types)
-Hr12 <- CalculateProgenitors(Hr12, zoom_types)
-Hr24 <- CalculateProgenitors(Hr24, zoom_types)
-Hr26 <- CalculateProgenitors(Hr26, zoom_types)
-Hr27 <- CalculateProgenitors(Hr27, zoom_types)
+Hr10 <- CalculateProgenitors(Hr10, zoom_to, zoom_from)
+Hr11 <- CalculateProgenitors(Hr11, zoom_to, zoom_from)
+Hr12 <- CalculateProgenitors(Hr12, zoom_to, zoom_from)
+Hr24 <- CalculateProgenitors(Hr24, zoom_to, zoom_from)
+Hr26 <- CalculateProgenitors(Hr26, zoom_to, zoom_from)
+Hr27 <- CalculateProgenitors(Hr27, zoom_to, zoom_from)
 
 plot(Hr10$Progenitor_graph)
 
-png("./Images/Hr27_progenitor_potential_fibrozoom.png", width = 640, height = 640)
-vertex_colors_graph <- vertex_colors[names(V(Hr27$Progenitor_graph)), ]
-plot(Hr27$Progenitor_graph, vertex.color = vertex_colors_graph$colo1,
+# png("./Images/Hr26_progenitor_potential_fibrozoom.png", width = 640, height = 640)
+vertex_colors_graph <- vertex_colors[names(V(Hr10$Progenitor_graph)), ]
+plot(Hr26$Progenitor_graph, vertex.color = vertex_colors_graph$colo1,
      vertex.size = 35, vertex.label = vertex_colors_graph$Label, vertex.label.cex = 2,
      edge.color = "black", edge.width = 2)
-dev.off()
+# dev.off()
 
+# freq <- 0.1
+# n <- 10
+#binom.test(0, 10, p = 0.1, alternative = "less") # Not the right one - tests a frequency
+#pbinom(0, 10, 0.1) - right one, the chance of seeing 0 successes in 10 tries with a success probability of 0.1
+# For each cell type and each node, if there's 0 of another cell type, calculate the chance of this given
+# the cell type's abundance in the parent node. So data frame: cell type - 
+# precursor - node - precursor freq - node size - (tree)
+# node size - precursor frequency parent node. We have all of this 
+# information in the co-occurrence matrix although we need to melt it.
