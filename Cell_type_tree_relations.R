@@ -313,33 +313,9 @@ for(t in 1:length(tree_list)){
   tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
                                 ct_colors = type_colors$colo1)
 }
-# Hr10 <- MakePieTree(Hr10, "Full_tree", ct_colors = type_colors$Color2)
-# Hr11 <- MakePieTree(Hr11, "Full_tree", ct_colors = type_colors$Color2)
-# Hr12 <- MakePieTree(Hr12, "Full_tree", ct_colors = type_colors$Color2)
-# Hr24 <- MakePieTree(Hr24, "Full_tree", ct_colors = type_colors$Color2)
-# Hr26 <- MakePieTree(Hr26, "Full_tree", ct_colors = type_colors$Color2)
-# Hr27 <- MakePieTree(Hr27, "Full_tree", ct_colors = type_colors$Color2)
-# Hr10$Full_tree
-# Hr11$Full_tree
-# Hr12$Full_tree
-# Hr24$Full_tree
-# Hr26$Full_tree
-# Hr27$Full_tree
 # htmlwidgets::saveWidget(
 #   tree_list$Hr27$Full_tree,
 #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
-# Hr10 <- MakePieTree(Hr10, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-# Hr11 <- MakePieTree(Hr11, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-# Hr12 <- MakePieTree(Hr12, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-# Hr24 <- MakePieTree(Hr24, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-# Hr26 <- MakePieTree(Hr26, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-# Hr27 <- MakePieTree(Hr27, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-# Hr10$Fibrozoom_tree
-# Hr11$Fibrozoom_tree
-# Hr12$Fibrozoom_tree
-# Hr24$Fibrozoom_tree
-# Hr26$Fibrozoom_tree
-# Hr27$Fibrozoom_tree
 # htmlwidgets::saveWidget(
 #   tree_list$Hr27$Fibrozoom_tree,
 #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
@@ -370,8 +346,6 @@ for(t in 1:length(tree_list)){
   agg_desc_add$Tree <- names(tree_list)[t]
   agg_desc_trees <- rbind(agg_desc_trees, agg_desc_add)
 }
-# agg_desc_trees <- rbind(agg_desc_Hr10, agg_desc_Hr11, agg_desc_Hr12,
-#                         agg_desc_Hr24, agg_desc_Hr26, agg_desc_Hr27)
 agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
                       by = list(Cell_type = agg_desc_trees$Cell_type,
                                 Precursor = agg_desc_trees$Precursor),
@@ -379,13 +353,6 @@ agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
 colnames(agg_desc)[3] <- "p"
 agg_d_cast <- acast(agg_desc, Cell_type ~ Precursor, value.var = "p")
 
-
-# Hr10 <- CalculateCooccurrence(Hr10)
-# Hr11 <- CalculateCooccurrence(Hr11)
-# Hr12 <- CalculateCooccurrence(Hr12)
-# Hr24 <- CalculateCooccurrence(Hr24)
-# Hr26 <- CalculateCooccurrence(Hr26)
-# Hr27 <- CalculateCooccurrence(Hr27)
 # png("./Images/Hr27_celltype_cooccurrence.png")
 # pheatmap(tree_list$Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0,
 #          fontsize_row = 8, fontsize_col = 8,
@@ -401,32 +368,6 @@ pheatmap(tree_list$Hr27$Relative_cooccurrence[rownames(tree_list$Hr27$Relative_c
          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
 
-# agg_desc_Hr10 <- Hr10$Aggregated_descendancy[Hr10$Aggregated_descendancy$Cell_type %in% zoom_to &
-#                                                Hr10$Aggregated_descendancy$Precursor %in% zoom_from, ]
-# agg_desc_Hr10$Tree <- "Hr10"
-# agg_desc_Hr11 <- Hr11$Aggregated_descendancy[Hr11$Aggregated_descendancy$Cell_type %in% zoom_to &
-#                                                Hr11$Aggregated_descendancy$Precursor %in% zoom_from, ]
-# agg_desc_Hr11$Tree <- "Hr11"
-# agg_desc_Hr12 <- Hr12$Aggregated_descendancy[Hr12$Aggregated_descendancy$Cell_type %in% zoom_to &
-#                                                Hr12$Aggregated_descendancy$Precursor %in% zoom_from, ]
-# agg_desc_Hr12$Tree <- "Hr12"
-# agg_desc_Hr24 <- Hr24$Aggregated_descendancy[Hr24$Aggregated_descendancy$Cell_type %in% zoom_to &
-#                                                Hr24$Aggregated_descendancy$Precursor %in% zoom_from, ]
-# agg_desc_Hr24$Tree <- "Hr24"
-# agg_desc_Hr26 <- Hr26$Aggregated_descendancy[Hr26$Aggregated_descendancy$Cell_type %in% zoom_to &
-#                                                Hr26$Aggregated_descendancy$Precursor %in% zoom_from, ]
-# agg_desc_Hr26$Tree <- "Hr26"
-# agg_desc_Hr27 <- Hr27$Aggregated_descendancy[Hr27$Aggregated_descendancy$Cell_type %in% zoom_to &
-#                                                Hr27$Aggregated_descendancy$Precursor %in% zoom_from, ]
-# agg_desc_Hr27$Tree <- "Hr27"
-# agg_desc_trees <- rbind(agg_desc_Hr10, agg_desc_Hr11, agg_desc_Hr12,
-#                         agg_desc_Hr24, agg_desc_Hr26, agg_desc_Hr27)
-# agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
-#                       by = list(Cell_type = agg_desc_trees$Cell_type,
-#                                 Precursor = agg_desc_trees$Precursor),
-#                       prod)
-# colnames(agg_desc)[3] <- "p"
-# agg_d_cast <- acast(agg_desc, Cell_type ~ Precursor, value.var = "p")
 # png("./Images/Potential_precursors_3dpi_p_product.png")
 pheatmap(agg_d_cast, 
          treeheight_row = 0, treeheight_col = 0, 
@@ -435,24 +376,6 @@ pheatmap(agg_d_cast,
          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
 
-# View(Hr10$Descendancy[Hr10$Descendancy$Precursor == "Fibroblasts" & Hr10$Descendancy$Cell_type == "Fibroblast (col11a1a)", ])
-
-# Show dot plots for a descendant cell type, plotting the probabilities for all precursor cell types in all
-# nodes
-# descendancy_Hr10 <- Hr10$Descendancy
-# descendancy_Hr10$Tree <- "Hr10"
-# descendancy_Hr11 <- Hr11$Descendancy
-# descendancy_Hr11$Tree <- "Hr11"
-# descendancy_Hr12 <- Hr12$Descendancy
-# descendancy_Hr12$Tree <- "Hr12"
-# descendancy_Hr24 <- Hr24$Descendancy
-# descendancy_Hr24$Tree <- "Hr24"
-# descendancy_Hr26 <- Hr26$Descendancy
-# descendancy_Hr26$Tree <- "Hr26"
-# descendancy_Hr27 <- Hr27$Descendancy
-# descendancy_Hr27$Tree <- "Hr27"
-# full_descendancy <- rbind(descendancy_Hr10, descendancy_Hr11, descendancy_Hr12,
-#                           descendancy_Hr24, descendancy_Hr26, descendancy_Hr27)
 # png("./Images/Col11fib_3dpi_potential_precursors.png", width = 1366, height = 768)
 ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
   geom_jitter(aes(x = 0, y = Precursor_presence_p, color = Precursor), size = 2) +
@@ -507,74 +430,3 @@ ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
         strip.text.y = element_text(size = 12, face = "bold"))
 # dev.off()
 
-# Create potential progenitors and pp-graph (old code, not sure is useful anymore)
-Hr10 <- CalculateProgenitors(Hr10, zoom_to, zoom_from)
-Hr11 <- CalculateProgenitors(Hr11, zoom_to, zoom_from)
-Hr12 <- CalculateProgenitors(Hr12, zoom_to, zoom_from)
-Hr24 <- CalculateProgenitors(Hr24, zoom_to, zoom_from)
-Hr26 <- CalculateProgenitors(Hr26, zoom_to, zoom_from)
-Hr27 <- CalculateProgenitors(Hr27, zoom_to, zoom_from)
-
-# plot(Hr10$Progenitor_graph)
-
-# png("./Images/Hr26_progenitor_potential_fibrozoom.png", width = 640, height = 640)
-vertex_colors_graph <- vertex_colors[names(V(Hr10$Progenitor_graph)), ]
-plot(Hr26$Progenitor_graph, vertex.color = vertex_colors_graph$colo1,
-     vertex.size = 35, vertex.label = vertex_colors_graph$Label, vertex.label.cex = 2,
-     edge.color = "black", edge.width = 2)
-# dev.off()
-# Do plot for only nodes enriched in descendant cell type?
-
-# Co-enrichment ####
-enrichment_Hr10 <- NodeEnrichment(Hr10$Tree, p_cutoff = 0.01)
-enr_Hr10_m <- acast(enrichment_Hr10$Significant_enrichment[enrichment_Hr10$Significant_enrichment$Z > 0, ], 
-                   Cell_type ~ Node)
-enr_Hr10_m[is.na(enr_Hr10_m)] <- 0
-enr_Hr10_m[enr_Hr10_m > 0] <- 1
-co_enrich <- enr_Hr10_m %*% t(enr_Hr10_m)
-
-Hr10 <- NodeEnrichment(Hr10, p_cutoff = 0.01)
-Hr11 <- NodeEnrichment(Hr11, p_cutoff = 0.01)
-Hr12 <- NodeEnrichment(Hr12, p_cutoff = 0.01)
-Hr24 <- NodeEnrichment(Hr24, p_cutoff = 0.01)
-Hr26 <- NodeEnrichment(Hr26, p_cutoff = 0.01)
-Hr27 <- NodeEnrichment(Hr27, p_cutoff = 0.01)
-Hr10$Co_enrichment[rownames(Hr10$Co_enrichment) %in% zoom_to, ]
-Hr10_coenrm <- melt(Hr10$Co_enrichment)
-colnames(Hr10_coenrm) <- c("Cell_type", "Precursor", "Co-enrichment")
-Hr10_coenrm$Tree <- "Hr10"
-Hr10_coenrm <- Hr10_coenrm[Hr10_coenrm$Cell_type %in% zoom_to & 
-                             Hr10_coenrm$Precursor %in% setdiff(type_colors$celltype, zoom_to), ]
-Hr11_coenrm <- melt(Hr11$Co_enrichment)
-colnames(Hr11_coenrm) <- c("Cell_type", "Precursor", "Co-enrichment")
-Hr11_coenrm$Tree <- "Hr11"
-Hr11_coenrm <- Hr11_coenrm[Hr11_coenrm$Cell_type %in% zoom_to & 
-                             Hr11_coenrm$Precursor %in% setdiff(type_colors$celltype, zoom_to), ]
-Hr12_coenrm <- melt(Hr12$Co_enrichment)
-colnames(Hr12_coenrm) <- c("Cell_type", "Precursor", "Co-enrichment")
-Hr12_coenrm$Tree <- "Hr12"
-Hr12_coenrm <- Hr12_coenrm[Hr12_coenrm$Cell_type %in% zoom_to & 
-                             Hr12_coenrm$Precursor %in% setdiff(type_colors$celltype, zoom_to), ]
-Hr24_coenrm <- melt(Hr24$Co_enrichment)
-colnames(Hr24_coenrm) <- c("Cell_type", "Precursor", "Co-enrichment")
-Hr24_coenrm$Tree <- "Hr24"
-Hr24_coenrm <- Hr24_coenrm[Hr24_coenrm$Cell_type %in% zoom_to & 
-                             Hr24_coenrm$Precursor %in% setdiff(type_colors$celltype, zoom_to), ]
-Hr26_coenrm <- melt(Hr26$Co_enrichment)
-colnames(Hr26_coenrm) <- c("Cell_type", "Precursor", "Co-enrichment")
-Hr26_coenrm$Tree <- "Hr26"
-Hr26_coenrm <- Hr26_coenrm[Hr26_coenrm$Cell_type %in% zoom_to & 
-                             Hr26_coenrm$Precursor %in% setdiff(type_colors$celltype, zoom_to), ]
-Hr27_coenrm <- melt(Hr27$Co_enrichment)
-colnames(Hr27_coenrm) <- c("Cell_type", "Precursor", "Co-enrichment")
-Hr27_coenrm$Tree <- "Hr27"
-Hr27_coenrm <- Hr27_coenrm[Hr27_coenrm$Cell_type %in% zoom_to & 
-                             Hr27_coenrm$Precursor %in% setdiff(type_colors$celltype, zoom_to), ]
-
-coenrichments_all <- rbind(Hr10_coenrm, Hr11_coenrm, Hr12_coenrm,
-                           Hr24_coenrm, Hr26_coenrm, Hr27_coenrm)
-coenrichments_agg <-
-  aggregate(coenrichments_all$`Co-enrichment`,
-            by = list(Cell_type = coenrichments_all$Cell_type,
-                      Precursor = coenrichments_all$Precursor),
-            sum)
