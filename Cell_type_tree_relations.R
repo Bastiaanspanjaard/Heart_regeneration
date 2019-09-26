@@ -58,9 +58,31 @@ CalculateCooccurrence <- function(tree_sample){
   Cooc_M <- CTN %*% t(CTN)
   Cooc_f_M <- Cooc_M/diag(Cooc_M)
   
+  nodes <- node_counts[, c("Node", "Cell_type", "Ccount")]
+  baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+  colnames(baseline)[3] <- "Total"
+  nodes <- merge(nodes, baseline[, c("Cell_type", "Total")])
+  nodes$Rel_freq <- nodes$Ccount/nodes$Total
+  relfreqsum <-
+    aggregate(nodes$Rel_freq,
+              by = list(Node = nodes$Node),
+              sum)
+  colnames(relfreqsum)[2] <- "Relfreqsum"
+  nodes <- merge(nodes, relfreqsum)
+  nodes$RF_norm <- nodes$Rel_freq/nodes$Relfreqsum
+  node_entropy <- aggregate(nodes$RF_norm,
+                                by = list(Node = nodes$Node),
+                                function(x){
+                                  y <- -x*log(x, base = length(x))
+                                  y[x==0] <- 0
+                                  return(sum(y))
+                                })
+  colnames(node_entropy)[2] <- "Entropy"
+  
   tree_sample$Relative_cooccurrence <- Cooc_f_M
   tree_sample$Descendancy <- descendancy
   tree_sample$Aggregated_descendancy <- descendancy_agg
+  tree_sample$Node_entropy <- node_entropy
   return(tree_sample)
 }
 
@@ -333,11 +355,13 @@ full_descendancy <- data.frame(Cell_type = character(),
                                Total = numeric(),
                                Frequency = numeric(),
                                Precursor_presence_p = numeric(),
+                               Node_entropy = numeric(),
                                Tree = character())
 for(t in 1:length(tree_list)){
   tree_list[[t]] <- CalculateCooccurrence(tree_list[[t]])
   descendancy_add <- tree_list[[t]]$Descendancy
   descendancy_add$Tree <- names(tree_list)[t]
+  descendancy_add <- merge(descendancy_add, tree_list[[t]]$Node_entropy)
   full_descendancy <- rbind(full_descendancy, descendancy_add)
   
   agg_desc_add <- 
@@ -430,3 +454,23 @@ ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
         strip.text.y = element_text(size = 12, face = "bold"))
 # dev.off()
 
+# Calculate entropy of nodes ####
+Hr10_nodes <- count_cumulative(tree_list[[1]]$Tree)[, c("Node", "Cell_type", "Ccount")]
+Hr10_baseline <- Hr10_nodes[Hr10_nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+colnames(Hr10_baseline)[3] <- "Total"
+Hr10_nodes <- merge(Hr10_nodes, Hr10_baseline[, c("Cell_type", "Total")])
+Hr10_nodes$Rel_freq <- Hr10_nodes$Ccount/Hr10_nodes$Total
+Hr10_relfreqsum <-
+  aggregate(Hr10_nodes$Rel_freq,
+            by = list(Node = Hr10_nodes$Node),
+            sum)
+colnames(Hr10_relfreqsum)[2] <- "Relfreqsum"
+Hr10_nodes <- merge(Hr10_nodes, Hr10_relfreqsum)
+Hr10_nodes$RF_norm <- Hr10_nodes$Rel_freq/Hr10_nodes$Relfreqsum
+aggregate(Hr10_nodes$RF_norm,
+          by = list(Node = Hr10_nodes$Node),
+          function(x){
+            y <- -x*log(x, base = length(x))
+            y[x==0] <- 0
+            return(sum(y))
+          })
