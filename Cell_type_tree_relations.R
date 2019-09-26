@@ -355,7 +355,7 @@ full_descendancy <- data.frame(Cell_type = character(),
                                Total = numeric(),
                                Frequency = numeric(),
                                Precursor_presence_p = numeric(),
-                               Node_entropy = numeric(),
+                               Entropy = numeric(),
                                Tree = character())
 for(t in 1:length(tree_list)){
   tree_list[[t]] <- CalculateCooccurrence(tree_list[[t]])
@@ -454,23 +454,66 @@ ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
         strip.text.y = element_text(size = 12, face = "bold"))
 # dev.off()
 
-# Calculate entropy of nodes ####
-Hr10_nodes <- count_cumulative(tree_list[[1]]$Tree)[, c("Node", "Cell_type", "Ccount")]
-Hr10_baseline <- Hr10_nodes[Hr10_nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
-colnames(Hr10_baseline)[3] <- "Total"
-Hr10_nodes <- merge(Hr10_nodes, Hr10_baseline[, c("Cell_type", "Total")])
-Hr10_nodes$Rel_freq <- Hr10_nodes$Ccount/Hr10_nodes$Total
-Hr10_relfreqsum <-
-  aggregate(Hr10_nodes$Rel_freq,
-            by = list(Node = Hr10_nodes$Node),
-            sum)
-colnames(Hr10_relfreqsum)[2] <- "Relfreqsum"
-Hr10_nodes <- merge(Hr10_nodes, Hr10_relfreqsum)
-Hr10_nodes$RF_norm <- Hr10_nodes$Rel_freq/Hr10_nodes$Relfreqsum
-aggregate(Hr10_nodes$RF_norm,
-          by = list(Node = Hr10_nodes$Node),
-          function(x){
-            y <- -x*log(x, base = length(x))
-            y[x==0] <- 0
-            return(sum(y))
-          })
+ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
+                          full_descendancy$Precursor %in% zoom_from, ]) +
+  geom_jitter(aes(x = Entropy, y = log10(Precursor_presence_p), color = Precursor), size = 2) +
+  labs(title = "3dpi precursors",
+       y = "Probability (log10)", x = "Node entropy") +
+  theme(axis.text.x = element_text(angle = 90),
+        legend.position = "none") +
+  scale_color_manual(values = ann_colors$Zoomtype) +
+  facet_grid(Cell_type~Precursor) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        strip.text.x = element_text(size = 12, face = "bold"),
+        strip.text.y = element_text(size = 12, face = "bold"))
+
+ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
+  geom_point(aes(x = Entropy, y = Precursor_presence_p, color = Precursor), size = 2) +
+  labs(title = "Fibroblast (col11a1a) precursors",
+       x = "Node entropy", y = "Probability") +
+  theme(axis.text.x = element_text(angle = 90),
+        legend.position = "none") +
+  scale_color_manual(values = ann_colors$Celltype) +
+  facet_wrap(~Precursor) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        strip.text.x = element_text(size = 12, face = "bold")) +
+  scale_y_continuous(breaks = c(0, 0.5, 1))
+
+all_node_entropies <- unique(full_descendancy[, c("Node", "Tree", "Entropy")])
+
+ggplot(all_node_entropies) +
+  geom_histogram(aes(x = Entropy))
+
+ggplot(full_descendancy[full_descendancy$Entropy > 0.5, ]) + 
+  geom_histogram(aes(x = Precursor_presence_p), binwidth = 0.01)
+full_descendancy$weighed_p <- full_descendancy$Precursor_presence_p^(1 - full_descendancy$Entropy)
+
+ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
+                          full_descendancy$Precursor %in% zoom_from, ]) +
+  geom_jitter(aes(x = 0, y = log10(weighed_p), color = Precursor), size = 2) +
+  labs(title = "3dpi precursors",
+       y = "Probability (log10)", x = "") +
+  theme(axis.text.x = element_text(angle = 90),
+        legend.position = "none") +
+  scale_color_manual(values = ann_colors$Zoomtype) +
+  facet_grid(Cell_type~Precursor) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        strip.text.x = element_text(size = 12, face = "bold"),
+        strip.text.y = element_text(size = 12, face = "bold"))
+
+agg_wd <- aggregate(full_descendancy$weighed_p,
+                    by = list(Cell_type = full_descendancy$Cell_type,
+                              Precursor = full_descendancy$Precursor),
+                    prod)
+colnames(agg_wd)[3] <- "wp"
+
+agg_wd_cast <- acast(agg_wd[agg_wd$Cell_type %in% zoom_to &
+                             agg_wd$Precursor %in% zoom_from, ], Cell_type ~ Precursor, value.var = "wp")
+pheatmap(agg_wd_cast, 
+         treeheight_row = 0, treeheight_col = 0, 
+         fontsize_row = 12, fontsize_col = 12, 
+         annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
+         annotation_colors = ann_colors, annotation_legend = F)
