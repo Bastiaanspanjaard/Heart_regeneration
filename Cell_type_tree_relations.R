@@ -525,6 +525,10 @@ colnames(baseline)[3] <- "Total"
 nodes <- merge(nodes, baseline[, c("Cell_type", "Total")])
 nodes$Rel_freq <- nodes$Ccount/nodes$Total
 nodes_c <- acast(nodes[nodes$Node != "nd0", ], Node ~ Cell_type, value.var = "Rel_freq")
+nodes_c <- nodes_c[, colSums(nodes_c) != 0]
+cnc <- cor(nodes_c)
+View(cnc[, colnames(cnc) %in% zoom_to])
+pheatmap(cor(nodes_c))
 
 nodes <- node_counts[, c("Node", "Cell_type", "Ccount")]
 baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
