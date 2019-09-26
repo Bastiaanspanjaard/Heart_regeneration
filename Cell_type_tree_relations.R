@@ -5,7 +5,6 @@ require(pheatmap)
 require(RColorBrewer)
 require(igraph)
 
-# tree_sample <- Hr27
 CalculateCooccurrence <- function(tree_sample){
   node_counts <- count_cumulative(tree_sample$Tree)
   
@@ -307,86 +306,127 @@ Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr
 Hr24 <- ReadTree("Hr24", reference_set = cell_types[cell_types$orig.ident == "Hr24", ])
 Hr26 <- ReadTree("Hr26", reference_set = cell_types[cell_types$orig.ident == "Hr26", ])
 Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr27", ])
+tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr26, Hr27 = Hr27)
 # Create tree visualization and zoom visualization
-Hr10 <- MakePieTree(Hr10, "Full_tree", ct_colors = type_colors$Color2)
-Hr11 <- MakePieTree(Hr11, "Full_tree", ct_colors = type_colors$Color2)
-Hr12 <- MakePieTree(Hr12, "Full_tree", ct_colors = type_colors$Color2)
-Hr24 <- MakePieTree(Hr24, "Full_tree", ct_colors = type_colors$Color2)
-Hr26 <- MakePieTree(Hr26, "Full_tree", ct_colors = type_colors$Color2)
-Hr27 <- MakePieTree(Hr27, "Full_tree", ct_colors = type_colors$Color2)
-Hr10$Full_tree
-Hr11$Full_tree
-Hr12$Full_tree
-Hr24$Full_tree
-Hr26$Full_tree
-Hr27$Full_tree
+for(t in 1:length(tree_list)){
+  tree_list[[t]] <- MakePieTree(tree_list[[t]], "Full_tree", ct_colors = type_colors$Color2)
+  tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
+                                ct_colors = type_colors$colo1)
+}
+# Hr10 <- MakePieTree(Hr10, "Full_tree", ct_colors = type_colors$Color2)
+# Hr11 <- MakePieTree(Hr11, "Full_tree", ct_colors = type_colors$Color2)
+# Hr12 <- MakePieTree(Hr12, "Full_tree", ct_colors = type_colors$Color2)
+# Hr24 <- MakePieTree(Hr24, "Full_tree", ct_colors = type_colors$Color2)
+# Hr26 <- MakePieTree(Hr26, "Full_tree", ct_colors = type_colors$Color2)
+# Hr27 <- MakePieTree(Hr27, "Full_tree", ct_colors = type_colors$Color2)
+# Hr10$Full_tree
+# Hr11$Full_tree
+# Hr12$Full_tree
+# Hr24$Full_tree
+# Hr26$Full_tree
+# Hr27$Full_tree
 # htmlwidgets::saveWidget(
-#   Hr27$Full_tree,
+#   tree_list$Hr27$Full_tree,
 #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
-Hr10 <- MakePieTree(Hr10, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-Hr11 <- MakePieTree(Hr11, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-Hr12 <- MakePieTree(Hr12, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-Hr24 <- MakePieTree(Hr24, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-Hr26 <- MakePieTree(Hr26, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-Hr27 <- MakePieTree(Hr27, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
-Hr10$Fibrozoom_tree
-Hr11$Fibrozoom_tree
-Hr12$Fibrozoom_tree
-Hr24$Fibrozoom_tree
-Hr26$Fibrozoom_tree
-Hr27$Fibrozoom_tree
+# Hr10 <- MakePieTree(Hr10, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+# Hr11 <- MakePieTree(Hr11, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+# Hr12 <- MakePieTree(Hr12, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+# Hr24 <- MakePieTree(Hr24, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+# Hr26 <- MakePieTree(Hr26, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+# Hr27 <- MakePieTree(Hr27, "Fibrozoom_tree", types = zoom_types, ct_colors = type_colors$colo1)
+# Hr10$Fibrozoom_tree
+# Hr11$Fibrozoom_tree
+# Hr12$Fibrozoom_tree
+# Hr24$Fibrozoom_tree
+# Hr26$Fibrozoom_tree
+# Hr27$Fibrozoom_tree
 # htmlwidgets::saveWidget(
-#   Hr27$Fibrozoom_tree,
+#   tree_list$Hr27$Fibrozoom_tree,
 #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
 
 # Analyse lineage potential ####
-Hr10 <- CalculateCooccurrence(Hr10)
-Hr11 <- CalculateCooccurrence(Hr11)
-Hr12 <- CalculateCooccurrence(Hr12)
-Hr24 <- CalculateCooccurrence(Hr24)
-Hr26 <- CalculateCooccurrence(Hr26)
-Hr27 <- CalculateCooccurrence(Hr27)
-# png("./Images/Hr27_celltype_cooccurrence.png")
-# pheatmap(Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0,
-#          fontsize_row = 8, fontsize_col = 8,
-#          annotation_col = ph_annotation, annotation_row = ph_annotation,
-#          annotation_colors = ann_colors, annotation_legend = F)
-# dev.off()
-# png("./Images/Hr27_celltype_cooccurrence_fibrozoom.png")
-pheatmap(Hr27$Relative_cooccurrence[rownames(Hr27$Relative_cooccurrence) %in% zoom_to, 
-                  colnames(Hr27$Relative_cooccurrence) %in% zoom_from], 
-         treeheight_row = 0, treeheight_col = 0, 
-         fontsize_row = 12, fontsize_col = 12, 
-         annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
-         annotation_colors = ann_colors, annotation_legend = F)
-# dev.off()
-
-agg_desc_Hr10 <- Hr10$Aggregated_descendancy[Hr10$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                               Hr10$Aggregated_descendancy$Precursor %in% zoom_from, ]
-agg_desc_Hr10$Tree <- "Hr10"
-agg_desc_Hr11 <- Hr11$Aggregated_descendancy[Hr11$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                               Hr11$Aggregated_descendancy$Precursor %in% zoom_from, ]
-agg_desc_Hr11$Tree <- "Hr11"
-agg_desc_Hr12 <- Hr12$Aggregated_descendancy[Hr12$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                               Hr12$Aggregated_descendancy$Precursor %in% zoom_from, ]
-agg_desc_Hr12$Tree <- "Hr12"
-agg_desc_Hr24 <- Hr24$Aggregated_descendancy[Hr24$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                               Hr24$Aggregated_descendancy$Precursor %in% zoom_from, ]
-agg_desc_Hr24$Tree <- "Hr24"
-agg_desc_Hr26 <- Hr26$Aggregated_descendancy[Hr26$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                               Hr26$Aggregated_descendancy$Precursor %in% zoom_from, ]
-agg_desc_Hr26$Tree <- "Hr26"
-agg_desc_Hr27 <- Hr27$Aggregated_descendancy[Hr27$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                               Hr27$Aggregated_descendancy$Precursor %in% zoom_from, ]
-agg_desc_Hr27$Tree <- "Hr27"
-agg_desc_trees <- rbind(agg_desc_Hr10, agg_desc_Hr11, agg_desc_Hr12,
-                        agg_desc_Hr24, agg_desc_Hr26, agg_desc_Hr27)
+agg_desc_trees <- data.frame(Cell_type = character(),
+                             Precursor = character(),
+                             Tree_precursor_p = numeric(),
+                             Tree = character())
+full_descendancy <- data.frame(Cell_type = character(),
+                               Precursor = character(),
+                               Node = character(),
+                               Parent_node = character(),
+                               Precursor_count = numeric(),
+                               Total = numeric(),
+                               Frequency = numeric(),
+                               Precursor_presence_p = numeric(),
+                               Tree = character())
+for(t in 1:length(tree_list)){
+  tree_list[[t]] <- CalculateCooccurrence(tree_list[[t]])
+  descendancy_add <- tree_list[[t]]$Descendancy
+  descendancy_add$Tree <- names(tree_list)[t]
+  full_descendancy <- rbind(full_descendancy, descendancy_add)
+  
+  agg_desc_add <- 
+    tree_list[[t]]$Aggregated_descendancy[tree_list[[t]]$Aggregated_descendancy$Cell_type %in% zoom_to &
+                                            tree_list[[t]]$Aggregated_descendancy$Precursor %in% zoom_from, ]
+  agg_desc_add$Tree <- names(tree_list)[t]
+  agg_desc_trees <- rbind(agg_desc_trees, agg_desc_add)
+}
+# agg_desc_trees <- rbind(agg_desc_Hr10, agg_desc_Hr11, agg_desc_Hr12,
+#                         agg_desc_Hr24, agg_desc_Hr26, agg_desc_Hr27)
 agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
                       by = list(Cell_type = agg_desc_trees$Cell_type,
                                 Precursor = agg_desc_trees$Precursor),
                       prod)
 colnames(agg_desc)[3] <- "p"
 agg_d_cast <- acast(agg_desc, Cell_type ~ Precursor, value.var = "p")
+
+
+# Hr10 <- CalculateCooccurrence(Hr10)
+# Hr11 <- CalculateCooccurrence(Hr11)
+# Hr12 <- CalculateCooccurrence(Hr12)
+# Hr24 <- CalculateCooccurrence(Hr24)
+# Hr26 <- CalculateCooccurrence(Hr26)
+# Hr27 <- CalculateCooccurrence(Hr27)
+# png("./Images/Hr27_celltype_cooccurrence.png")
+# pheatmap(tree_list$Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0,
+#          fontsize_row = 8, fontsize_col = 8,
+#          annotation_col = ph_annotation, annotation_row = ph_annotation,
+#          annotation_colors = ann_colors, annotation_legend = F)
+# dev.off()
+# png("./Images/Hr27_celltype_cooccurrence_fibrozoom.png")
+pheatmap(tree_list$Hr27$Relative_cooccurrence[rownames(tree_list$Hr27$Relative_cooccurrence) %in% zoom_to, 
+                  colnames(tree_list$Hr27$Relative_cooccurrence) %in% zoom_from], 
+         treeheight_row = 0, treeheight_col = 0, 
+         fontsize_row = 12, fontsize_col = 12, 
+         annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
+         annotation_colors = ann_colors, annotation_legend = F)
+# dev.off()
+
+# agg_desc_Hr10 <- Hr10$Aggregated_descendancy[Hr10$Aggregated_descendancy$Cell_type %in% zoom_to &
+#                                                Hr10$Aggregated_descendancy$Precursor %in% zoom_from, ]
+# agg_desc_Hr10$Tree <- "Hr10"
+# agg_desc_Hr11 <- Hr11$Aggregated_descendancy[Hr11$Aggregated_descendancy$Cell_type %in% zoom_to &
+#                                                Hr11$Aggregated_descendancy$Precursor %in% zoom_from, ]
+# agg_desc_Hr11$Tree <- "Hr11"
+# agg_desc_Hr12 <- Hr12$Aggregated_descendancy[Hr12$Aggregated_descendancy$Cell_type %in% zoom_to &
+#                                                Hr12$Aggregated_descendancy$Precursor %in% zoom_from, ]
+# agg_desc_Hr12$Tree <- "Hr12"
+# agg_desc_Hr24 <- Hr24$Aggregated_descendancy[Hr24$Aggregated_descendancy$Cell_type %in% zoom_to &
+#                                                Hr24$Aggregated_descendancy$Precursor %in% zoom_from, ]
+# agg_desc_Hr24$Tree <- "Hr24"
+# agg_desc_Hr26 <- Hr26$Aggregated_descendancy[Hr26$Aggregated_descendancy$Cell_type %in% zoom_to &
+#                                                Hr26$Aggregated_descendancy$Precursor %in% zoom_from, ]
+# agg_desc_Hr26$Tree <- "Hr26"
+# agg_desc_Hr27 <- Hr27$Aggregated_descendancy[Hr27$Aggregated_descendancy$Cell_type %in% zoom_to &
+#                                                Hr27$Aggregated_descendancy$Precursor %in% zoom_from, ]
+# agg_desc_Hr27$Tree <- "Hr27"
+# agg_desc_trees <- rbind(agg_desc_Hr10, agg_desc_Hr11, agg_desc_Hr12,
+#                         agg_desc_Hr24, agg_desc_Hr26, agg_desc_Hr27)
+# agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
+#                       by = list(Cell_type = agg_desc_trees$Cell_type,
+#                                 Precursor = agg_desc_trees$Precursor),
+#                       prod)
+# colnames(agg_desc)[3] <- "p"
+# agg_d_cast <- acast(agg_desc, Cell_type ~ Precursor, value.var = "p")
 # png("./Images/Potential_precursors_3dpi_p_product.png")
 pheatmap(agg_d_cast, 
          treeheight_row = 0, treeheight_col = 0, 
@@ -399,20 +439,20 @@ pheatmap(agg_d_cast,
 
 # Show dot plots for a descendant cell type, plotting the probabilities for all precursor cell types in all
 # nodes
-descendancy_Hr10 <- Hr10$Descendancy
-descendancy_Hr10$Tree <- "Hr10"
-descendancy_Hr11 <- Hr11$Descendancy
-descendancy_Hr11$Tree <- "Hr11"
-descendancy_Hr12 <- Hr12$Descendancy
-descendancy_Hr12$Tree <- "Hr12"
-descendancy_Hr24 <- Hr24$Descendancy
-descendancy_Hr24$Tree <- "Hr24"
-descendancy_Hr26 <- Hr26$Descendancy
-descendancy_Hr26$Tree <- "Hr26"
-descendancy_Hr27 <- Hr27$Descendancy
-descendancy_Hr27$Tree <- "Hr27"
-full_descendancy <- rbind(descendancy_Hr10, descendancy_Hr11, descendancy_Hr12,
-                          descendancy_Hr24, descendancy_Hr26, descendancy_Hr27)
+# descendancy_Hr10 <- Hr10$Descendancy
+# descendancy_Hr10$Tree <- "Hr10"
+# descendancy_Hr11 <- Hr11$Descendancy
+# descendancy_Hr11$Tree <- "Hr11"
+# descendancy_Hr12 <- Hr12$Descendancy
+# descendancy_Hr12$Tree <- "Hr12"
+# descendancy_Hr24 <- Hr24$Descendancy
+# descendancy_Hr24$Tree <- "Hr24"
+# descendancy_Hr26 <- Hr26$Descendancy
+# descendancy_Hr26$Tree <- "Hr26"
+# descendancy_Hr27 <- Hr27$Descendancy
+# descendancy_Hr27$Tree <- "Hr27"
+# full_descendancy <- rbind(descendancy_Hr10, descendancy_Hr11, descendancy_Hr12,
+#                           descendancy_Hr24, descendancy_Hr26, descendancy_Hr27)
 # png("./Images/Col11fib_3dpi_potential_precursors.png", width = 1366, height = 768)
 ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
   geom_jitter(aes(x = 0, y = Precursor_presence_p, color = Precursor), size = 2) +
