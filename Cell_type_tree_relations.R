@@ -53,19 +53,10 @@ CalculateCooccurrence <- function(tree_sample){
                       Precursor = descendancy$Precursor),
             prod)
   colnames(descendancy_agg)[3] <- "Tree_precursor_p"
-  # END NEW
-  
+
   CTN <- acast(node_counts, Cell_type ~ Node, value.var = "Type_count")
   CTN <- ifelse(CTN == 0, 0, 1)
   Cooc_M <- CTN %*% t(CTN)
-  # Occ <- data.frame(Cell_type = colnames(Cooc_M),
-  #                   Occurrence = diag(Cooc_M), stringsAsFactors = F)
-  # Cooc <- data.frame(t(combn(Occ$Cell_type, 2)))
-  # colnames(Cooc) <- c("Cell_type", "Co_occurring_celltype")
-  # Cooc$Co_occurrence_count <- Cooc_M[lower.tri(Cooc_M)]
-  # Cooc <- merge(Occ, Cooc)
-  # Cooc <- Cooc[, c("Cell_type", "Co_occurring_celltype", "Occurrence", "Co_occurrence_count")]
-  # Cooc$Co_occurrence_freq <- Cooc$Co_occurrence_count/Cooc$Occurrence
   Cooc_f_M <- Cooc_M/diag(Cooc_M)
   
   tree_sample$Relative_cooccurrence <- Cooc_f_M
@@ -309,8 +300,7 @@ zoom_to <- c("Fibroblast (col11a1a)", "Fibroblast (col12a1a)", "Fibroblast (prol
              "Fibroblasts (spock3)")
 zoom_from <- setdiff(zoom_types, zoom_to)
 
-# New code ####
-# Read in tree object and append cell types
+# Load tree objects, append cell types, create lineage trees ####
 Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ])
 Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ])
 Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr12", ])
@@ -349,7 +339,7 @@ Hr27$Fibrozoom_tree
 #   Hr27$Fibrozoom_tree,
 #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
 
-# Calculate co-occurrences
+# Analyse lineage potential ####
 Hr10 <- CalculateCooccurrence(Hr10)
 Hr11 <- CalculateCooccurrence(Hr11)
 Hr12 <- CalculateCooccurrence(Hr12)
@@ -357,8 +347,8 @@ Hr24 <- CalculateCooccurrence(Hr24)
 Hr26 <- CalculateCooccurrence(Hr26)
 Hr27 <- CalculateCooccurrence(Hr27)
 # png("./Images/Hr27_celltype_cooccurrence.png")
-# pheatmap(Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0, 
-#          fontsize_row = 8, fontsize_col = 8, 
+# pheatmap(Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0,
+#          fontsize_row = 8, fontsize_col = 8,
 #          annotation_col = ph_annotation, annotation_row = ph_annotation,
 #          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
@@ -370,53 +360,7 @@ pheatmap(Hr27$Relative_cooccurrence[rownames(Hr27$Relative_cooccurrence) %in% zo
          annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
-View(Hr10$Relative_cooccurrence[rownames(Hr10$Relative_cooccurrence) %in% zoom_types, 
-                                colnames(Hr10$Relative_cooccurrence) %in% zoom_types])
 
-agg_d_cast_Hr27 <- acast(Hr27$Aggregated_descendancy, Cell_type ~ Precursor, value.var = "Tree_precursor_p")
-View(Hr27$Aggregated_descendancy[Hr27$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                   Hr27$Aggregated_descendancy$Precursor %in% zoom_from, ])
-# png("./Images/Hr27_celltype_precursor_p_fibrozoom.png")
-pheatmap(agg_d_cast_Hr27[rownames(agg_d_cast_Hr27) %in% zoom_to, 
-                    colnames(agg_d_cast_Hr27) %in% zoom_from], 
-         treeheight_row = 0, treeheight_col = 0, 
-         fontsize_row = 12, fontsize_col = 12, 
-         annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
-         annotation_colors = ann_colors, annotation_legend = F)
-# dev.off()
-
-prog_potential <- Hr27$Aggregated_descendancy[Hr27$Aggregated_descendancy$Cell_type %in% zoom_to &
-                                                Hr27$Aggregated_descendancy$Precursor %in% zoom_from, ]
-# colnames(prog_potential) <- c("Child", "Progenitor", "Cooc_freq")
-prog_potential$Pot_prog <- (prog_potential$Tree_precursor_p >= 0.8) # NOTE: TOTALLY ARBITRARY CUTOFF
-prog_potential_graph <- 
-  simplify(graph_from_edgelist(as.matrix(prog_potential[prog_potential$Pot_prog, c("Precursor", "Cell_type")])))
-vertex_colors_graph <- vertex_colors[names(V(prog_potential_graph)), ]
-# png("./Images/Hr27_progenitor_pvalue_fibrozoom.png", width = 640, height = 640)
-plot(prog_potential_graph, vertex.color = vertex_colors_graph$colo1,
-     vertex.size = 35, vertex.label = vertex_colors_graph$Label, vertex.label.cex = 2,
-     edge.color = "black", edge.width = 2)
-# dev.off()
-
-# Create potential progenitors and pp-graph
-Hr10 <- CalculateProgenitors(Hr10, zoom_to, zoom_from)
-Hr11 <- CalculateProgenitors(Hr11, zoom_to, zoom_from)
-Hr12 <- CalculateProgenitors(Hr12, zoom_to, zoom_from)
-Hr24 <- CalculateProgenitors(Hr24, zoom_to, zoom_from)
-Hr26 <- CalculateProgenitors(Hr26, zoom_to, zoom_from)
-Hr27 <- CalculateProgenitors(Hr27, zoom_to, zoom_from)
-
-plot(Hr10$Progenitor_graph)
-
-# png("./Images/Hr26_progenitor_potential_fibrozoom.png", width = 640, height = 640)
-vertex_colors_graph <- vertex_colors[names(V(Hr10$Progenitor_graph)), ]
-plot(Hr26$Progenitor_graph, vertex.color = vertex_colors_graph$colo1,
-     vertex.size = 35, vertex.label = vertex_colors_graph$Label, vertex.label.cex = 2,
-     edge.color = "black", edge.width = 2)
-# dev.off()
-
-# Calculate p-values for precursor-descendant pairs based on whether we see them together
-# in nodes. 
 agg_desc_Hr10 <- Hr10$Aggregated_descendancy[Hr10$Aggregated_descendancy$Cell_type %in% zoom_to &
                                                Hr10$Aggregated_descendancy$Precursor %in% zoom_from, ]
 agg_desc_Hr10$Tree <- "Hr10"
@@ -433,10 +377,10 @@ agg_desc_Hr26 <- Hr26$Aggregated_descendancy[Hr26$Aggregated_descendancy$Cell_ty
                                                Hr26$Aggregated_descendancy$Precursor %in% zoom_from, ]
 agg_desc_Hr26$Tree <- "Hr26"
 agg_desc_Hr27 <- Hr27$Aggregated_descendancy[Hr27$Aggregated_descendancy$Cell_type %in% zoom_to &
-                              Hr27$Aggregated_descendancy$Precursor %in% zoom_from, ]
+                                               Hr27$Aggregated_descendancy$Precursor %in% zoom_from, ]
 agg_desc_Hr27$Tree <- "Hr27"
 agg_desc_trees <- rbind(agg_desc_Hr10, agg_desc_Hr11, agg_desc_Hr12,
-                  agg_desc_Hr24, agg_desc_Hr26, agg_desc_Hr27)
+                        agg_desc_Hr24, agg_desc_Hr26, agg_desc_Hr27)
 agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
                       by = list(Cell_type = agg_desc_trees$Cell_type,
                                 Precursor = agg_desc_trees$Precursor),
@@ -451,7 +395,7 @@ pheatmap(agg_d_cast,
          annotation_colors = ann_colors, annotation_legend = F)
 # dev.off()
 
-View(Hr10$Descendancy[Hr10$Descendancy$Precursor == "Fibroblasts" & Hr10$Descendancy$Cell_type == "Fibroblast (col11a1a)", ])
+# View(Hr10$Descendancy[Hr10$Descendancy$Precursor == "Fibroblasts" & Hr10$Descendancy$Cell_type == "Fibroblast (col11a1a)", ])
 
 # Show dot plots for a descendant cell type, plotting the probabilities for all precursor cell types in all
 # nodes
@@ -492,7 +436,7 @@ ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]
 # rate, so they're not showing up as a clear impossibility. This does not mean they are
 # a good possibility.
 
-png("./Images/Col12fib_3dpi_potential_precursors_zoom.png", width = 683, height = 256)
+# png("./Images/Col12fib_3dpi_potential_precursors_zoom.png", width = 683, height = 256)
 ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col12a1a)" &
                           full_descendancy$Precursor %in% zoom_from, ]) +
   geom_jitter(aes(x = 0, y = log10(Precursor_presence_p), color = Precursor)) +
@@ -505,9 +449,9 @@ ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col12a1a)" &
   theme(axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
         strip.text.x = element_text(size = 12, face = "bold"))
-dev.off()  
+# dev.off()  
 
-png("./Images/3dpi_potential_precursors_zoom.png", width = 683, height = 768)
+# png("./Images/3dpi_potential_precursors_zoom.png", width = 683, height = 768)
 ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
                           full_descendancy$Precursor %in% zoom_from, ]) +
   geom_jitter(aes(x = 0, y = log10(Precursor_presence_p), color = Precursor), size = 2) +
@@ -521,12 +465,27 @@ ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
         axis.ticks.x = element_blank(),
         strip.text.x = element_text(size = 12, face = "bold"),
         strip.text.y = element_text(size = 12, face = "bold"))
-dev.off()
+# dev.off()
 
-# Do plot for only nodes enriched in descendant cell type  
+# Create potential progenitors and pp-graph (old code, not sure is useful anymore)
+Hr10 <- CalculateProgenitors(Hr10, zoom_to, zoom_from)
+Hr11 <- CalculateProgenitors(Hr11, zoom_to, zoom_from)
+Hr12 <- CalculateProgenitors(Hr12, zoom_to, zoom_from)
+Hr24 <- CalculateProgenitors(Hr24, zoom_to, zoom_from)
+Hr26 <- CalculateProgenitors(Hr26, zoom_to, zoom_from)
+Hr27 <- CalculateProgenitors(Hr27, zoom_to, zoom_from)
 
-View(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)" & full_descendancy$Precursor == "Erythrocytes", ])
-# In how many nodes are cell types co-enriched?
+# plot(Hr10$Progenitor_graph)
+
+# png("./Images/Hr26_progenitor_potential_fibrozoom.png", width = 640, height = 640)
+vertex_colors_graph <- vertex_colors[names(V(Hr10$Progenitor_graph)), ]
+plot(Hr26$Progenitor_graph, vertex.color = vertex_colors_graph$colo1,
+     vertex.size = 35, vertex.label = vertex_colors_graph$Label, vertex.label.cex = 2,
+     edge.color = "black", edge.width = 2)
+# dev.off()
+# Do plot for only nodes enriched in descendant cell type?
+
+# Co-enrichment ####
 enrichment_Hr10 <- NodeEnrichment(Hr10$Tree, p_cutoff = 0.01)
 enr_Hr10_m <- acast(enrichment_Hr10$Significant_enrichment[enrichment_Hr10$Significant_enrichment$Z > 0, ], 
                    Cell_type ~ Node)
