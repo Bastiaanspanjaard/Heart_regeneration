@@ -517,3 +517,24 @@ pheatmap(agg_wd_cast,
          fontsize_row = 12, fontsize_col = 12, 
          annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
          annotation_colors = ann_colors, annotation_legend = F)
+
+# Node occupancy correlation ####
+nodes <- count_cumulative(tree_list$Hr10$Tree)[, c("Node", "Cell_type", "Ccount")]
+baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+colnames(baseline)[3] <- "Total"
+nodes <- merge(nodes, baseline[, c("Cell_type", "Total")])
+nodes$Rel_freq <- nodes$Ccount/nodes$Total
+nodes_c <- acast(nodes[nodes$Node != "nd0", ], Node ~ Cell_type, value.var = "Rel_freq")
+
+nodes <- node_counts[, c("Node", "Cell_type", "Ccount")]
+baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+colnames(baseline)[3] <- "Total"
+nodes <- merge(nodes, baseline[, c("Cell_type", "Total")])
+nodes$Rel_freq <- nodes$Ccount/nodes$Total
+relfreqsum <-
+  aggregate(nodes$Rel_freq,
+            by = list(Node = nodes$Node),
+            sum)
+colnames(relfreqsum)[2] <- "Relfreqsum"
+nodes <- merge(nodes, relfreqsum)
+nodes$RF_norm <- nodes$Rel_freq/nodes$Relfreqsum
