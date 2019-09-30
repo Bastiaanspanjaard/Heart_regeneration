@@ -148,31 +148,6 @@ count_cumulative <- function(tree){
     )
   
   return(node_cocc)
-  
-  # node_cocc <- node_occ[, c("Var1", "Var2")]
-  # node_cocc$CFreq <- NA
-  # nl <- 1
-  # for(nl in 1:nrow(node_cocc)){
-  #   n <- node_occ$Var1[nl]
-  #   ct <- node_occ$Var2[nl]
-  #   node_cocc$CFreq[nl] <- 
-  #     sum(node_occ$Freq[grepl(n, node_occ$Var1) & node_occ$Var2 == ct])
-  # }
-  # 
-  # node_cocc_df <- dcast(node_cocc, Var1 ~ Var2, value.var = "CFreq")
-  # 
-  # 
-  # 
-  # node_totals <- aggregate(node_counts$Type_count,
-  #                          by = list(Node = node_counts$Node),
-  #                          sum)
-  # colnames(node_totals)[2] <- "Node_total"
-  # node_counts <- merge(node_counts, node_totals)
-  # 
-  # node_counts$Type_frequency <-
-  #   node_counts$Type_count/node_counts$Node_total
-  
-  # return(node_counts)
 }
 
 RemapCellTypes <- function(node, reference_set){
@@ -286,12 +261,6 @@ NodeEnrichment <- function(tree_sample, p_cutoff){
   tree_sample$Significant_enrichment <- node_counts_2[node_counts_2$Bp_adj < p_cutoff,]
   tree_sample$Co_enrichment <- co_enrich
   
-  # output_list <- 
-  #   list(Enrichment = node_counts_2,
-  #        Significant_enrichment = node_counts_2[node_counts_2$Bp_adj < p_cutoff,],
-  #        Comparison = enrichment_comp_full)
-  
-  # return(output_list)
   return(tree_sample)
 }
 
@@ -342,7 +311,78 @@ for(t in 1:length(tree_list)){
 #   tree_list$Hr27$Fibrozoom_tree,
 #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
 
-# Analyse lineage potential ####
+
+# Find precursor suspects ####
+nodes <- data.frame(Node = character(),
+                    Tree = character(),
+                    Cell_type = character(),
+                    Ccount = integer(),
+                    Cell_type_total = integer(),
+                    Node_total = integer(),
+                    Node_rf = numeric(),
+                    Cell_type_rf = numeric())
+for(t in 1:length(tree_list)){
+  nodes_add <- count_cumulative(tree_list[[t]]$Tree)[, c("Node", "Cell_type", "Ccount")]
+  nodes_add$Cell_type <- as.character(nodes_add$Cell_type)
+  nodes_add$Tree <- names(tree_list)[t]
+  
+  full_node_counts <-
+    aggregate(nodes_add$Ccount, by = list(Node = nodes_add$Node), sum)
+  colnames(full_node_counts)[2] <- c("Node_total")
+  nodes_add <- merge(nodes_add, full_node_counts)
+  nodes_add$Node_rf <- nodes_add$Ccount/nodes_add$Node_total
+  
+  baseline <- nodes_add[nodes_add$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+  colnames(baseline)[3] <- "Cell_type_total"
+  
+  nodes_add <- merge(nodes_add, baseline[, c("Cell_type", "Cell_type_total")])
+  nodes_add$Cell_type_rf <- nodes_add$Ccount/nodes_add$Cell_type_total
+  
+  nodes <- rbind(nodes, nodes_add)
+}
+nodes$Treenode <- paste(nodes$Tree, nodes$Node, sep = "_")
+
+nodes_nfc <- acast(nodes[nodes$Node != "nd0", ], Treenode ~ Cell_type, value.var ="Node_rf")
+nodes_nfc[is.na(nodes_nfc)] <- 0
+
+ggplot(data.frame(nodes_nfc)) +
+  geom_point(aes_string(x = "Fibroblasts", y = "Fibroblast..col11a1a."))
+ggplot(data.frame(nodes_nfc)) +
+  geom_point(aes_string(x = "Erythrocytes", y = "Fibroblast..col11a1a."))
+ggplot(data.frame(nodes_nfc)) +
+  geom_point(aes_string(x = "Myofibroblasts", y = "Fibroblast..col11a1a."))
+
+cortest_node_freqs <- data.frame(Type_1 = character(),
+                                 Type_2 = character(),
+                                 ct_p = numeric(),
+                                 ct_padj = numeric())
+for(i in 1:ncol(nodes_nfc)){
+  cortest_node_add <- data.frame(Type_1 = character(ncol(nodes_nfc)),
+                                 Type_2 = character(ncol(nodes_nfc)),
+                                 ct_p = numeric(ncol(nodes_nfc)),
+                                 ct_padj = numeric(ncol(nodes_nfc)), stringsAsFactors = F)
+  for(j in 1:ncol(nodes_nfc)){
+    ct <- cor.test(x = nodes_nfc[, i], y = nodes_nfc[, j])
+    cortest_node_add[j, 1:3] <- c(colnames(nodes_nfc)[i], 
+                                  colnames(nodes_nfc)[j], ct$p.value)
+  }
+  cortest_node_add$ct_padj <- p.adjust(cortest_node_add$ct_p, method = "fdr")
+  cortest_node_freqs <- 
+    rbind(cortest_node_add, cortest_node_freqs)
+}
+
+cortest_partplot <- cortest_node_freqs[cortest_node_freqs$Type_1 == zoom_to[1] &
+                                         cortest_node_freqs$Type_2 != zoom_to[1], ]
+cortest_partplot <- cortest_partplot[order(cortest_partplot$ct_padj), ]
+cortest_partplot$Type_2 <- factor(cortest_partplot$Type_2, levels = cortest_partplot$Type_2)
+ggplot(cortest_partplot[cortest_partplot$ct_padj < 0.01, ]) +
+  geom_bar(aes(x = Type_2, y = -log10(ct_padj), fill = Type_2), stat = "identity") +
+  scale_fill_manual(values = ann_colors$Celltype) +
+  labs(fill = "", x = "", y = "p (-log10)", title = paste(zoom_to[1], "precursor suspects")) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+# Analyse evidence against precursors ####
 agg_desc_trees <- data.frame(Cell_type = character(),
                              Precursor = character(),
                              Tree_precursor_p = numeric(),
@@ -377,28 +417,6 @@ agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
 colnames(agg_desc)[3] <- "p"
 agg_d_cast <- acast(agg_desc, Cell_type ~ Precursor, value.var = "p")
 
-# png("./Images/Hr27_celltype_cooccurrence.png")
-# pheatmap(tree_list$Hr27$Relative_cooccurrence, treeheight_row = 0, treeheight_col = 0,
-#          fontsize_row = 8, fontsize_col = 8,
-#          annotation_col = ph_annotation, annotation_row = ph_annotation,
-#          annotation_colors = ann_colors, annotation_legend = F)
-# dev.off()
-# png("./Images/Hr27_celltype_cooccurrence_fibrozoom.png")
-# pheatmap(tree_list$Hr27$Relative_cooccurrence[rownames(tree_list$Hr27$Relative_cooccurrence) %in% zoom_to, 
-#                   colnames(tree_list$Hr27$Relative_cooccurrence) %in% zoom_from], 
-#          treeheight_row = 0, treeheight_col = 0, 
-#          fontsize_row = 12, fontsize_col = 12, 
-#          annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
-#          annotation_colors = ann_colors, annotation_legend = F)
-# dev.off()
-
-# png("./Images/Potential_precursors_3dpi_p_product.png")
-# pheatmap(agg_d_cast, 
-#          treeheight_row = 0, treeheight_col = 0, 
-#          fontsize_row = 12, fontsize_col = 12, 
-#          annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
-#          annotation_colors = ann_colors, annotation_legend = F)
-# dev.off()
 
 # png("./Images/Col11fib_3dpi_potential_precursors.png", width = 1366, height = 768)
 ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
@@ -438,200 +456,3 @@ ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col12a1a)" &
         strip.text.x = element_text(size = 12, face = "bold"))
 # dev.off()  
 
-# png("./Images/3dpi_potential_precursors_zoom.png", width = 683, height = 768)
-# ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
-#                           full_descendancy$Precursor %in% zoom_from, ]) +
-#   geom_jitter(aes(x = 0, y = log10(Precursor_presence_p), color = Precursor), size = 2) +
-#   labs(title = "3dpi precursors",
-#        y = "Probability (log10)", x = "") +
-#   theme(axis.text.x = element_text(angle = 90),
-#         legend.position = "none") +
-#   scale_color_manual(values = ann_colors$Zoomtype) +
-#   facet_grid(Cell_type~Precursor) +
-#   theme(axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         strip.text.x = element_text(size = 12, face = "bold"),
-#         strip.text.y = element_text(size = 12, face = "bold"))
-# dev.off()
-
-# ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
-#                           full_descendancy$Precursor %in% zoom_from, ]) +
-#   geom_jitter(aes(x = Entropy, y = log10(Precursor_presence_p), color = Precursor), size = 2) +
-#   labs(title = "3dpi precursors",
-#        y = "Probability (log10)", x = "Node entropy") +
-#   theme(axis.text.x = element_text(angle = 90),
-#         legend.position = "none") +
-#   scale_color_manual(values = ann_colors$Zoomtype) +
-#   facet_grid(Cell_type~Precursor) +
-#   theme(axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         strip.text.x = element_text(size = 12, face = "bold"),
-#         strip.text.y = element_text(size = 12, face = "bold"))
-
-# png("./Images/Col11fib_3dpi_potential_precursors_vs_node_entropy.png", width = 1366, height = 768)
-# ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
-#   geom_point(aes(x = Entropy, y = Precursor_presence_p, color = Precursor), size = 2) +
-#   labs(title = "Fibroblast (col11a1a) precursors",
-#        x = "Node entropy", y = "Probability") +
-#   theme(axis.text.x = element_text(angle = 90),
-#         legend.position = "none") +
-#   scale_color_manual(values = ann_colors$Celltype) +
-#   facet_wrap(~Precursor) +
-#   theme(axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         strip.text.x = element_text(size = 12, face = "bold")) +
-#   scale_y_continuous(breaks = c(0, 0.5, 1))
-# dev.off()
-
-# all_node_entropies <- unique(full_descendancy[, c("Node", "Tree", "Entropy")])
-# 
-# ggplot(all_node_entropies) +
-#   geom_histogram(aes(x = Entropy))
-# 
-# ggplot(full_descendancy[full_descendancy$Entropy > 0.5, ]) + 
-#   geom_histogram(aes(x = Precursor_presence_p), binwidth = 0.01)
-# full_descendancy$weighed_p <- full_descendancy$Precursor_presence_p^(1 - full_descendancy$Entropy)
-# 
-# ggplot(full_descendancy[full_descendancy$Cell_type %in% zoom_to &
-#                           full_descendancy$Precursor %in% zoom_from, ]) +
-#   geom_jitter(aes(x = 0, y = log10(weighed_p), color = Precursor), size = 2) +
-#   labs(title = "3dpi precursors",
-#        y = "Probability (log10)", x = "") +
-#   theme(axis.text.x = element_text(angle = 90),
-#         legend.position = "none") +
-#   scale_color_manual(values = ann_colors$Zoomtype) +
-#   facet_grid(Cell_type~Precursor) +
-#   theme(axis.text.x = element_blank(),
-#         axis.ticks.x = element_blank(),
-#         strip.text.x = element_text(size = 12, face = "bold"),
-#         strip.text.y = element_text(size = 12, face = "bold"))
-# 
-# agg_wd <- aggregate(full_descendancy$weighed_p,
-#                     by = list(Cell_type = full_descendancy$Cell_type,
-#                               Precursor = full_descendancy$Precursor),
-#                     prod)
-# colnames(agg_wd)[3] <- "wp"
-# 
-# agg_wd_cast <- acast(agg_wd[agg_wd$Cell_type %in% zoom_to &
-#                              agg_wd$Precursor %in% zoom_from, ], Cell_type ~ Precursor, value.var = "wp")
-# pheatmap(agg_wd_cast, 
-#          treeheight_row = 0, treeheight_col = 0, 
-#          fontsize_row = 12, fontsize_col = 12, 
-#          annotation_col = ph_zoom_annotation, annotation_row = ph_zoom_annotation,
-#          annotation_colors = ann_colors, annotation_legend = F)
-
-# Node occupancy correlation ####
-# nodes <- count_cumulative(tree_list$Hr10$Tree)[, c("Node", "Cell_type", "Ccount")]
-# baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
-# colnames(baseline)[3] <- "Total"
-# nodes <- merge(nodes, baseline[, c("Cell_type", "Total")])
-# nodes$Rel_freq <- nodes$Ccount/nodes$Total
-# nodes_c <- acast(nodes[nodes$Node != "nd0", ], Node ~ Cell_type, value.var = "Rel_freq")
-# nodes_c <- nodes_c[, colSums(nodes_c) != 0]
-# cnc <- cor(nodes_c)
-# cnc_s <- cor(nodes_c, method = "spearman")
-# View(cnc[, colnames(cnc) %in% zoom_to])
-# View(cnc_s[, colnames(cnc_s) %in% zoom_to])
-# pheatmap(cor(nodes_c))
-
-nodes <- data.frame(Node = character(),
-                    Tree = character(),
-                    Cell_type = character(),
-                    Ccount = integer(),
-                    Cell_type_total = integer(),
-                    Node_total = integer(),
-                    Node_rf = numeric(),
-                    Cell_type_rf = numeric())
-for(t in 1:length(tree_list)){
-  nodes_add <- count_cumulative(tree_list[[t]]$Tree)[, c("Node", "Cell_type", "Ccount")]
-  nodes_add$Cell_type <- as.character(nodes_add$Cell_type)
-  nodes_add$Tree <- names(tree_list)[t]
-  
-  full_node_counts <-
-    aggregate(nodes_add$Ccount, by = list(Node = nodes_add$Node), sum)
-  colnames(full_node_counts)[2] <- c("Node_total")
-  nodes_add <- merge(nodes_add, full_node_counts)
-  nodes_add$Node_rf <- nodes_add$Ccount/nodes_add$Node_total
-  
-  baseline <- nodes_add[nodes_add$Node == "nd0", c("Node", "Cell_type", "Ccount")]
-  colnames(baseline)[3] <- "Cell_type_total"
-  
-  nodes_add <- merge(nodes_add, baseline[, c("Cell_type", "Cell_type_total")])
-  nodes_add$Cell_type_rf <- nodes_add$Ccount/nodes_add$Cell_type_total
-
-  nodes <- rbind(nodes, nodes_add)
-}
-nodes$Treenode <- paste(nodes$Tree, nodes$Node, sep = "_")
-
-# nodes_c <- acast(nodes[nodes$Node != "nd0", ], Treenode ~ Cell_type, value.var = "Rel_freq")
-# nodes_c[is.na(nodes_c)] <- 0
-# cnc <- cor(nodes_c)
-# cnc_s <- cor(nodes_c, method = "spearman")
-# View(cnc[, colnames(cnc) %in% zoom_to])
-# View(cnc_s[, colnames(cnc_s) %in% zoom_to])
-# 
-# ggplot(data.frame(nodes_c)) +
-#   geom_point(aes_string(x = "Fibroblasts", y = "Fibroblast..col11a1a."))
-# ggplot(data.frame(nodes_c)) +
-#   geom_point(aes_string(x = "Erythrocytes", y = "Fibroblast..col11a1a."))
-# View(nodes_c[, colnames(nodes_c) %in% c("Fibroblasts", "Erythrocytes", "Fibroblast (col11a1a)")])
-# ggplot(data.frame(nodes_c)) +
-#   geom_point(aes_string(x = "M..notch1b.", y = "Fibroblast..col11a1a."))
-
-nodes_nfc <- acast(nodes[nodes$Node != "nd0", ], Treenode ~ Cell_type, value.var ="Node_rf")
-nodes_nfc[is.na(nodes_nfc)] <- 0
-
-cnc_nf <- cor(nodes_nfc)
-cnc_nf_s <- cor(nodes_nfc, method = "spearman")
-View(cnc_nf[, colnames(cnc_nf) %in% zoom_to])
-View(cnc_nf_s[, colnames(cnc_nf_s) %in% zoom_to])
-nodes_nfcd <- data.frame(nodes_nfc)
-
-ggplot(data.frame(nodes_nfc)) +
-  geom_point(aes_string(x = "Fibroblasts", y = "Fibroblast..col11a1a."))
-ggplot(data.frame(nodes_nfc)) +
-  geom_point(aes_string(x = "Erythrocytes", y = "Fibroblast..col11a1a."))
-# View(nodes_c[, colnames(nodes_c) %in% c("Fibroblasts", "Erythrocytes", "Fibroblast (col11a1a)")])
-ggplot(data.frame(nodes_nfc)) +
-  geom_point(aes_string(x = "Myofibroblasts", y = "Fibroblast..col11a1a."))
-
-# cor.test(x = nodes_nfcd$Fibroblasts, y = nodes_nfcd$Fibroblast..col11a1a.)
-# cor.test(x = nodes_nfcd$Erythrocytes, y = nodes_nfcd$Fibroblast..col11a1a.)
-# cor.test(x = nodes_nfcd$Myofibroblasts, y = nodes_nfcd$Fibroblast..col11a1a.)
-
-cortest_node_freqs <- data.frame(Type_1 = character(),
-                                 Type_2 = character(),
-                                 ct_p <- numeric())
-for(i in 1:ncol(nodes_nfc)){
-  for(j in 1:ncol(nodes_nfc)){
-    ct <- cor.test(x = nodes_nfc[, i], y = nodes_nfc[, j])
-    cortest_node_freqs <- 
-      rbind(
-        data.frame(Type_1 = colnames(nodes_nfc)[i],
-                   Type_2 = colnames(nodes_nfc)[j],
-                   ct_p = ct$p.value),
-        cortest_node_freqs)
-  }
-}
-
-
-# cor.test(x = nodes_cd$Fibroblast..cfd., y = nodes_cd$Fibroblast..col11a1a.)
-
-# nodes_cd <- data.frame(nodes_c)
-# ggplot(data.frame(nodes_c)) +
-#   geom_point(aes_string(x = "Fibroblasts", y = "Fibroblast..col11a1a."))
-# ggplot(data.frame(nodes_c)) +
-#   geom_point(aes_string(x = "M..notch1b.", y = "Fibroblast..col11a1a."))
-# 
-# nodes <- node_counts[, c("Node", "Cell_type", "Ccount")]
-# baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
-# colnames(baseline)[3] <- "Total"
-# nodes <- merge(nodes, baseline[, c("Cell_type", "Total")])
-# nodes$Rel_freq <- nodes$Ccount/nodes$Total
-# relfreqsum <-
-#   aggregate(nodes$Rel_freq,
-#             by = list(Node = nodes$Node),
-#             sum)
-# colnames(relfreqsum)[2] <- "Relfreqsum"
-# nodes <- merge(nodes, relfreqsum)
-# nodes$RF_norm <- nodes$Rel_freq/nodes$Relfreqsum
