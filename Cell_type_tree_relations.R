@@ -349,8 +349,11 @@ ggplot(data.frame(nodes_nfc)) +
   geom_point(aes_string(x = "Fibroblasts", y = "Fibroblast..col11a1a."))
 ggplot(data.frame(nodes_nfc)) +
   geom_point(aes_string(x = "Erythrocytes", y = "Fibroblast..col11a1a."))
-ggplot(data.frame(nodes_nfc)) +
-  geom_point(aes_string(x = "Myofibroblasts", y = "Fibroblast..col11a1a."))
+# png("./Images/Col11fib_3dpi_myofibr_node_prop_example.png", width = 768, height = 768)
+# ggplot(data.frame(nodes_nfc)) +
+#   geom_point(aes_string(x = "Myofibroblasts", y = "Fibroblast..col11a1a."), size = 3) +
+#   labs(title = "Proportion of node", x = "Myofibroblasts", y = "Fibroblast (col11a1a)")
+# dev.off()
 
 cortest_node_freqs <- data.frame(Type_1 = character(),
                                  Type_2 = character(),
@@ -371,16 +374,22 @@ for(i in 1:ncol(nodes_nfc)){
     rbind(cortest_node_add, cortest_node_freqs)
 }
 
-cortest_partplot <- cortest_node_freqs[cortest_node_freqs$Type_1 == zoom_to[1] &
-                                         cortest_node_freqs$Type_2 != zoom_to[1], ]
-cortest_partplot <- cortest_partplot[order(cortest_partplot$ct_padj), ]
-cortest_partplot$Type_2 <- factor(cortest_partplot$Type_2, levels = cortest_partplot$Type_2)
-ggplot(cortest_partplot[cortest_partplot$ct_padj < 0.01, ]) +
-  geom_bar(aes(x = Type_2, y = -log10(ct_padj), fill = Type_2), stat = "identity") +
-  scale_fill_manual(values = ann_colors$Celltype) +
-  labs(fill = "", x = "", y = "p (-log10)", title = paste(zoom_to[1], "precursor suspects")) +
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank())
+for(i in 1:length(zoom_to)){
+  cortest_partplot <- cortest_node_freqs[cortest_node_freqs$Type_1 == zoom_to[i] &
+                                           cortest_node_freqs$Type_2 != zoom_to[i], ]
+  cortest_partplot <- cortest_partplot[order(cortest_partplot$ct_padj), ]
+  cortest_partplot$Type_2 <- factor(cortest_partplot$Type_2, levels = cortest_partplot$Type_2)
+  # png(paste("./Images/", zoom_to[i], "precursor_suspects.png", sep = ""), width = 768, height = 768)
+  print(
+    ggplot(cortest_partplot[cortest_partplot$ct_padj < 0.01, ]) +
+      geom_bar(aes(x = Type_2, y = -log10(ct_padj), fill = Type_2), stat = "identity") +
+      scale_fill_manual(values = ann_colors$Celltype) +
+      labs(fill = "", x = "", y = "p (-log10)", title = paste(zoom_to[i], "precursor suspects")) +
+      theme(axis.text.x = element_blank(),
+            axis.ticks.x = element_blank())
+  )
+  # dev.off()
+}
 
 # Analyse evidence against precursors ####
 agg_desc_trees <- data.frame(Cell_type = character(),
@@ -416,7 +425,6 @@ agg_desc <- aggregate(agg_desc_trees$Tree_precursor_p,
                       prod)
 colnames(agg_desc)[3] <- "p"
 agg_d_cast <- acast(agg_desc, Cell_type ~ Precursor, value.var = "p")
-
 
 # png("./Images/Col11fib_3dpi_potential_precursors.png", width = 1366, height = 768)
 ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
@@ -456,3 +464,25 @@ ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col12a1a)" &
         strip.text.x = element_text(size = 12, face = "bold"))
 # dev.off()  
 
+for(i in 1:length(zoom_to)){
+  potential_prec <- cortest_node_freqs$Type_2[cortest_node_freqs$Type_1 == zoom_to[i] &
+                                       cortest_node_freqs$Type_2 != zoom_to[i] &
+                                       cortest_node_freqs$ct_padj < 0.01]
+  # png(paste("./Images/", zoom_to[i], "precursor_node_probs.png", sep = ""), 
+      # width = 768, height = 256 * ceiling(length(potential_prec)/5))
+  print(
+    ggplot(full_descendancy[full_descendancy$Cell_type == zoom_to[i] &
+                              full_descendancy$Precursor %in% potential_prec, ]) +
+      geom_jitter(aes(x = 0, y = log10(Precursor_presence_p), color = Precursor)) +
+      labs(title = paste(zoom_to[i], "precursors"),
+           y = "Probability (log10)", x = "") +
+      theme(axis.text.x = element_text(angle = 90),
+            legend.position = "none") +
+      scale_color_manual(values = ann_colors$Celltype) +
+      facet_wrap(~Precursor, ncol = 5) +
+      theme(axis.text.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            strip.text.x = element_text(size = 12, face = "bold"))
+  )
+  # dev.off()
+}
