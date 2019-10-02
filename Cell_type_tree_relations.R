@@ -515,33 +515,123 @@ View(nodes_nfc[, colnames(nodes_nfc) %in% c("Fibroblast (nppc)", "Endocardium (V
 
 # Correlation bootstrap ####
 # Randomly split a cell type in two within a tree: create two artificial sub types by assigning
-# all cells in a type a random 'A' or 'B'. Then calculate the 
-cell_type_split <- "Fibroblasts"
-tree <- Clone(tree_list$Hr13$Tree)
-cells_in_tree <- data.frame(Cell_name = tree$Get('name', filterFun = function(x) {isLeaf(x)}),
-                            stringsAsFactors = F)
-cells_in_tree <- merge(cells_in_tree, cell_types)
-table(cells_in_tree$Cell_type)
-cells_in_tree$Cell_type <- 
-  sapply(cells_in_tree$Cell_type,
-         function(x){
-           ifelse(x == cell_type_split,
-                                      paste(x, rbinom(1, 1, 0.5), sep = "_"),
-                                      x)})
-tree$Do(RemapCellTypes, reference_set = cells_in_tree)
+# all cells in a type a random 'A' or 'B'. Then calculate the tree-based correlation between those
+# two.
+require(weights)
+cell_type_split <- "Endocardium (Ventricle)"
+tree <- Clone(tree_list$Hr2$Tree)
+samples <- 1000
 
-nodes_add <- count_cumulative(tree)[, c("Node", "Cell_type", "Ccount")]
-nodes_add$Cell_type <- as.character(nodes_add$Cell_type)
-# nodes_add$Tree <- names(tree_list)[t]
-
-full_node_counts <-
-  aggregate(nodes_add$Ccount, by = list(Node = nodes_add$Node), sum)
-colnames(full_node_counts)[2] <- c("Node_total")
-nodes_add <- merge(nodes_add, full_node_counts)
-nodes_add$Node_rf <- nodes_add$Ccount/nodes_add$Node_total
-
-# baseline <- nodes_add[nodes_add$Node == "nd0", c("Node", "Cell_type", "Ccount")]
-# colnames(baseline)[3] <- "Cell_type_total"
-
-# nodes_add <- merge(nodes_add, baseline[, c("Cell_type", "Cell_type_total")])
-# nodes_add$Cell_type_rf <- nodes_add$Ccount/nodes_add$Cell_type_total
+cor_samples <- data.frame(Sample = 1:samples,
+                          Correlation = numeric(samples),
+                          Wt_correlation = numeric(samples),
+                          Double_correlation = numeric(samples),
+                          Double_wt_correlation = numeric(samples))
+edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+# node_totals <- data.frame(table(edge_list$from[edge_list$Cell.type != "NA"]))
+# node_totals$Node_total <- NA
+set.seed(555)
+for(s in 1:samples){
+  # NEW
+  edge_list$New_cell_type <- 
+    sapply(edge_list$Cell.type,
+           function(x){
+             ifelse(x == cell_type_split,
+                    paste(x, rbinom(1, 1, 0.5), sep = "_"), x) #,
+                    # ifelse(x == "NA", "NA", "Other"))
+  })
+  split_type_0 <- paste(cell_type_split, 0, sep = "_")
+  split_type_1 <- paste(cell_type_split, 1, sep = "_")
+  # nodes <- edge_list$to[edge_list$Cell.type == "NA"] # Intentionally leaves out nd0
+  sample_type_count <- 
+    dcast(data.frame(table(edge_list$from, edge_list$New_cell_type)), Var1 ~ Var2, value.var = "Freq")
+  sample_type_count$Var1 <- as.character(sample_type_count$Var1)
+  # NEW
+  sample_type_count <- sample_type_count[, colnames(sample_type_count) != "NA"]
+  rownames(sample_type_count) <- sample_type_count$Var1
+  sample_type_count <- sample_type_count[, -1]
+  
+  sample_type_cumulative <- sample_type_count
+  sample_type_cumulative[,] <- NA
+  for(i in 1:nrow(sample_type_cumulative)){
+    node <- rownames(sample_type_cumulative)[i]
+    sample_type_cumulative[i, ] <-
+      colSums(sample_type_count[grep(node, rownames(sample_type_count)), ])
+  }
+  sample_type_nf <- sample_type_cumulative/rowSums(sample_type_cumulative)
+  cor_samples$Correlation[s] <- cor(sample_type_nf[[split_type_0]], sample_type_nf[[split_type_1]])
+  cor_samples$Wt_correlation[s] <- 
+    wtd.cors(sample_type_nf[[split_type_0]], 
+             sample_type_nf[[split_type_1]], weight = rowSums(sample_type_cumulative))
+  cor_samples$Double_correlation[s] <- 
+    cor(t(cor(sample_type_nf[[split_type_0]], 
+              sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])),
+        t(cor(sample_type_nf[[split_type_1]], 
+              sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])))
+  cor_samples$Double_wt_correlation[s] <- 
+    cor(t(wtd.cors(sample_type_nf[[split_type_0]], 
+              sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
+              weight = rowSums(sample_type_cumulative))),
+        t(wtd.cors(sample_type_nf[[split_type_1]], 
+              sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
+              weight = rowSums(sample_type_cumulative))))
+  
+  # OLD
+  # sample_type_count$Fibroblasts_0_cum <- NA
+  # sample_type_count$Fibroblasts_1_cum <- NA
+  # sample_type_count$Other_cum <- NA
+  # for(i in 1:nrow(sample_type_count)){
+  #   node <- sample_type_count$Var1[i]
+  #   sample_type_count[i, c("Fibroblasts_0_cum", "Fibroblasts_1_cum", "Other_cum")] <-
+  #     colSums(sample_type_count[grep(node, sample_type_count$Var1), c(2, 3, 5)])
+  # }
+  # sample_type_count$Node_total <- 
+  #   sample_type_count$Fibroblasts_0_cum + sample_type_count$Fibroblasts_1_cum +
+  #   sample_type_count$Other_cum
+  # sample_type_count$F_0_rf <- sample_type_count$Fibroblasts_0_cum/sample_type_count$Node_total
+  # sample_type_count$F_1_rf <- sample_type_count$Fibroblasts_1_cum/sample_type_count$Node_total
+  # cor_samples$Correlation[s] <- cor(sample_type_count$F_0_rf, sample_type_count$F_1_rf)
+  # cor_samples$Wt_correlation[s] <- 
+  #   wtd.cors(sample_type_count$F_0_rf, sample_type_count$F_1_rf, weight = sample_type_count$Node_total)
+  # OLDER
+  # cell_division_start <- Sys.time()
+  # cells_in_tree <- data.frame(Cell_name = tree$Get('name', filterFun = function(x) {isLeaf(x)}),
+  #                             stringsAsFactors = F)
+  # cells_in_tree <- merge(cells_in_tree, cell_types)
+  # cells_in_tree$Cell_type <- 
+  #   sapply(cells_in_tree$Cell_type,
+  #          function(x){
+  #            ifelse(x == cell_type_split,
+  #                   paste(x, rbinom(1, 1, 0.5), sep = "_"),
+  #                   x)})
+  # tree$Do(RemapCellTypes, reference_set = cells_in_tree)
+  # cell_division_time <- Sys.time() - cell_division_start
+  # 
+  # counting_start <- Sys.time()
+  # nodes <- count_cumulative(tree)#[, c("Node", "Cell_type", "Ccount")]
+  # nodes$Cell_type <- as.character(nodes$Cell_type)
+  # counting_time <- Sys.time() - counting_start
+  # 
+  # correlation_start <- Sys.time()
+  # full_node_counts <-
+  #   aggregate(nodes$Type_count, by = list(Node = nodes$Node), sum)
+  # colnames(full_node_counts)[2] <- c("Node_total")
+  # nodes <- merge(nodes, full_node_counts)
+  # nodes$Node_rf <- nodes$Type_count/nodes$Node_total
+  # 
+  # # Now calculate correlation.
+  # nodes_nfc <- dcast(nodes[nodes$Node != "nd0", ], Node ~ Cell_type, value.var ="Node_rf")
+  # nodes_nfc[is.na(nodes_nfc)] <- 0
+  # cor_samples$Correlation[s] <- cor(nodes_nfc$Fibroblasts_0, nodes_nfc$Fibroblasts_1)
+  # correlation_time <- Sys.time() - correlation_start
+  # 
+  # print(paste("Sample step", s, "with", cell_division_time, ",", counting_time, "and", correlation_time))
+}
+ggplot(cor_samples) +
+  geom_histogram((aes(x = Correlation)))
+ggplot(cor_samples) +
+  geom_histogram((aes(x = Wt_correlation)))
+ggplot(cor_samples) +
+  geom_histogram((aes(x = Double_correlation)))
+ggplot(cor_samples) +
+  geom_histogram((aes(x = Double_wt_correlation)))
