@@ -127,14 +127,14 @@ count_cumulative <- function(tree){
   node_counts$Node <- as.character(node_counts$Node)
   
   node_cocc <- node_counts[, c("Node", "Cell_type", "Type_count")]
-  node_cocc$Ccount <- NA
-  for(nl in 1:nrow(node_cocc)){
-    n <- node_counts$Node[nl]
-    ct <- node_counts$Cell_type[nl]
-    node_cocc$Ccount[nl] <-
-      sum(node_counts$Type_count[grepl(paste(n, "_|", n, "$", sep = ""), node_counts$Node) &
-                                   node_counts$Cell_type == ct])
-  }
+  # node_cocc$Ccount <- NA
+  # for(nl in 1:nrow(node_cocc)){
+  #   n <- node_counts$Node[nl]
+  #   ct <- node_counts$Cell_type[nl]
+  #   node_cocc$Ccount[nl] <-
+  #     sum(node_counts$Type_count[grepl(paste(n, "_|", n, "$", sep = ""), node_counts$Node) &
+  #                                  node_counts$Cell_type == ct])
+  # }
   node_cocc$Parent_node <-
     sapply(node_cocc$Node,
            function(x){
@@ -150,6 +150,8 @@ count_cumulative <- function(tree){
   return(node_cocc)
 }
 
+node <- tree
+reference_set <- cells_in_tree
 RemapCellTypes <- function(node, reference_set){
   for(c in names(node$children)){
     type_bc <- unlist(strsplit(c, "_"))
@@ -178,6 +180,9 @@ ZoomCellTypes <- function(node, zoom_types){
   }
 }
 
+Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref)
+library_name <- "Hr1"
+reference_set <- Hr1_ref
 ReadTree <- function(library_name, reference_set){
   load(paste("./Data/Trees/", library_name, "_tree_pie.Robj", sep = ""))
   list_out <- list(Tree = LINNAEUS.pie)
@@ -278,7 +283,7 @@ ann_colors <-
        Zoomtype = setNames(type_colors$colo1, type_colors$celltype))
 
 zoom_types <- setdiff(type_colors$celltype[type_colors$colo1 != ""],
-                      c("Ery. Duplex", "M. Duplex", "Myofibroblasts", "Fibroblast (nppc)"))
+                      c("Ery. Duplex", "M. Duplex"))
 vertex_colors <- data.frame(celltype = zoom_types,
                             Order = 1:(length(zoom_types)))
 vertex_colors <- merge(vertex_colors, type_colors[, c("celltype", "colo1")])
@@ -287,29 +292,48 @@ vertex_colors$Label <-
   c("Epi A", "Epi V", "cfd", "col11", "col12", "cxcl12", "prolif", "spock3", "F")
 rownames(vertex_colors) <- vertex_colors$celltype
 zoom_to <- c("Fibroblast (col11a1a)", "Fibroblast (col12a1a)", "Fibroblast (proliferating)",
-             "Fibroblasts (spock3)")
+             "Fibroblast (nppc)") #"Fibroblasts (spock3)", 
 zoom_from <- setdiff(zoom_types, zoom_to)
 
 # Load tree objects, append cell types, create lineage trees ####
-Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ])
-Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ])
-Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr12", ])
-Hr24 <- ReadTree("Hr24", reference_set = cell_types[cell_types$orig.ident == "Hr24", ])
-Hr26 <- ReadTree("Hr26", reference_set = cell_types[cell_types$orig.ident == "Hr26", ])
-Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr27", ])
-tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr26, Hr27 = Hr27)
+# 3dpi
+# Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ])
+# Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ])
+# Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr12", ])
+# Hr24 <- ReadTree("Hr24", reference_set = cell_types[cell_types$orig.ident == "Hr24", ])
+# Hr26 <- ReadTree("Hr26", reference_set = cell_types[cell_types$orig.ident == "Hr26", ])
+# Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr27", ])
+# tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr26, Hr27 = Hr27)
+# 7dpi
+Hr1_ref <- cell_types[cell_types$orig.ident == "Hr1", ]
+Hr1_ref$Cell_name <- paste("nd", sapply(Hr1_ref$Cell_name, function(x){unlist(strsplit(x, "_"))[2]}), sep = "")
+Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref)
+Hr2 <- ReadTree("Hr2", reference_set = cell_types[cell_types$orig.ident %in% c("Hr2a", "Hr2b"), ])
+Hr13 <- ReadTree("Hr13", reference_set = cell_types[cell_types$orig.ident == "Hr13", ])
+Hr14 <- ReadTree("Hr14", reference_set = cell_types[cell_types$orig.ident == "Hr14", ])
+Hr15 <- ReadTree("Hr15", reference_set = cell_types[cell_types$orig.ident == "Hr15", ])
+tree_list <- list(Hr1 = Hr1, Hr2 = Hr2, Hr13 = Hr13, Hr14 = Hr14, Hr15 = Hr15)
+
 # Create tree visualization and zoom visualization
 for(t in 1:length(tree_list)){
   tree_list[[t]] <- MakePieTree(tree_list[[t]], "Full_tree", ct_colors = type_colors$Color2)
   tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
                                 ct_colors = type_colors$colo1)
+  htmlwidgets::saveWidget(
+    tree_list[[t]]$Full_tree,
+    file = paste("~/Documents/Projects/heart_Bo/Images/tree_", 
+                 names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
+  htmlwidgets::saveWidget(
+    tree_list[[t]]$Fibrozoom_tree,
+    file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
+                 names(tree_list)[t], "_LINNAEUS_pie_fibrozoom.html", sep = ""))
+  # htmlwidgets::saveWidget(
+  #   tree_list$Hr27$Full_tree,
+  #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
+  # htmlwidgets::saveWidget(
+  #   tree_list$Hr27$Fibrozoom_tree,
+  #   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
 }
-# htmlwidgets::saveWidget(
-#   tree_list$Hr27$Full_tree,
-#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
-# htmlwidgets::saveWidget(
-#   tree_list$Hr27$Fibrozoom_tree,
-#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
 
 
 # Find precursor suspects ####
@@ -346,9 +370,9 @@ nodes_nfc <- acast(nodes[nodes$Node != "nd0", ], Treenode ~ Cell_type, value.var
 nodes_nfc[is.na(nodes_nfc)] <- 0
 
 ggplot(data.frame(nodes_nfc)) +
-  geom_point(aes_string(x = "Fibroblasts", y = "Fibroblast..col11a1a."))
+  geom_point(aes_string(x = "Endocardium..nppc..V", y = "Fibroblast..nppc."))
 ggplot(data.frame(nodes_nfc)) +
-  geom_point(aes_string(x = "Erythrocytes", y = "Fibroblast..col11a1a."))
+  geom_point(aes_string(x = "Endocardium..Ventricle.", y = "Fibroblast..nppc."))
 # png("./Images/Col11fib_3dpi_myofibr_node_prop_example.png", width = 768, height = 768)
 # ggplot(data.frame(nodes_nfc)) +
 #   geom_point(aes_string(x = "Myofibroblasts", y = "Fibroblast..col11a1a."), size = 3) +
@@ -379,7 +403,7 @@ for(i in 1:length(zoom_to)){
                                            cortest_node_freqs$Type_2 != zoom_to[i], ]
   cortest_partplot <- cortest_partplot[order(cortest_partplot$ct_padj), ]
   cortest_partplot$Type_2 <- factor(cortest_partplot$Type_2, levels = cortest_partplot$Type_2)
-  # png(paste("./Images/", zoom_to[i], "precursor_suspects.png", sep = ""), width = 768, height = 768)
+  # png(paste("./Images/", zoom_to[i], "precursor_suspects_7dpi.png", sep = ""), width = 768, height = 768)
   print(
     ggplot(cortest_partplot[cortest_partplot$ct_padj < 0.01, ]) +
       geom_bar(aes(x = Type_2, y = -log10(ct_padj), fill = Type_2), stat = "identity") +
@@ -427,18 +451,18 @@ colnames(agg_desc)[3] <- "p"
 agg_d_cast <- acast(agg_desc, Cell_type ~ Precursor, value.var = "p")
 
 # png("./Images/Col11fib_3dpi_potential_precursors.png", width = 1366, height = 768)
-ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
-  geom_jitter(aes(x = 0, y = Precursor_presence_p, color = Precursor), size = 2) +
-  labs(title = "Fibroblast (col11a1a) precursors",
-       x = "", y = "Probability") +
-  theme(axis.text.x = element_text(angle = 90),
-        legend.position = "none") +
-  scale_color_manual(values = ann_colors$Celltype) +
-  facet_wrap(~Precursor) +
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        strip.text.x = element_text(size = 12, face = "bold")) +
-  scale_y_continuous(breaks = c(0, 0.5, 1))
+# ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]) +
+#   geom_jitter(aes(x = 0, y = Precursor_presence_p, color = Precursor), size = 2) +
+#   labs(title = "Fibroblast (col11a1a) precursors",
+#        x = "", y = "Probability") +
+#   theme(axis.text.x = element_text(angle = 90),
+#         legend.position = "none") +
+#   scale_color_manual(values = ann_colors$Celltype) +
+#   facet_wrap(~Precursor) +
+#   theme(axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         strip.text.x = element_text(size = 12, face = "bold")) +
+#   scale_y_continuous(breaks = c(0, 0.5, 1))
 # dev.off()
 # This plot is very interesting because it shows something that is still
 # unclear about this analysis. Many cell types look like they could be precursors to
@@ -450,26 +474,26 @@ ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col11a1a)", ]
 # a good possibility.
 
 # png("./Images/Col12fib_3dpi_potential_precursors_zoom.png", width = 683, height = 256)
-ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col12a1a)" &
-                          full_descendancy$Precursor %in% zoom_from, ]) +
-  geom_jitter(aes(x = 0, y = log10(Precursor_presence_p), color = Precursor)) +
-  labs(title = "Fibroblast (col12a1a) precursors",
-       y = "Probability (log10)", x = "") +
-  theme(axis.text.x = element_text(angle = 90),
-        legend.position = "none") +
-  scale_color_manual(values = ann_colors$Zoomtype) +
-  facet_wrap(~Precursor, nrow = 1) +
-  theme(axis.text.x = element_blank(),
-        axis.ticks.x = element_blank(),
-        strip.text.x = element_text(size = 12, face = "bold"))
+# ggplot(full_descendancy[full_descendancy$Cell_type == "Fibroblast (col12a1a)" &
+#                           full_descendancy$Precursor %in% zoom_from, ]) +
+#   geom_jitter(aes(x = 0, y = log10(Precursor_presence_p), color = Precursor)) +
+#   labs(title = "Fibroblast (col12a1a) precursors",
+#        y = "Probability (log10)", x = "") +
+#   theme(axis.text.x = element_text(angle = 90),
+#         legend.position = "none") +
+#   scale_color_manual(values = ann_colors$Zoomtype) +
+#   facet_wrap(~Precursor, nrow = 1) +
+#   theme(axis.text.x = element_blank(),
+#         axis.ticks.x = element_blank(),
+#         strip.text.x = element_text(size = 12, face = "bold"))
 # dev.off()  
 
 for(i in 1:length(zoom_to)){
   potential_prec <- cortest_node_freqs$Type_2[cortest_node_freqs$Type_1 == zoom_to[i] &
                                        cortest_node_freqs$Type_2 != zoom_to[i] &
                                        cortest_node_freqs$ct_padj < 0.01]
-  # png(paste("./Images/", zoom_to[i], "precursor_node_probs.png", sep = ""), 
-      # width = 768, height = 256 * ceiling(length(potential_prec)/5))
+  # png(paste("./Images/", zoom_to[i], "precursor_node_probs_7dpi.png", sep = ""),
+  #     width = 768, height = 256 * ceiling(length(potential_prec)/5))
   print(
     ggplot(full_descendancy[full_descendancy$Cell_type == zoom_to[i] &
                               full_descendancy$Precursor %in% potential_prec, ]) +
@@ -486,3 +510,38 @@ for(i in 1:length(zoom_to)){
   )
   # dev.off()
 }
+
+View(nodes_nfc[, colnames(nodes_nfc) %in% c("Fibroblast (nppc)", "Endocardium (Ventricle)")])
+
+# Correlation bootstrap ####
+# Randomly split a cell type in two within a tree: create two artificial sub types by assigning
+# all cells in a type a random 'A' or 'B'. Then calculate the 
+cell_type_split <- "Fibroblasts"
+tree <- Clone(tree_list$Hr13$Tree)
+cells_in_tree <- data.frame(Cell_name = tree$Get('name', filterFun = function(x) {isLeaf(x)}),
+                            stringsAsFactors = F)
+cells_in_tree <- merge(cells_in_tree, cell_types)
+table(cells_in_tree$Cell_type)
+cells_in_tree$Cell_type <- 
+  sapply(cells_in_tree$Cell_type,
+         function(x){
+           ifelse(x == cell_type_split,
+                                      paste(x, rbinom(1, 1, 0.5), sep = "_"),
+                                      x)})
+tree$Do(RemapCellTypes, reference_set = cells_in_tree)
+
+nodes_add <- count_cumulative(tree)[, c("Node", "Cell_type", "Ccount")]
+nodes_add$Cell_type <- as.character(nodes_add$Cell_type)
+# nodes_add$Tree <- names(tree_list)[t]
+
+full_node_counts <-
+  aggregate(nodes_add$Ccount, by = list(Node = nodes_add$Node), sum)
+colnames(full_node_counts)[2] <- c("Node_total")
+nodes_add <- merge(nodes_add, full_node_counts)
+nodes_add$Node_rf <- nodes_add$Ccount/nodes_add$Node_total
+
+# baseline <- nodes_add[nodes_add$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+# colnames(baseline)[3] <- "Cell_type_total"
+
+# nodes_add <- merge(nodes_add, baseline[, c("Cell_type", "Cell_type_total")])
+# nodes_add$Cell_type_rf <- nodes_add$Ccount/nodes_add$Cell_type_total
