@@ -5,6 +5,7 @@ require(pheatmap)
 require(RColorBrewer)
 require(igraph)
 
+# tree_sample <- tree_list[[1]]
 CalculateCooccurrence <- function(tree_sample){
   node_counts <- count_cumulative(tree_sample$Tree)
   
@@ -15,16 +16,16 @@ CalculateCooccurrence <- function(tree_sample){
     node_counts[node_counts$Type_count != 0, 
                 c("Cell_type", "Node", "Parent_node")]
   # Potential precursor node counts
-  parent_counts <- node_counts[, c("Node", "Cell_type", "Ccount", "Parent_node")]
+  parent_counts <- node_counts[, c("Node", "Cell_type", "Type_count", "Parent_node")]
   colnames(parent_counts) <-  c("Node", "Precursor", "Precursor_count", "Parent_node")
   # Full node counts
-  full_node_counts <- aggregate(node_counts$Ccount,
+  full_node_counts <- aggregate(node_counts$Type_count,
                                 by = list(Node = node_counts$Node),
                                 sum)
   colnames(full_node_counts)[2] <- "Total"
   # Cell type proportions
-  proportions <- merge(node_counts[, c("Cell_type", "Node", "Ccount")], full_node_counts)
-  proportions$Frequency <- proportions$Ccount/proportions$Total
+  proportions <- merge(node_counts[, c("Cell_type", "Node", "Type_count")], full_node_counts)
+  proportions$Frequency <- proportions$Type_count/proportions$Total
   # Merge so that we have for each node and descendant type: potential precursors, their
   # counts in the node, the node size and the precursor frequency in the parent node.
   descendancy <- 
@@ -58,11 +59,11 @@ CalculateCooccurrence <- function(tree_sample){
   Cooc_M <- CTN %*% t(CTN)
   Cooc_f_M <- Cooc_M/diag(Cooc_M)
   
-  nodes <- node_counts[, c("Node", "Cell_type", "Ccount")]
-  baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+  nodes <- node_counts[, c("Node", "Cell_type", "Type_count")]
+  baseline <- nodes[nodes$Node == "nd0", c("Node", "Cell_type", "Type_count")]
   colnames(baseline)[3] <- "Total"
   nodes <- merge(nodes, baseline[, c("Cell_type", "Total")])
-  nodes$Rel_freq <- nodes$Ccount/nodes$Total
+  nodes$Rel_freq <- nodes$Type_count/nodes$Total
   relfreqsum <-
     aggregate(nodes$Rel_freq,
               by = list(Node = nodes$Node),
@@ -150,8 +151,8 @@ count_cumulative <- function(tree){
   return(node_cocc)
 }
 
-node <- tree
-reference_set <- cells_in_tree
+# node <- tree
+# reference_set <- cells_in_tree
 RemapCellTypes <- function(node, reference_set){
   for(c in names(node$children)){
     type_bc <- unlist(strsplit(c, "_"))
@@ -180,9 +181,9 @@ ZoomCellTypes <- function(node, zoom_types){
   }
 }
 
-Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref)
-library_name <- "Hr1"
-reference_set <- Hr1_ref
+# Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref)
+# library_name <- "Hr1"
+# reference_set <- Hr1_ref
 ReadTree <- function(library_name, reference_set){
   load(paste("./Data/Trees/", library_name, "_tree_pie.Robj", sep = ""))
   list_out <- list(Tree = LINNAEUS.pie)
@@ -346,21 +347,21 @@ nodes <- data.frame(Node = character(),
                     Node_rf = numeric(),
                     Cell_type_rf = numeric())
 for(t in 1:length(tree_list)){
-  nodes_add <- count_cumulative(tree_list[[t]]$Tree)[, c("Node", "Cell_type", "Ccount")]
+  nodes_add <- count_cumulative(tree_list[[t]]$Tree)[, c("Node", "Cell_type", "Type_count")]
   nodes_add$Cell_type <- as.character(nodes_add$Cell_type)
   nodes_add$Tree <- names(tree_list)[t]
   
   full_node_counts <-
-    aggregate(nodes_add$Ccount, by = list(Node = nodes_add$Node), sum)
+    aggregate(nodes_add$Type_count, by = list(Node = nodes_add$Node), sum)
   colnames(full_node_counts)[2] <- c("Node_total")
   nodes_add <- merge(nodes_add, full_node_counts)
-  nodes_add$Node_rf <- nodes_add$Ccount/nodes_add$Node_total
+  nodes_add$Node_rf <- nodes_add$Type_count/nodes_add$Node_total
   
-  baseline <- nodes_add[nodes_add$Node == "nd0", c("Node", "Cell_type", "Ccount")]
+  baseline <- nodes_add[nodes_add$Node == "nd0", c("Node", "Cell_type", "Type_count")]
   colnames(baseline)[3] <- "Cell_type_total"
   
   nodes_add <- merge(nodes_add, baseline[, c("Cell_type", "Cell_type_total")])
-  nodes_add$Cell_type_rf <- nodes_add$Ccount/nodes_add$Cell_type_total
+  nodes_add$Cell_type_rf <- nodes_add$Type_count/nodes_add$Cell_type_total
   
   nodes <- rbind(nodes, nodes_add)
 }
@@ -511,7 +512,7 @@ for(i in 1:length(zoom_to)){
   # dev.off()
 }
 
-View(nodes_nfc[, colnames(nodes_nfc) %in% c("Fibroblast (nppc)", "Endocardium (Ventricle)")])
+# View(nodes_nfc[, colnames(nodes_nfc) %in% c("Fibroblast (nppc)", "Endocardium (Ventricle)")])
 
 # Correlation bootstrap ####
 # Randomly split a cell type in two within a tree: create two artificial sub types by assigning
