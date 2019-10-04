@@ -516,27 +516,115 @@ for(i in 1:length(zoom_to)){
 
 # Distance between A and A+B ####
 target <- "Fibroblast (nppc)"
-tree <- tree_list[[2]]$Tree
-
-edge_list <- ToDataFrameNetwork(tree, "Cell.type")
-sample_type_count <- 
-  dcast(data.frame(table(edge_list$from, edge_list$Cell.type)), Var1 ~ Var2, value.var = "Freq")
-rownames(sample_type_count) <- sample_type_count$Var1
-sample_type_count <- sample_type_count[, !(colnames(sample_type_count) %in% c("NA", "Var1"))]
-
-sample_type_cumulative <- sample_type_count
-sample_type_cumulative[,] <- NA
-for(i in 1:nrow(sample_type_cumulative)){
-  node <- rownames(sample_type_cumulative)[i]
-  sample_type_cumulative[i, ] <-
-    colSums(sample_type_count[grep(node, rownames(sample_type_count)), ])
+# target <- "Fibroblast (col12a1a)"
+# Run this over all trees, keep distances top-level, create a new tree-level in the list
+comparison_list <- list(Comparison = data.frame(Tree = character(),
+                                                Precursor = character(),
+                                                Simple_distance = numeric(),
+                                                Distance = numeric(),
+                                                Correlation = numeric(),
+                                                Type_count = integer()),
+                        Node_sizes = data.frame(Size = integer()),
+                        Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = length(unique(cell_types$Cell_type)))))
+colnames(comparison_list$Normalized_frequencies) <- unique(cell_types$Cell_type)
+for(t in 1:length(tree_list)){
+  tree <- tree_list[[t]]$Tree
+  
+  edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+  if(!(target %in% edge_list$Cell.type)){
+    next
+  }
+  sample_type_count <- 
+    dcast(data.frame(table(edge_list$from, edge_list$Cell.type)), Var1 ~ Var2, value.var = "Freq")
+  rownames(sample_type_count) <- paste(names(tree_list)[t], sample_type_count$Var1, sep = ":")
+  sample_type_count <- sample_type_count[, !(colnames(sample_type_count) %in% c("NA", "Var1"))]
+  
+  sample_type_cumulative <- sample_type_count
+  sample_type_cumulative[,] <- NA
+  for(i in 1:nrow(sample_type_cumulative)){
+    node <- rownames(sample_type_cumulative)[i]
+    sample_type_cumulative[i, ] <-
+      colSums(sample_type_count[grep(node, rownames(sample_type_count)), ])
+  }
+  sample_type_nf <- sample_type_cumulative/rowSums(sample_type_cumulative)
+  # new_nodesizes <- 
+  comparison_list$Node_sizes <- rbind(comparison_list$Node_sizes,
+                                      data.frame(Size = rowSums(sample_type_cumulative)))
+  # rownames(sample_type_nf) <- paste(names(tree_list)[t], rownames(sample_type_nf), sep = ":")
+  
+  # comparison_list_tree <- 
+    # list(Distances = 
+  comparison_tree <- 
+    data.frame(Tree = rep(names(tree_list)[t], ncol(sample_type_count)),
+               Precursor = names(sample_type_count),
+               Distance = numeric(ncol(sample_type_count)),
+               Correlation = numeric(ncol(sample_type_count)),
+               Type_count = colSums(sample_type_count))
+  
+  precursor_list <- list()
+  for(p in 1:ncol(sample_type_count)){#names(sample_type_count))
+    precursor <- names(sample_type_count)[p]#"Endocardium (Ventricle)"
+    
+    correlations <- 
+      data.frame(Precursor_cor = 
+                   t(wtd.cors(sample_type_nf[[precursor]], 
+                              sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+                              weight = rowSums(sample_type_cumulative))),
+                 Both_cor = t(wtd.cors(sample_type_nf[[precursor]] + sample_type_nf[[target]], 
+                                       sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+                                       weight = rowSums(sample_type_cumulative))))
+    comparison_tree$Distance[p] <- dist(t(correlations))
+    comparison_tree$Correlation[p] <- cor(correlations$Precursor_cor, correlations$Both_cor)
+    precursor_list[[p]] <- correlations
+    names(precursor_list)[p] <- precursor
+  }
+  
+  comparison_list[[length(comparison_list) + 1]] <- precursor_list
+  names(comparison_list)[length(comparison_list)] <- names(tree_list)[t]
+  comparison_list$Comparison <- rbind(comparison_list$Comparison, comparison_tree)
+  
+  sample_type_nf[setdiff(names(comparison_list$Normalized_frequencies), names(sample_type_nf))] <- NA
+  comparison_list$Normalized_frequencies[setdiff(names(sample_type_nf), 
+                                                 names(comparison_list$Normalized_frequencies))] <- NA
+  
+  comparison_list$Normalized_frequencies <- 
+    rbind(comparison_list$Normalized_frequencies, sample_type_nf)
 }
-sample_type_nf <- sample_type_cumulative/rowSums(sample_type_cumulative)
+comparison_list$Normalized_frequencies[is.na(comparison_list$Normalized_frequencies)] <- 0
+comparison_list$Node_sizes$Weight <- comparison_list$Node_sizes$Size/sum(comparison_list$Node_sizes$Size)
+# node_weights <- comparison_list$Comparison$Type_count
+comparison_list$All_trees_prec <- list()
+comparison_list$All_trees_distances <- 
+  data.frame(Precursor = names(comparison_list$Normalized_frequencies),
+             Distance = numeric(ncol(comparison_list$Normalized_frequencies)))
 
-comparison_list <- list()
-
-for(p in 1:ncol(sample_type_count)){#names(sample_type_count))
-  precursor <- names(sample_type_count)[p]#"Endocardium (Ventricle)"
+View(comparison_list$Node_sizes)
+for(p in 1:ncol(comparison_list$Normalized_frequencies)){
+  precursor <- names(comparison_list$Normalized_frequencies)[p]
+  
+  if(precursor == target){
+    comparison_list$All_trees_distances$Distance[p] <- 0
+    next
+  }
+  full_node_distance <-
+    data.frame(Precursor = comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) == precursor],
+               Prec_prog = rowSums(comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) 
+                                                                          %in% c(precursor, target)]))
+  
+  comparison_list$All_trees_prec[[p]] <- full_node_distance
+  names(comparison_list$All_trees_prec)[p] <- precursor
+  
+  comparison_list$All_trees_distances$Distance[p] <-
+    sqrt(sum((comparison_list$Node_sizes$Weight * (full_node_distance$Precursor - full_node_distance$Prec_prog))^2))
+}  
+  
+# Precursor
+  comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) == precursor]
+  
+  # Progenitor
+  rowSums(comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) 
+                                                 %in% c(precursor, target)])
+  
   
   correlations <- 
     data.frame(Precursor_cor = 
@@ -546,15 +634,13 @@ for(p in 1:ncol(sample_type_count)){#names(sample_type_count))
                Both_cor = t(wtd.cors(sample_type_nf[[precursor]] + sample_type_nf[[target]], 
                                      sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
                                      weight = rowSums(sample_type_cumulative))))
-  # dist(t(correlations))
-  comparison_list[[p]] <-
-    list(Correlations = correlations, distance = dist(t(correlations)))
-  names(comparison_list)[p] <- precursor
+  comparison_tree$Distance[p] <- dist(t(correlations))
+  comparison_tree$Correlation[p] <- cor(correlations$Precursor_cor, correlations$Both_cor)
+  precursor_list[[p]] <- correlations
+  names(precursor_list)[p] <- precursor
 }
 
-all_tree_distances <- 
-  data.frame(Precursor = names(comparison_list),
-             Distance = unlist(lapply(comparison_list, function(x) as.numeric(x$distance))))
+
 
 ppp <- "Endocardium (Ventricle)"
 
