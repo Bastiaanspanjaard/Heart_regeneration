@@ -514,6 +514,85 @@ for(i in 1:length(zoom_to)){
 
 # View(nodes_nfc[, colnames(nodes_nfc) %in% c("Fibroblast (nppc)", "Endocardium (Ventricle)")])
 
+# Distance between A and A+B ####
+target <- "Fibroblast (nppc)"
+tree <- tree_list[[2]]$Tree
+
+edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+sample_type_count <- 
+  dcast(data.frame(table(edge_list$from, edge_list$Cell.type)), Var1 ~ Var2, value.var = "Freq")
+rownames(sample_type_count) <- sample_type_count$Var1
+sample_type_count <- sample_type_count[, !(colnames(sample_type_count) %in% c("NA", "Var1"))]
+
+sample_type_cumulative <- sample_type_count
+sample_type_cumulative[,] <- NA
+for(i in 1:nrow(sample_type_cumulative)){
+  node <- rownames(sample_type_cumulative)[i]
+  sample_type_cumulative[i, ] <-
+    colSums(sample_type_count[grep(node, rownames(sample_type_count)), ])
+}
+sample_type_nf <- sample_type_cumulative/rowSums(sample_type_cumulative)
+
+comparison_list <- list()
+
+for(p in 1:ncol(sample_type_count)){#names(sample_type_count))
+  precursor <- names(sample_type_count)[p]#"Endocardium (Ventricle)"
+  
+  correlations <- 
+    data.frame(Precursor_cor = 
+                 t(wtd.cors(sample_type_nf[[precursor]], 
+                            sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+                            weight = rowSums(sample_type_cumulative))),
+               Both_cor = t(wtd.cors(sample_type_nf[[precursor]] + sample_type_nf[[target]], 
+                                     sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+                                     weight = rowSums(sample_type_cumulative))))
+  # dist(t(correlations))
+  comparison_list[[p]] <-
+    list(Correlations = correlations, distance = dist(t(correlations)))
+  names(comparison_list)[p] <- precursor
+}
+
+all_tree_distances <- 
+  data.frame(Precursor = names(comparison_list),
+             Distance = unlist(lapply(comparison_list, function(x) as.numeric(x$distance))))
+
+ppp <- "Endocardium (Ventricle)"
+
+ggplot(comparison_list[[ppp]]$Correlations) +
+  geom_point(aes(x = Precursor_cor, y = Both_cor)) +
+  labs(title = paste(ppp, "giving rise to", target))
+
+
+ggplot(comparison_list$`Endocardium (nppc) V`$Correlations) +
+  geom_point(aes(x = Precursor_cor, y = Both_cor))
+ggplot(comparison_list$`Endocardium (nppc) V`$Correlations) +
+  geom_point(aes(x = Precursor_cor, y = Both_cor))
+
+
+
+cor_samples$Correlation[s] <- cor(sample_type_nf[[split_type_0]], sample_type_nf[[split_type_1]])
+cor_samples$Wt_correlation[s] <- 
+  wtd.cors(sample_type_nf[[split_type_0]], 
+           sample_type_nf[[split_type_1]], weight = rowSums(sample_type_cumulative))
+cor_samples$Double_correlation[s] <- 
+  cor(t(cor(sample_type_nf[[split_type_0]], 
+            sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])),
+      t(cor(sample_type_nf[[split_type_1]], 
+            sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])))
+cor_samples$Double_wt_correlation[s] <- 
+  cor(t(wtd.cors(sample_type_nf[[split_type_0]], 
+                 sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
+                 weight = rowSums(sample_type_cumulative))),
+      t(wtd.cors(sample_type_nf[[split_type_1]], 
+                 sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
+                 weight = rowSums(sample_type_cumulative))))
+
+
+# correlation between A and other non-A,B types
+# correlation between A + B and other non-A,B types
+# distance between correlations
+  
+
 # Correlation bootstrap ####
 # Randomly split a cell type in two within a tree: create two artificial sub types by assigning
 # all cells in a type a random 'A' or 'B'. Then calculate the tree-based correlation between those
