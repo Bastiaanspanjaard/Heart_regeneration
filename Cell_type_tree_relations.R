@@ -4,6 +4,7 @@ library(reshape2)
 require(pheatmap)
 require(RColorBrewer)
 require(igraph)
+require(weights)
 
 # tree_sample <- tree_list[[1]]
 CalculateCooccurrence <- function(tree_sample){
@@ -591,6 +592,8 @@ for(t in 1:length(tree_list)){
     rbind(comparison_list$Normalized_frequencies, sample_type_nf)
 }
 comparison_list$Normalized_frequencies[is.na(comparison_list$Normalized_frequencies)] <- 0
+comparison_list$Normalized_frequencies <- 
+  comparison_list$Normalized_frequencies[, colSums(comparison_list$Normalized_frequencies) > 0]
 comparison_list$Node_sizes$Weight <- comparison_list$Node_sizes$Size/sum(comparison_list$Node_sizes$Size)
 # node_weights <- comparison_list$Comparison$Type_count
 comparison_list$All_trees_prec <- list()
@@ -598,7 +601,7 @@ comparison_list$All_trees_distances <-
   data.frame(Precursor = names(comparison_list$Normalized_frequencies),
              Distance = numeric(ncol(comparison_list$Normalized_frequencies)))
 
-View(comparison_list$Node_sizes)
+# View(comparison_list$Node_sizes)
 for(p in 1:ncol(comparison_list$Normalized_frequencies)){
   precursor <- names(comparison_list$Normalized_frequencies)[p]
   
@@ -606,43 +609,87 @@ for(p in 1:ncol(comparison_list$Normalized_frequencies)){
     comparison_list$All_trees_distances$Distance[p] <- 0
     next
   }
-  full_node_distance <-
-    data.frame(Precursor = comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) == precursor],
-               Prec_prog = rowSums(comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) 
-                                                                          %in% c(precursor, target)]))
+  # full_node_distance <-
+  #   data.frame(Precursor = comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) == precursor],
+  #              Prec_prog = rowSums(comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) 
+  #                                                                         %in% c(precursor, target)]))
+  # 
+  # prec <- comparison_list$Normalized_frequencies[[precursor]]
+  # prec_rest <- comparison_list$Normalized_frequencies[, !(names(comparison_list$Normalized_frequencies) %in% c(precursor, target))]
+  # weights <- comparison_list$Node_sizes$Weight
+  # wtd.cors(prec, prec_rest, weight = weights)
   
-  comparison_list$All_trees_prec[[p]] <- full_node_distance
+  
+  correlations <-
+    data.frame(
+      Precursor_cor =
+        t(wtd.cors(comparison_list$Normalized_frequencies[[precursor]],
+                   comparison_list$Normalized_frequencies[, !(names(comparison_list$Normalized_frequencies) %in% c(precursor, target))],
+                   weight = comparison_list$Node_sizes$Size)),
+      Both_cor = 
+        t(wtd.cors(comparison_list$Normalized_frequencies[[precursor]] + comparison_list$Normalized_frequencies[[target]],
+                   comparison_list$Normalized_frequencies[, !(names(comparison_list$Normalized_frequencies) %in% c(precursor, target))],
+                   weight = comparison_list$Node_sizes$Size)))
+  comparison_list$All_trees_distances$Distance[p] <- dist(t(correlations))
+  
+  comparison_list$All_trees_prec[[p]] <- correlations
   names(comparison_list$All_trees_prec)[p] <- precursor
   
-  comparison_list$All_trees_distances$Distance[p] <-
-    sqrt(sum((comparison_list$Node_sizes$Weight * (full_node_distance$Precursor - full_node_distance$Prec_prog))^2))
+  # comparison_list$All_trees_prec[[p]] <- full_node_distance
+  # names(comparison_list$All_trees_prec)[p] <- precursor
+  
+  # comparison_list$All_trees_distances$Distance[p] <-
+    # sqrt(sum((comparison_list$Node_sizes$Weight * (full_node_distance$Precursor - full_node_distance$Prec_prog))^2))
 }  
-  
+
+View(comparison_list$All_trees_prec$`Endocardium (nppc) V`)
+
+# Plot correlation of Endocardium (V) with B-cells, plot Endocardium (V) +  nppc vs Endocardium,
+# B-cells + nppc vs B-cells.
+plot_freqs <- data.frame(comparison_list$Normalized_frequencies)[, c("B.cells", "Endocardium..Ventricle.")]
+colnames(plot_freqs) <- c("Bcells", "Endo_V")
+plot_freqs$Size <- comparison_list$Node_sizes$Size
+# colnames(plot_cors)[colnames(plot_cors) == "B.cells"] <- "Bcells"
+# colnames(plot_cors)[colnames(plot_cors) == "Endocardium..Ventricle."] <- "Endo_V"
+# png("./Images/EndoV_Bcells_7dpi.png")
+ggplot(plot_freqs) +
+  geom_point(aes(x = Bcells, y = Endo_V, size = Size)) +
+  labs(x = "B-cells", y = "Endocardium (V)") +
+  theme(legend.position = "none")
+# dev.off()
+plot_cors <- comparison_list$All_trees_prec$`B-cells`
+# png("./Images/Bcells_prec_nppc_7dpi.png")
+ggplot(plot_cors) +
+  geom_point(aes(x = Precursor_cor, y = Both_cor)) +
+  labs(x = "B-cells", y = "B-cells + nppc",
+       title = "Distance = 3.6")
+# dev.off()
+
 # Precursor
-  comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) == precursor]
-  
-  # Progenitor
-  rowSums(comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) 
-                                                 %in% c(precursor, target)])
-  
-  
-  correlations <- 
-    data.frame(Precursor_cor = 
-                 t(wtd.cors(sample_type_nf[[precursor]], 
-                            sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
-                            weight = rowSums(sample_type_cumulative))),
-               Both_cor = t(wtd.cors(sample_type_nf[[precursor]] + sample_type_nf[[target]], 
-                                     sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
-                                     weight = rowSums(sample_type_cumulative))))
-  comparison_tree$Distance[p] <- dist(t(correlations))
-  comparison_tree$Correlation[p] <- cor(correlations$Precursor_cor, correlations$Both_cor)
-  precursor_list[[p]] <- correlations
-  names(precursor_list)[p] <- precursor
-}
+#   comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) == precursor]
+#   
+#   # Progenitor
+#   rowSums(comparison_list$Normalized_frequencies[, names(comparison_list$Normalized_frequencies) 
+#                                                  %in% c(precursor, target)])
+#   
+#   
+#   correlations <- 
+#     data.frame(Precursor_cor = 
+#                  t(wtd.cors(sample_type_nf[[precursor]], 
+#                             sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+#                             weight = rowSums(sample_type_cumulative))),
+#                Both_cor = t(wtd.cors(sample_type_nf[[precursor]] + sample_type_nf[[target]], 
+#                                      sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+#                                      weight = rowSums(sample_type_cumulative))))
+#   comparison_tree$Distance[p] <- dist(t(correlations))
+#   comparison_tree$Correlation[p] <- cor(correlations$Precursor_cor, correlations$Both_cor)
+#   precursor_list[[p]] <- correlations
+#   names(precursor_list)[p] <- precursor
+# }
 
 
 
-ppp <- "Endocardium (Ventricle)"
+# ppp <- "Endocardium (Ventricle)"
 
 ggplot(comparison_list[[ppp]]$Correlations) +
   geom_point(aes(x = Precursor_cor, y = Both_cor)) +
@@ -656,23 +703,23 @@ ggplot(comparison_list$`Endocardium (nppc) V`$Correlations) +
 
 
 
-cor_samples$Correlation[s] <- cor(sample_type_nf[[split_type_0]], sample_type_nf[[split_type_1]])
-cor_samples$Wt_correlation[s] <- 
-  wtd.cors(sample_type_nf[[split_type_0]], 
-           sample_type_nf[[split_type_1]], weight = rowSums(sample_type_cumulative))
-cor_samples$Double_correlation[s] <- 
-  cor(t(cor(sample_type_nf[[split_type_0]], 
-            sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])),
-      t(cor(sample_type_nf[[split_type_1]], 
-            sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])))
-cor_samples$Double_wt_correlation[s] <- 
-  cor(t(wtd.cors(sample_type_nf[[split_type_0]], 
-                 sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
-                 weight = rowSums(sample_type_cumulative))),
-      t(wtd.cors(sample_type_nf[[split_type_1]], 
-                 sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
-                 weight = rowSums(sample_type_cumulative))))
-
+# cor_samples$Correlation[s] <- cor(sample_type_nf[[split_type_0]], sample_type_nf[[split_type_1]])
+# cor_samples$Wt_correlation[s] <- 
+#   wtd.cors(sample_type_nf[[split_type_0]], 
+#            sample_type_nf[[split_type_1]], weight = rowSums(sample_type_cumulative))
+# cor_samples$Double_correlation[s] <- 
+#   cor(t(cor(sample_type_nf[[split_type_0]], 
+#             sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])),
+#       t(cor(sample_type_nf[[split_type_1]], 
+#             sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))])))
+# cor_samples$Double_wt_correlation[s] <- 
+#   cor(t(wtd.cors(sample_type_nf[[split_type_0]], 
+#                  sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
+#                  weight = rowSums(sample_type_cumulative))),
+#       t(wtd.cors(sample_type_nf[[split_type_1]], 
+#                  sample_type_nf[, !(colnames(sample_type_nf) %in% c(split_type_0, split_type_1))],
+#                  weight = rowSums(sample_type_cumulative))))
+# 
 
 # correlation between A and other non-A,B types
 # correlation between A + B and other non-A,B types
