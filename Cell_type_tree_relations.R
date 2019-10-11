@@ -216,6 +216,7 @@ target <- "Fibroblast (nppc)"
 # target <- "Fibroblast (proliferating)"
 # target <- "Fibroblast (col12a1a)"
 # target <- "Ventricle (ttn.2/aSMA)"
+precursors_include <- c("Smooth muscle cells (Vasculature) 2", "Endocardium (Ventricle)")
 
 # Load tree objects, append cell types, create lineage trees ####
 # 3dpi
@@ -253,7 +254,6 @@ for(t in 1:length(tree_list)){
   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
   #                names(tree_list)[t], "_LINNAEUS_pie_fibrozoom.html", sep = ""))
 }
-
 
 # Distance between A and A+B ####
 # Run this over all trees, keep distances top-level, create a new tree-level in the list
@@ -431,8 +431,9 @@ print(
 )
 # dev.off()
 potential_prec <- 
-  precursor_ranking$Precursor[precursor_ranking$Weighted_cor_progpos > 0.5 & 
-                                precursor_ranking$Mean_count >= 10]
+  union(precursor_ranking$Precursor[precursor_ranking$Weighted_cor_progpos > 0.5 & 
+                                precursor_ranking$Mean_count >= 10],
+        precursors_include)
 print(potential_prec)
 
 # Plot correlations of two top-scoring precursors and two low-scoring precursors
@@ -583,3 +584,35 @@ print(
           strip.text.x = element_text(size = 12, face = "bold"))
 )
 # dev.off()
+
+
+# Bootstrap correlation ####
+# If I randomly place cells in the tree, what is the correlation with the progeny?
+# Select a potential precursor; how many cells in each tree? Randomly place that amount
+# of cells in the tree, depending on 'pure' (i.e. not cumulative) node counts when progeny
+# is removed. Then calculate correlation with progeny.
+# Step 0: Pure node counts with and without progeny
+tree <- Clone(tree_list$Hr26$Tree)
+nodes <- tree$Get('name', filterFun = function(x) {!isLeaf(x)})
+
+edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+pure_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
+colnames(pure_counts) <- c("Node", "Cell_type", "Type_count")
+pure_sizes <- aggregate(pure_counts$Count,
+                        by = list(Node = pure_counts$Node),
+                        sum)
+colnames(pure_sizes)[2] <- "Node_count"
+pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == target, ])
+colnames(pure_sizes)[3:4] <- c("Progeny", "Progeny_count")
+
+# Step I: potential precursor and how many cells?
+bootstrap_precursor <- as.character(precursor_ranking$Precursor[1])
+bootstrap_cells <- sum(pure_counts$Count[pure_counts$Cell_type == bootstrap_precursor])
+
+# Step II: Pure node sizes with and without precursor
+pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == bootstrap_precursor, ])
+colnames(pure_sizes)[5:6] <- c("Precursor", "Precursor_count")
+
+# Step III: Loop over IIIa and IIIb enough times.
+# Step IIIa: Randomly place cells in tree; calculate resulting cumulative precursor frequencies
+# Step IIIb: Calculate weighted progeny-node correlation
