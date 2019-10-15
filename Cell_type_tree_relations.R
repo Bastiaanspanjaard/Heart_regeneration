@@ -475,12 +475,8 @@ for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
 # Do note that for proper sampling, we need to use the 'pure' (i.e. non-cumulative) node
 # sizes, but for correlations we do need to talk about cumulative nodes.
 
-samples <- 1000
-bootstrap_precursor <- as.character(precursor_ranking$Precursor[1])
+# Loop over trees to calculate node counts per cell type
 sample_tree_list <- list()
-# Loop over precursor types
-
-# Loop over trees
 for(t in 1:length(tree_list)){
   print(paste("Tree", names(tree_list)[t]))
   # Step 0: Pure node counts with and without progeny
@@ -489,132 +485,195 @@ for(t in 1:length(tree_list)){
   nodes <- tree$Get('name', filterFun = function(x) {!isLeaf(x)})
   
   edge_list <- ToDataFrameNetwork(tree, "Cell.type")
-  if(sum(edge_list$Cell.type == target) == 0){
-    next
-  }
-  if(sum(edge_list$Cell.type == bootstrap_precursor) == 0){
-    next
-  }
-  sample_tree_list[[length(sample_tree_list) + 1]] <- list()
-  sample_tree_list[[length(sample_tree_list)]]$Tree <- tree
-  names(sample_tree_list)[length(sample_tree_list)] <- names(tree_list)[length(sample_tree_list)]
+  # if(sum(edge_list$Cell.type == target) == 0){
+  #   next
+  # }
+  # if(sum(edge_list$Cell.type == bootstrap_precursor) == 0){
+  #   next
+  # }
+  # sample_tree_list[[length(sample_tree_list) + 1]] <- list()
+  # sample_tree_list[[length(sample_tree_list)]]$Tree <- tree
+  # names(sample_tree_list)[length(sample_tree_list)] <- names(tree_list)[length(sample_tree_list)]
   pure_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
   colnames(pure_counts) <- c("Node", "Cell_type", "Type_count")
-  pure_sizes <- aggregate(pure_counts$Type_count,
-                          by = list(Node = pure_counts$Node),
-                          sum)
-  colnames(pure_sizes)[2] <- "Node_count"
-  pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == target, ])
-  colnames(pure_sizes)[3:4] <- c("Progeny", "Progeny_count")
   
-  # Step I: potential precursor and how many cells?
-  bootstrap_cells <- sum(pure_counts$Count[pure_counts$Cell_type == bootstrap_precursor])
-  
-  # Step II: Pure node sizes with and without precursor
-  pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == bootstrap_precursor, ])
-  colnames(pure_sizes)[5:6] <- c("Precursor", "Precursor_count")
-  pure_sizes$Sample_chance <- 
-    (pure_sizes$Node_count - pure_sizes$Progeny_count)/(sum(pure_sizes$Node_count) - sum(pure_sizes$Progeny_count))
-  pure_sizes$Size_no_prec <- pure_sizes$Node_count - pure_sizes$Precursor_count
-  
-  for(n in 1:nrow(pure_sizes)){
-    node <- as.character(pure_sizes$Node[n])
-    
-    pure_sizes$CNode_count[n] <- sum(pure_sizes$Node_count[grep(node, pure_sizes$Node)])
-    pure_sizes$CSize_no_prec[n] <- sum(pure_sizes$Size_no_prec[grep(node, pure_sizes$Node)])
-    pure_sizes$CProgeny_count[n] <- sum(pure_sizes$Progeny_count[grep(node, pure_sizes$Node)])
-  }
-  
-  sample_tree_list[[length(sample_tree_list)]]$Pure_sizes <- pure_sizes
+  sample_tree_list[[t]] <- list(Pure_counts = pure_counts)
+  names(sample_tree_list)[t] <- names(tree_list)[t]
+  # pure_sizes <- aggregate(pure_counts$Type_count,
+  #                         by = list(Node = pure_counts$Node),
+  #                         sum)
+  # colnames(pure_sizes)[2] <- "Node_count"
+  # pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == target, ])
+  # colnames(pure_sizes)[3:4] <- c("Progeny", "Progeny_count")
+  # 
+  # # Step I: potential precursor and how many cells?
+  # bootstrap_cells <- sum(pure_counts$Count[pure_counts$Cell_type == bootstrap_precursor])
+  # 
+  # # Step II: Pure node sizes with and without precursor
+  # pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == bootstrap_precursor, ])
+  # colnames(pure_sizes)[5:6] <- c("Precursor", "Precursor_count")
+  # pure_sizes$Sample_chance <- 
+  #   (pure_sizes$Node_count - pure_sizes$Progeny_count)/(sum(pure_sizes$Node_count) - sum(pure_sizes$Progeny_count))
+  # pure_sizes$Size_no_prec <- pure_sizes$Node_count - pure_sizes$Precursor_count
+  # 
+  # for(n in 1:nrow(pure_sizes)){
+  #   node <- as.character(pure_sizes$Node[n])
+  #   
+  #   pure_sizes$CNode_count[n] <- sum(pure_sizes$Node_count[grep(node, pure_sizes$Node)])
+  #   pure_sizes$CSize_no_prec[n] <- sum(pure_sizes$Size_no_prec[grep(node, pure_sizes$Node)])
+  #   pure_sizes$CProgeny_count[n] <- sum(pure_sizes$Progeny_count[grep(node, pure_sizes$Node)])
+  # }
+  # 
+  # sample_tree_list[[length(sample_tree_list)]]$Pure_sizes <- pure_sizes
+  # sample_tree_list[[length(sample_tree_list)]]$Pure_counts <- pure_counts
 }
 
-# Step III: Loop over IIIa and IIIb enough times.
-sampled_wcors <- data.frame(Sample = 1:samples,
-                            Wt_cor = -2)
+# Step III: Perform sampling and calculate correlations
+samples <- 100
+sampled_wcors <- data.frame(matrix(nrow = samples, ncol = nrow(precursor_ranking) - 1))
+colnames(sampled_wcors) <- precursor_ranking$Precursor[-nrow(precursor_ranking)]
 
-# 
-# for(s in 1:samples){
-#   print(paste("Sample", s))
-#   sampled <- data.frame()
-#   for(t in 1:length(sample_tree_list)){
-#     pure_sizes <- sample_tree_list[[t]]$Pure_sizes
-#     # Step IIIa: Randomly place cells in tree; calculate resulting cumulative precursor frequencies
-#     sampled_tree <- 
-#       data.frame(table(sample(x = as.character(pure_sizes$Node), size = sum(pure_sizes$Precursor_count), 
-#                               replace = T, prob = pure_sizes$Sample_chance)))
-#     colnames(sampled_tree) <- c("Node", "Sample_count")
-#     sampled_tree <- merge(sampled_tree, pure_sizes, all = T)
-#     sampled_tree$Sample_count[is.na(sampled_tree$Sample_count)] <- 0
-#     for(n in 1:nrow(sampled_tree)){
-#       node <- as.character(sampled_tree$Node[n])
-#       
-#       sampled_tree$CSample_count[n] <- sum(sampled_tree$Sample_count[grep(node, sampled_tree$Node)])
-#     }
-#     sampled_tree$Sampled_freq <- sampled_tree$CSample_count/(sampled_tree$CSize_no_prec + sampled_tree$CSample_count)
-#     sampled_tree$Progeny_freq <- sampled_tree$CProgeny_count/(sampled_tree$CSize_no_prec + sampled_tree$CSample_count)
-#     sampled_tree$Tree <- names(sample_tree_list)[t]
-#     
-#     sampled <- rbind(sampled, sampled_tree)
-#   }
-#   
-#   # Step IIIb: Calculate weighted progeny-node correlation
-#   sampled_wcors$Wt_cor[s] <- 
-#     wtd.cors(sampled$Sampled_freq, 
-#              sampled$Progeny_freq, 
-#              weight = sampled$CSize_no_prec + sampled$CSample_count)
-# }
-
-# Step IIIa: Randomly place cells in tree; calculate resulting cumulative precursor frequencies
-all_tree_sample_frequencies <- matrix(nrow = 0, ncol = samples)
-all_tree_progeny_frequencies <- matrix(nrow = 0, ncol = samples)
-all_tree_sampled_node_sizes <- matrix(nrow = 0, ncol = samples)
-for(t in 1:length(sample_tree_list)){
-  pure_sizes <- sample_tree_list[[t]]$Pure_sizes
-  # Sample
-  sample_outcomes <- data.frame(Sample = rep(1:samples, each = sum(pure_sizes$Precursor_count)),
-                                Node_sampled = sample(x = as.character(pure_sizes$Node), size = samples * sum(pure_sizes$Precursor_count), 
-                                                      replace = T, prob = pure_sizes$Sample_chance))
-  sample_outcomes$Node_sampled <- factor(sample_outcomes$Node_sampled, levels = as.character(pure_sizes$Node))
-  # Put outcomes in table
-  sample_counts <- acast(data.frame(table(sample_outcomes$Sample, sample_outcomes$Node_sampled)),
-                         Var2 ~ Var1, value.var = "Freq")
-  # Calculate cumulative sampled values
-  sample_counts_cumulative <- sample_counts
-  for(n in 1:nrow(sample_counts_cumulative)){
-    node <- as.character(rownames(sample_counts_cumulative)[n])
-    
-    sample_counts_cumulative[n, ] <- colSums(sample_counts[grep(node, rownames(sample_counts)), , drop = F])
-  }
-  # Calculate node sizes with sampled precursor
-  rownames(pure_sizes) <- pure_sizes$Node
-  new_node_sizes <- 
-    sample_counts_cumulative + 
-    pure_sizes[rownames(sample_counts_cumulative), ]$CSize_no_prec
-  rownames(new_node_sizes) <- paste(names(sample_tree_list)[t], rownames(new_node_sizes), sep = ":")
-  # Calculate resulting sampled frequencies
-  sample_frequencies <- sample_counts_cumulative/new_node_sizes
-  rownames(sample_frequencies) <- paste(names(sample_tree_list)[t], rownames(sample_frequencies), sep = ":")
-  # Calculate resulting progeny frequencies
-  progeny_frequencies <- pure_sizes$CProgeny_count/new_node_sizes
-  rownames(progeny_frequencies) <- paste(names(sample_tree_list)[t], rownames(progeny_frequencies), sep = ":")
+set.seed(42)
+for(p in 1:(nrow(precursor_ranking) - 1)){
+  bootstrap_precursor <- as.character(precursor_ranking$Precursor[p])
+  print(paste("Potential precursor:", bootstrap_precursor))
   
-  # Bind to samples from other trees
-  all_tree_sampled_node_sizes <- rbind(all_tree_sampled_node_sizes, 
-                                       new_node_sizes)
-  all_tree_sample_frequencies <- rbind(all_tree_sample_frequencies, sample_frequencies)
-  all_tree_progeny_frequencies <- rbind(all_tree_progeny_frequencies, progeny_frequencies)
+  # Step IIIa: Randomly place cells in tree; calculate resulting cumulative precursor frequencies
+  all_tree_sample_frequencies <- matrix(nrow = 0, ncol = samples)
+  all_tree_progeny_frequencies <- matrix(nrow = 0, ncol = samples)
+  all_tree_sampled_node_sizes <- matrix(nrow = 0, ncol = samples)
+  for(t in 1:length(sample_tree_list)){
+    pure_counts <- sample_tree_list[[t]]$Pure_counts
+    if(#!(bootstrap_precursor %in% pure_counts$Cell_type) |
+       !(target %in% pure_counts$Cell_type)){
+      next
+    }
+    
+    # pure_sizes_needed <- pure_sizes[, c("Node", "Precursor_count", "Sample_chance", "CSize_no_prec", "CProgeny_count")]
+    pure_sizes <- aggregate(pure_counts$Type_count,
+                            by = list(Node = pure_counts$Node),
+                            sum)
+    colnames(pure_sizes)[2] <- "Node_count"
+    pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == target, ])
+    colnames(pure_sizes)[3:4] <- c("Progeny", "Progeny_count")
+    
+    # Step I: potential precursor and how many cells?
+    bootstrap_cells <- sum(pure_counts$Type_count[pure_counts$Cell_type == bootstrap_precursor])
+    
+    if(bootstrap_cells == 0){
+      # sample_counts_cumulative <- matrix(0, ncol = samples, nrow = nrow(pure_sizes))
+      # rownames(sample_counts_cumulative) <- pure_sizes$Node
+      # colnames(sample_counts_cumulative) <- 1:samples
+      # pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == bootstrap_precursor, ])
+      # colnames(pure_sizes)[5:6] <- c("Precursor", "Precursor_count")
+      pure_sizes$Precursor <- bootstrap_precursor
+      pure_sizes$Precursor_count <- 0
+    }else{
+      # Step II: Pure node sizes with and without precursor
+      pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == bootstrap_precursor, ])
+      colnames(pure_sizes)[5:6] <- c("Precursor", "Precursor_count")
+    }
+    pure_sizes$Sample_chance <- 
+      (pure_sizes$Node_count - pure_sizes$Progeny_count)/(sum(pure_sizes$Node_count) - sum(pure_sizes$Progeny_count))
+    pure_sizes$Size_no_prec <- pure_sizes$Node_count - pure_sizes$Precursor_count
+    
+    for(n in 1:nrow(pure_sizes)){
+      node <- as.character(pure_sizes$Node[n])
+      
+      # pure_sizes$CNode_count[n] <- sum(pure_sizes$Node_count[grep(node, pure_sizes$Node)])
+      pure_sizes$CSize_no_prec[n] <- sum(pure_sizes$Size_no_prec[grep(node, pure_sizes$Node)])
+      pure_sizes$CProgeny_count[n] <- sum(pure_sizes$Progeny_count[grep(node, pure_sizes$Node)])
+    }
+    
+    # pure_sizes <- sample_tree_list[[t]]$Pure_sizes
+    
+    # pure_sizes_needed <- pure_sizes[, c("Node", "Precursor_count", "Sample_chance", "CSize_no_prec", "CProgeny_count")]
+    if(bootstrap_cells == 0){
+      sample_counts <- matrix(0, ncol = samples, nrow = nrow(pure_sizes))
+      rownames(sample_counts) <- pure_sizes$Node
+      colnames(sample_counts) <- 1:samples
+    }else{
+      # Sample
+      sample_outcomes <- data.frame(Sample = rep(1:samples, each = sum(pure_sizes$Precursor_count)),
+                                    Node_sampled = sample(x = as.character(pure_sizes$Node), size = samples * sum(pure_sizes$Precursor_count), 
+                                                          replace = T, prob = pure_sizes$Sample_chance))
+      sample_outcomes$Node_sampled <- factor(sample_outcomes$Node_sampled, levels = as.character(pure_sizes$Node))
+      # Put outcomes in table
+      sample_counts <- acast(data.frame(table(sample_outcomes$Sample, sample_outcomes$Node_sampled)),
+                             Var2 ~ Var1, value.var = "Freq")
+    }
+    # Calculate cumulative sampled values
+    sample_counts_cumulative <- sample_counts
+    
+      for(n in 1:nrow(sample_counts_cumulative)){
+        node <- as.character(rownames(sample_counts_cumulative)[n])
+        
+        sample_counts_cumulative[n, ] <- colSums(sample_counts[grep(node, rownames(sample_counts)), , drop = F])
+      }
+    
+    # Calculate node sizes with sampled precursor
+    rownames(pure_sizes) <- pure_sizes$Node
+    new_node_sizes <- 
+      sample_counts_cumulative + 
+      pure_sizes[rownames(sample_counts_cumulative), ]$CSize_no_prec
+    rownames(new_node_sizes) <- paste(names(sample_tree_list)[t], rownames(new_node_sizes), sep = ":")
+    # Calculate resulting sampled frequencies
+    sample_frequencies <- sample_counts_cumulative/new_node_sizes
+    rownames(sample_frequencies) <- paste(names(sample_tree_list)[t], rownames(sample_frequencies), sep = ":")
+    # Calculate resulting progeny frequencies
+    progeny_frequencies <- pure_sizes$CProgeny_count/new_node_sizes
+    # rownames(progeny_frequencies) <- paste(names(sample_tree_list)[t], rownames(progeny_frequencies), sep = ":")
+    
+    # Bind to samples from other trees
+    all_tree_sampled_node_sizes <- rbind(all_tree_sampled_node_sizes, 
+                                         new_node_sizes)
+    all_tree_sample_frequencies <- rbind(all_tree_sample_frequencies, sample_frequencies)
+    all_tree_progeny_frequencies <- rbind(all_tree_progeny_frequencies, progeny_frequencies)
+  }
+  
+  # Step IIIb: Calculate weighted progeny-node correlation
+  for(s in 1:samples){
+    sampled_wcors[s, p] <- 
+      wtd.cors(all_tree_sample_frequencies[(all_tree_progeny_frequencies[, s] != 0), s], 
+               all_tree_progeny_frequencies[(all_tree_progeny_frequencies[, s] != 0), s], 
+               weight = all_tree_sampled_node_sizes[(all_tree_progeny_frequencies[, s] != 0), s])
+    # x <- data.frame(Prec = all_tree_sample_frequencies[, s],
+    #                 Prog = all_tree_progeny_frequencies[, s],
+    #                 Weight = all_tree_sampled_node_sizes[, s])
+    # ggplot(x[x$Prog != 0, ]) +
+    #   geom_point(aes(x = Prec, y = Prog, size = Weight))
+    # wtd.cors(x$Prec[x$Prog != 0], x$Prog[x$Prog != 0], x$Weight[x$Prog != 0])
+    # 
+    # y <- progpos[, c(target, precursor)]
+    # colnames(y) <- c("Prog", "Prec")
+    # ggplot(y) +
+    #   geom_point(aes(x = Prec, y = Prog))
+    # cor(y$Prec, y$Prog)
+    # wtd.cors(all_tree_sample_frequencies[, s], 
+      #          all_tree_progeny_frequencies[, s], 
+      #          weight = all_tree_sampled_node_sizes[, s])
+    
+    # all_tree_sample_frequencies[(all_tree_sample_frequencies[, s] != 0), s]
+    
+  }
 }
 
-# Step IIIb: Calculate weighted progeny-node correlation
-for(s in 1:samples){
-sampled_wcors$Wt_cor[s] <- 
-  wtd.cors(all_tree_sample_frequencies[, s], 
-           all_tree_progeny_frequencies[, s], 
-           weight = all_tree_sampled_node_sizes[, s])
+precursor_ranking$Cor_bootstrap_p <- NA
+precursor_ranking$Z_bootstrap <- NA
+for(p in 1:(nrow(precursor_ranking) - 1)){
+  # Calculate how many samples have a higher correlation than the measured one
+  precursor_ranking$Cor_bootstrap_p[p] <-
+    sum(sampled_wcors[, p] > precursor_ranking$Weighted_cor_progpos[p])/samples
+  # Calculate z-distance to mean correlation
+  precursor_ranking$Z_bootstrap[p] <-
+    (precursor_ranking$Weighted_cor_progpos[p] - mean(sampled_wcors[, p]))/sd(sampled_wcors[, p])
 }
 
 # sampled_wcors_smcv2 <- sampled_wcors
 # sampled_wcors_endoV <- sampled_wcors
+
+
+
 sampled_wcors_endfrzbV <- sampled_wcors
 ggplot(sampled_wcors_endoV) +
   geom_histogram(aes(x = Wt_cor))
