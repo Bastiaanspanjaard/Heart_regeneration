@@ -255,19 +255,26 @@ for(t in 1:length(tree_list)){
   #                names(tree_list)[t], "_LINNAEUS_pie_fibrozoom.html", sep = ""))
 }
 
-# Distance between A and A+B ####
+# Finding precursor candidates ####
+# Start by calculating the correlations between a progenitor cell type and potential
+# precursors. After this, investigate whether these correlations are stable when leaving
+# out one of the trees. Finally, bootstrap the correlations by randomly placing the
+# precursor cells over the trees to see what the null-distribution of the correlations
+# is and how enriched the observed correlations are.
+
+# ** Calculate correlations between cell types over all trees ####
 # Run this over all trees, keep distances top-level, create a new tree-level in the list
 comparison_list <- list(Comparison = data.frame(Tree = character(),
                                                 Precursor = character(),
-                                                Simple_distance = numeric(),
-                                                Distance = numeric(),
-                                                Correlation = numeric(),
+                        #                        Simple_distance = numeric(),
+                        #                        Distance = numeric(),
+                        #                        Correlation = numeric(),
                                                 Type_count = integer()),
                         Node_sizes = data.frame(Size = integer()),
-                        Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = length(unique(cell_types$Cell_type)))),
-                        PNormalized_frequencies = data.frame(matrix(nrow = 0, ncol = length(unique(cell_types$Cell_type)))))
+                        Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = length(unique(cell_types$Cell_type)))))#,
+                        #PNormalized_frequencies = data.frame(matrix(nrow = 0, ncol = length(unique(cell_types$Cell_type)))))
 colnames(comparison_list$Normalized_frequencies) <- unique(cell_types$Cell_type)
-colnames(comparison_list$PNormalized_frequencies) <- unique(cell_types$Cell_type)
+# colnames(comparison_list$PNormalized_frequencies) <- unique(cell_types$Cell_type)
 
 for(t in 1:length(tree_list)){
   tree <- tree_list[[t]]$Tree
@@ -291,92 +298,92 @@ for(t in 1:length(tree_list)){
   sample_type_nf <- sample_type_cumulative/rowSums(sample_type_cumulative)
   
   # Philipp-normalized frequencies (node frequencies normalized to top node frequencies)
-  sample_type_pn <- sample_type_nf
-  for(n in 1:nrow(sample_type_pn)){
-    sample_type_pn[n, ] <- sample_type_nf[n, ]/sample_type_nf[1, ]
-  }
+  # sample_type_pn <- sample_type_nf
+  # for(n in 1:nrow(sample_type_pn)){
+  #   sample_type_pn[n, ] <- sample_type_nf[n, ]/sample_type_nf[1, ]
+  # }
   
   comparison_list$Node_sizes <- rbind(comparison_list$Node_sizes,
                                       data.frame(Size = rowSums(sample_type_cumulative)))
-  comparison_tree <- 
+  comparison_tree <-
     data.frame(Tree = rep(names(tree_list)[t], ncol(sample_type_count)),
                Precursor = names(sample_type_count),
-               Distance = numeric(ncol(sample_type_count)),
-               Correlation = numeric(ncol(sample_type_count)),
+               # Distance = numeric(ncol(sample_type_count)),
+               # Correlation = numeric(ncol(sample_type_count)),
                Type_count = colSums(sample_type_count))
   
-  precursor_list <- list()
-  for(p in 1:ncol(sample_type_count)){#names(sample_type_count))
-    precursor <- names(sample_type_count)[p]#"Endocardium (Ventricle)"
-    
-    correlations <- 
-      data.frame(Precursor_cor = 
-                   t(wtd.cors(sample_type_nf[[precursor]], 
-                              sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
-                              weight = rowSums(sample_type_cumulative))),
-                 Both_cor = t(wtd.cors(sample_type_nf[[precursor]] + sample_type_nf[[target]], 
-                                       sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
-                                       weight = rowSums(sample_type_cumulative))))
-    comparison_tree$Distance[p] <- dist(t(correlations))
-    comparison_tree$Correlation[p] <- cor(correlations$Precursor_cor, correlations$Both_cor)
-    precursor_list[[p]] <- correlations
-    names(precursor_list)[p] <- precursor
-  }
+  # precursor_list <- list()
+  # for(p in 1:ncol(sample_type_count)){#names(sample_type_count))
+  #   precursor <- names(sample_type_count)[p]#"Endocardium (Ventricle)"
+  #   
+  #   correlations <- 
+  #     data.frame(Precursor_cor = 
+  #                  t(wtd.cors(sample_type_nf[[precursor]], 
+  #                             sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+  #                             weight = rowSums(sample_type_cumulative))),
+  #                Both_cor = t(wtd.cors(sample_type_nf[[precursor]] + sample_type_nf[[target]], 
+  #                                      sample_type_nf[, !(names(sample_type_nf) %in% c(precursor, target))], 
+  #                                      weight = rowSums(sample_type_cumulative))))
+  #   comparison_tree$Distance[p] <- dist(t(correlations))
+  #   comparison_tree$Correlation[p] <- cor(correlations$Precursor_cor, correlations$Both_cor)
+  #   precursor_list[[p]] <- correlations
+  #   names(precursor_list)[p] <- precursor
+  # }
   
-  comparison_list[[length(comparison_list) + 1]] <- precursor_list
-  names(comparison_list)[length(comparison_list)] <- names(tree_list)[t]
+  # comparison_list[[length(comparison_list) + 1]] <- precursor_list
+  # names(comparison_list)[length(comparison_list)] <- names(tree_list)[t]
   comparison_list$Comparison <- rbind(comparison_list$Comparison, comparison_tree)
   
   sample_type_nf[setdiff(names(comparison_list$Normalized_frequencies), names(sample_type_nf))] <- NA
   comparison_list$Normalized_frequencies[setdiff(names(sample_type_nf), 
                                                  names(comparison_list$Normalized_frequencies))] <- NA
-  sample_type_pn[setdiff(names(comparison_list$PNormalized_frequencies), names(sample_type_pn))] <- NA
-  comparison_list$PNormalized_frequencies[setdiff(names(sample_type_pn), 
-                                                 names(comparison_list$PNormalized_frequencies))] <- NA
+  # sample_type_pn[setdiff(names(comparison_list$PNormalized_frequencies), names(sample_type_pn))] <- NA
+  # comparison_list$PNormalized_frequencies[setdiff(names(sample_type_pn), 
+  #                                                names(comparison_list$PNormalized_frequencies))] <- NA
   
   comparison_list$Normalized_frequencies <- 
     rbind(comparison_list$Normalized_frequencies, sample_type_nf)
-  comparison_list$PNormalized_frequencies <-
-    rbind(comparison_list$PNormalized_frequencies, sample_type_pn)
+  # comparison_list$PNormalized_frequencies <-
+  #   rbind(comparison_list$PNormalized_frequencies, sample_type_pn)
 }
 comparison_list$Normalized_frequencies[is.na(comparison_list$Normalized_frequencies)] <- 0
 comparison_list$Normalized_frequencies <- 
   comparison_list$Normalized_frequencies[, colSums(comparison_list$Normalized_frequencies) > 0]
-comparison_list$PNormalized_frequencies[is.na(comparison_list$PNormalized_frequencies)] <- 0
-comparison_list$PNormalized_frequencies <- 
-  comparison_list$PNormalized_frequencies[, colSums(comparison_list$PNormalized_frequencies) > 0]
+# comparison_list$PNormalized_frequencies[is.na(comparison_list$PNormalized_frequencies)] <- 0
+# comparison_list$PNormalized_frequencies <- 
+#   comparison_list$PNormalized_frequencies[, colSums(comparison_list$PNormalized_frequencies) > 0]
 comparison_list$Node_sizes$Weight <- comparison_list$Node_sizes$Size/sum(comparison_list$Node_sizes$Size)
 comparison_list$All_trees_prec <- list()
 comparison_list$All_trees_distances <- 
   data.frame(Precursor = names(comparison_list$Normalized_frequencies),
-             Weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
-             Reverse_weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
-             PN_weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
-             Weighted_cor_progpos = numeric(ncol(comparison_list$Normalized_frequencies)),
-             Distance = numeric(ncol(comparison_list$Normalized_frequencies)))
+             #Weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
+             #Reverse_weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
+             #PN_weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
+             Weighted_cor_progpos = numeric(ncol(comparison_list$Normalized_frequencies)))#,
+             #Distance = numeric(ncol(comparison_list$Normalized_frequencies)))
 
 for(p in 1:ncol(comparison_list$Normalized_frequencies)){
   precursor <- names(comparison_list$Normalized_frequencies)[p]
   
   if(precursor == target){
-    comparison_list$All_trees_distances$Distance[p] <- 0
+    comparison_list$All_trees_distances$Weighted_cor_progpos[p] <- -2
     next
   }
 
-  comparison_list$All_trees_distances$Weighted_cor[p] <-
-    wtd.cors(comparison_list$Normalized_frequencies[[precursor]],
-           comparison_list$Normalized_frequencies[[precursor]] + comparison_list$Normalized_frequencies[[target]],
-           weight = comparison_list$Node_sizes$Size)
+  # comparison_list$All_trees_distances$Weighted_cor[p] <-
+  #   wtd.cors(comparison_list$Normalized_frequencies[[precursor]],
+  #          comparison_list$Normalized_frequencies[[precursor]] + comparison_list$Normalized_frequencies[[target]],
+  #          weight = comparison_list$Node_sizes$Size)
   
-  comparison_list$All_trees_distances$Reverse_weighted_cor[p] <-
-    wtd.cors(comparison_list$Normalized_frequencies[[target]],
-             comparison_list$Normalized_frequencies[[precursor]] + comparison_list$Normalized_frequencies[[target]],
-             weight = comparison_list$Node_sizes$Size)
+  # comparison_list$All_trees_distances$Reverse_weighted_cor[p] <-
+  #   wtd.cors(comparison_list$Normalized_frequencies[[target]],
+  #            comparison_list$Normalized_frequencies[[precursor]] + comparison_list$Normalized_frequencies[[target]],
+  #            weight = comparison_list$Node_sizes$Size)
   
-  comparison_list$All_trees_distances$PN_weighted_cor[p] <-
-    wtd.cors(comparison_list$PNormalized_frequencies[[precursor]],
-             comparison_list$PNormalized_frequencies[[precursor]] + comparison_list$PNormalized_frequencies[[target]],
-             weight = comparison_list$Node_sizes$Size)
+  # comparison_list$All_trees_distances$PN_weighted_cor[p] <-
+  #   wtd.cors(comparison_list$PNormalized_frequencies[[precursor]],
+  #            comparison_list$PNormalized_frequencies[[precursor]] + comparison_list$PNormalized_frequencies[[target]],
+  #            weight = comparison_list$Node_sizes$Size)
   
   progpos <- comparison_list$Normalized_frequencies[comparison_list$Normalized_frequencies[[target]] > 0, ]
   progpos_weights <- comparison_list$Node_sizes[comparison_list$Normalized_frequencies[[target]] > 0, ]
@@ -385,20 +392,20 @@ for(p in 1:ncol(comparison_list$Normalized_frequencies)){
              progpos[[target]],
              weight = progpos_weights$Size)
   
-  correlations <-
-    data.frame(
-      Precursor_cor =
-        t(wtd.cors(comparison_list$Normalized_frequencies[[precursor]],
-                   comparison_list$Normalized_frequencies[, !(names(comparison_list$Normalized_frequencies) %in% c(precursor, target))],
-                   weight = comparison_list$Node_sizes$Size)),
-      Both_cor = 
-        t(wtd.cors(comparison_list$Normalized_frequencies[[precursor]] + comparison_list$Normalized_frequencies[[target]],
-                   comparison_list$Normalized_frequencies[, !(names(comparison_list$Normalized_frequencies) %in% c(precursor, target))],
-                   weight = comparison_list$Node_sizes$Size)))
-  comparison_list$All_trees_distances$Distance[p] <- dist(t(correlations))
+  # correlations <-
+  #   data.frame(
+  #     Precursor_cor =
+  #       t(wtd.cors(comparison_list$Normalized_frequencies[[precursor]],
+  #                  comparison_list$Normalized_frequencies[, !(names(comparison_list$Normalized_frequencies) %in% c(precursor, target))],
+  #                  weight = comparison_list$Node_sizes$Size)),
+  #     Both_cor = 
+  #       t(wtd.cors(comparison_list$Normalized_frequencies[[precursor]] + comparison_list$Normalized_frequencies[[target]],
+  #                  comparison_list$Normalized_frequencies[, !(names(comparison_list$Normalized_frequencies) %in% c(precursor, target))],
+  #                  weight = comparison_list$Node_sizes$Size)))
+  # comparison_list$All_trees_distances$Distance[p] <- dist(t(correlations))
   
-  comparison_list$All_trees_prec[[p]] <- correlations
-  names(comparison_list$All_trees_prec)[p] <- precursor
+  # comparison_list$All_trees_prec[[p]] <- correlations
+  # names(comparison_list$All_trees_prec)[p] <- precursor
 }  
 
 
@@ -456,137 +463,9 @@ for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
   # dev.off()
 }
 
-# Plot correlation of Ventricle with ttn.2 and ventricle
-# plot_freqs <- data.frame(comparison_list$Normalized_frequencies)[, c("Ventricle", "Ventricle..ttn.2.aSMA.")]
-# colnames(plot_freqs) <- c("Precursor", "Progenitor")
-# plot_freqs$Prec_Prog <- plot_freqs$Precursor + plot_freqs$Progenitor
-# plot_freqs$Size <- comparison_list$Node_sizes$Size
-# ggplot(plot_freqs) +
-#   geom_point(aes(x = Precursor, y = Progenitor, size = Size)) +
-#   labs(x = "Ventricle", y = "ttn2") +
-#   theme(legend.position = "none")
+# ** Calculate one-(tree-)out correlations ####
 
-# ggplot(plot_freqs[plot_freqs$Progenitor > 0, ]) +
-#   geom_point(aes(x = Precursor, y = Progenitor, size = Size)) +
-#   labs(x = "Ventricle", y = "ttn2") +
-#   theme(legend.position = "none")
-
-# png("./Images/Mmafbb_Mmafbb_w_nppc_7dpi.png")
-# ggplot(plot_freqs) +
-#   geom_point(aes(x = Precursor, y = Prec_Prog, size = Size)) +
-#   labs(x = "Ventricle", y = "Ventricle + ttn2") +
-#   theme(legend.position = "none")
-# dev.off()
-
-# plot_freqs <- data.frame(comparison_list$Normalized_frequencies)[, c("Ventricle..vim.krt18.aSMA.", "Ventricle..ttn.2.aSMA.")]
-# colnames(plot_freqs) <- c("Precursor", "Progenitor")
-# plot_freqs$Prec_Prog <- plot_freqs$Precursor + plot_freqs$Progenitor
-# plot_freqs$Size <- comparison_list$Node_sizes$Size
-# ggplot(plot_freqs[plot_freqs$Progenitor > 0, ]) +
-#   geom_point(aes(x = Precursor, y = Progenitor, size = Size)) +
-#   labs(x = "Ventricle vim", y = "ttn2") +
-#   theme(legend.position = "none")
-# 
-# ggplot(plot_freqs) +
-#   geom_point(aes(x = Precursor, y = Progenitor, size = Size)) +
-#   labs(x = "Ventricle vim", y = "ttn2") +
-#   theme(legend.position = "none")
-
-
-
-# Plot P-scaled correlation of Ventricle with ttn.2 and ventricle
-# plot_freqs <- data.frame(comparison_list$PNormalized_frequencies)[, c("Ventricle", "Ventricle..ttn.2.aSMA.")]
-# colnames(plot_freqs) <- c("Precursor", "Progenitor")
-# plot_freqs$Prec_Prog <- plot_freqs$Precursor + plot_freqs$Progenitor
-# plot_freqs$Size <- comparison_list$Node_sizes$Size
-# png("./Images/Mmafbb_Mmafbb_w_nppc_7dpi.png")
-# ggplot(plot_freqs) +
-#   geom_point(aes(x = Precursor, y = Prec_Prog, size = Size)) +
-#   labs(x = "Ventricle", y = "Ventricle + ttn2") +
-#   theme(legend.position = "none")
-# dev.off()
-
-# Plot correlation of Endocardium (ventricle) with Endocardium (ventricle) + nppc
-# plot_freqs <- data.frame(comparison_list$Normalized_frequencies)[, c("Endocardium..Ventricle.", "Fibroblast..nppc.")]
-# colnames(plot_freqs) <- c("Precursor", "Progenitor")
-# plot_freqs$Prec_Prog <- plot_freqs$Precursor + plot_freqs$Progenitor
-# plot_freqs$Size <- comparison_list$Node_sizes$Size
-# png("./Images/EndoV_EndoV_w_nppc_7dpi.png")
-# ggplot(plot_freqs) +
-#   geom_point(aes(x = Precursor, y = Prec_Prog, size = Size)) +
-#   labs(x = "Endocardium (V)", y = "Endocardium (V) + Fibroblast (nppc)") +
-#   theme(legend.position = "none")
-# dev.off()
-
-# Plot correlation of Endocardium (V) with B-cells, plot Endocardium (V) +  nppc vs Endocardium,
-# B-cells + nppc vs B-cells.
-# plot_freqs <- data.frame(comparison_list$Normalized_frequencies)[, c("B.cells", "Endocardium..Ventricle.")]
-# colnames(plot_freqs) <- c("Bcells", "Endo_V")
-# plot_freqs$Size <- comparison_list$Node_sizes$Size
-# colnames(plot_cors)[colnames(plot_cors) == "B.cells"] <- "Bcells"
-# colnames(plot_cors)[colnames(plot_cors) == "Endocardium..Ventricle."] <- "Endo_V"
-# png("./Images/EndoV_Bcells_7dpi.png")
-# ggplot(plot_freqs) +
-#   geom_point(aes(x = Bcells, y = Endo_V, size = Size)) +
-#   labs(x = "B-cells", y = "Endocardium (V)") +
-#   theme(legend.position = "none")
-# dev.off()
-# plot_cors <- comparison_list$All_trees_prec$`B-cells`
-# png("./Images/Bcells_prec_nppc_7dpi.png")
-# ggplot(plot_cors) +
-#   geom_point(aes(x = Precursor_cor, y = Both_cor)) +
-#   labs(x = "B-cells", y = "B-cells + nppc",
-#        title = "Distance = 3.6")
-# dev.off()
-
-
-# Analyse evidence against precursors ####
-full_descendancy <- data.frame(Cell_type = character(),
-                               Precursor = character(),
-                               Node = character(),
-                               Parent_node = character(),
-                               Precursor_count = numeric(),
-                               Total = numeric(),
-                               Frequency = numeric(),
-                               Precursor_presence_p = numeric(),
-                               Entropy = numeric(),
-                               Tree = character())
-for(t in 1:length(tree_list)){
-  tree_list[[t]] <- CalculateCooccurrence(tree_list[[t]])
-  descendancy_add <- tree_list[[t]]$Descendancy
-  descendancy_add$Tree <- names(tree_list)[t]
-  descendancy_add <- merge(descendancy_add, tree_list[[t]]$Node_entropy)
-  full_descendancy <- rbind(full_descendancy, descendancy_add)
-}
-
-full_descendancy_plot <- full_descendancy[full_descendancy$Cell_type == target &
-                                            full_descendancy$Precursor %in% potential_prec, ]
-full_descendancy_plot$Precursor <- factor(full_descendancy_plot$Precursor, levels = precursor_ranking$Precursor)
-full_descendancy_plot$Log10p_bottom <- 
-  sapply(full_descendancy_plot$Precursor_presence_p, function(x) max(log10(x), -10))
-
-# png(paste("./Images/", target, "precursor_node_probs_7dpi.png", sep = ""),
-    # width = 768, height = 256 * ceiling(length(potential_prec)/5))
-print(
-  # ggplot(full_descendancy[full_descendancy$Cell_type == zoom_to[i] &
-  ggplot(full_descendancy_plot) +
-    geom_jitter(aes(x = 0, y = Log10p_bottom, color = Precursor), height = 0) +
-    # scale_y_continuous(limits = c(-10.1, 0.1)) + 
-    # labs(title = paste(zoom_to[i], "precursors"),
-    labs(title = paste(target, "precursors"),
-         y = "Probability (log10)", x = "") +
-    theme(axis.text.x = element_text(angle = 90),
-          legend.position = "none") +
-    scale_color_manual(values = ann_colors$Celltype) +
-    facet_wrap(~Precursor, ncol = 5) +
-    theme(axis.text.x = element_blank(),
-          axis.ticks.x = element_blank(),
-          strip.text.x = element_text(size = 12, face = "bold"))
-)
-# dev.off()
-
-
-# Bootstrap correlation ####
+# ** Bootstrap correlation ####
 # If I randomly place cells in the tree, what is the correlation with the progeny?
 # Select a potential precursor; how many cells in each tree? Randomly place that amount
 # of cells in the tree, depending on 'pure' (i.e. not cumulative) node counts when progeny
@@ -597,7 +476,7 @@ print(
 # sizes, but for correlations we do need to talk about cumulative nodes.
 
 samples <- 1000
-bootstrap_precursor <- as.character(precursor_ranking$Precursor[3])
+bootstrap_precursor <- as.character(precursor_ranking$Precursor[1])
 sample_tree_list <- list()
 # Loop over precursor types
 
@@ -653,36 +532,87 @@ for(t in 1:length(tree_list)){
 sampled_wcors <- data.frame(Sample = 1:samples,
                             Wt_cor = -2)
 
-for(s in 1:samples){
-  print(paste("Sample", s))
-  sampled <- data.frame()
-  for(t in 1:length(sample_tree_list)){
-    pure_sizes <- sample_tree_list[[t]]$Pure_sizes
-    # Step IIIa: Randomly place cells in tree; calculate resulting cumulative precursor frequencies
-    sampled_tree <- 
-      data.frame(table(sample(x = as.character(pure_sizes$Node), size = sum(pure_sizes$Precursor_count), 
-                              replace = T, prob = pure_sizes$Sample_chance)))
-    colnames(sampled_tree) <- c("Node", "Sample_count")
-    sampled_tree <- merge(sampled_tree, pure_sizes, all = T)
-    sampled_tree$Sample_count[is.na(sampled_tree$Sample_count)] <- 0
-    for(n in 1:nrow(sampled_tree)){
-      node <- as.character(sampled_tree$Node[n])
-      
-      sampled_tree$CSample_count[n] <- sum(sampled_tree$Sample_count[grep(node, sampled_tree$Node)])
-    }
-    sampled_tree$Sampled_freq <- sampled_tree$CSample_count/(sampled_tree$CSize_no_prec + sampled_tree$CSample_count)
-    sampled_tree$Progeny_freq <- sampled_tree$CProgeny_count/(sampled_tree$CSize_no_prec + sampled_tree$CSample_count)
-    sampled_tree$Tree <- names(sample_tree_list)[t]
+# 
+# for(s in 1:samples){
+#   print(paste("Sample", s))
+#   sampled <- data.frame()
+#   for(t in 1:length(sample_tree_list)){
+#     pure_sizes <- sample_tree_list[[t]]$Pure_sizes
+#     # Step IIIa: Randomly place cells in tree; calculate resulting cumulative precursor frequencies
+#     sampled_tree <- 
+#       data.frame(table(sample(x = as.character(pure_sizes$Node), size = sum(pure_sizes$Precursor_count), 
+#                               replace = T, prob = pure_sizes$Sample_chance)))
+#     colnames(sampled_tree) <- c("Node", "Sample_count")
+#     sampled_tree <- merge(sampled_tree, pure_sizes, all = T)
+#     sampled_tree$Sample_count[is.na(sampled_tree$Sample_count)] <- 0
+#     for(n in 1:nrow(sampled_tree)){
+#       node <- as.character(sampled_tree$Node[n])
+#       
+#       sampled_tree$CSample_count[n] <- sum(sampled_tree$Sample_count[grep(node, sampled_tree$Node)])
+#     }
+#     sampled_tree$Sampled_freq <- sampled_tree$CSample_count/(sampled_tree$CSize_no_prec + sampled_tree$CSample_count)
+#     sampled_tree$Progeny_freq <- sampled_tree$CProgeny_count/(sampled_tree$CSize_no_prec + sampled_tree$CSample_count)
+#     sampled_tree$Tree <- names(sample_tree_list)[t]
+#     
+#     sampled <- rbind(sampled, sampled_tree)
+#   }
+#   
+#   # Step IIIb: Calculate weighted progeny-node correlation
+#   sampled_wcors$Wt_cor[s] <- 
+#     wtd.cors(sampled$Sampled_freq, 
+#              sampled$Progeny_freq, 
+#              weight = sampled$CSize_no_prec + sampled$CSample_count)
+# }
+
+# Step IIIa: Randomly place cells in tree; calculate resulting cumulative precursor frequencies
+all_tree_sample_frequencies <- matrix(nrow = 0, ncol = samples)
+all_tree_progeny_frequencies <- matrix(nrow = 0, ncol = samples)
+all_tree_sampled_node_sizes <- matrix(nrow = 0, ncol = samples)
+for(t in 1:length(sample_tree_list)){
+  pure_sizes <- sample_tree_list[[t]]$Pure_sizes
+  # Sample
+  sample_outcomes <- data.frame(Sample = rep(1:samples, each = sum(pure_sizes$Precursor_count)),
+                                Node_sampled = sample(x = as.character(pure_sizes$Node), size = samples * sum(pure_sizes$Precursor_count), 
+                                                      replace = T, prob = pure_sizes$Sample_chance))
+  sample_outcomes$Node_sampled <- factor(sample_outcomes$Node_sampled, levels = as.character(pure_sizes$Node))
+  # Put outcomes in table
+  sample_counts <- acast(data.frame(table(sample_outcomes$Sample, sample_outcomes$Node_sampled)),
+                         Var2 ~ Var1, value.var = "Freq")
+  # Calculate cumulative sampled values
+  sample_counts_cumulative <- sample_counts
+  for(n in 1:nrow(sample_counts_cumulative)){
+    node <- as.character(rownames(sample_counts_cumulative)[n])
     
-    sampled <- rbind(sampled, sampled_tree)
-     }
+    sample_counts_cumulative[n, ] <- colSums(sample_counts[grep(node, rownames(sample_counts)), , drop = F])
+  }
+  # Calculate node sizes with sampled precursor
+  rownames(pure_sizes) <- pure_sizes$Node
+  new_node_sizes <- 
+    sample_counts_cumulative + 
+    pure_sizes[rownames(sample_counts_cumulative), ]$CSize_no_prec
+  rownames(new_node_sizes) <- paste(names(sample_tree_list)[t], rownames(new_node_sizes), sep = ":")
+  # Calculate resulting sampled frequencies
+  sample_frequencies <- sample_counts_cumulative/new_node_sizes
+  rownames(sample_frequencies) <- paste(names(sample_tree_list)[t], rownames(sample_frequencies), sep = ":")
+  # Calculate resulting progeny frequencies
+  progeny_frequencies <- pure_sizes$CProgeny_count/new_node_sizes
+  rownames(progeny_frequencies) <- paste(names(sample_tree_list)[t], rownames(progeny_frequencies), sep = ":")
   
-    # Step IIIb: Calculate weighted progeny-node correlation
-    sampled_wcors$Wt_cor[s] <- 
-      wtd.cors(sampled$Sampled_freq, 
-               sampled$Progeny_freq, 
-               weight = sampled$CSize_no_prec + sampled$CSample_count)
+  # Bind to samples from other trees
+  all_tree_sampled_node_sizes <- rbind(all_tree_sampled_node_sizes, 
+                                       new_node_sizes)
+  all_tree_sample_frequencies <- rbind(all_tree_sample_frequencies, sample_frequencies)
+  all_tree_progeny_frequencies <- rbind(all_tree_progeny_frequencies, progeny_frequencies)
 }
+
+# Step IIIb: Calculate weighted progeny-node correlation
+for(s in 1:samples){
+sampled_wcors$Wt_cor[s] <- 
+  wtd.cors(all_tree_sample_frequencies[, s], 
+           all_tree_progeny_frequencies[, s], 
+           weight = all_tree_sampled_node_sizes[, s])
+}
+
 # sampled_wcors_smcv2 <- sampled_wcors
 # sampled_wcors_endoV <- sampled_wcors
 sampled_wcors_endfrzbV <- sampled_wcors
@@ -690,3 +620,51 @@ ggplot(sampled_wcors_endoV) +
   geom_histogram(aes(x = Wt_cor))
 mean(sampled_wcors_endoV$Wt_cor)
 sd(sampled_wcors_endoV$Wt_cor)
+
+
+# Analyse evidence against precursors ####
+full_descendancy <- data.frame(Cell_type = character(),
+                               Precursor = character(),
+                               Node = character(),
+                               Parent_node = character(),
+                               Precursor_count = numeric(),
+                               Total = numeric(),
+                               Frequency = numeric(),
+                               Precursor_presence_p = numeric(),
+                               Entropy = numeric(),
+                               Tree = character())
+for(t in 1:length(tree_list)){
+  tree_list[[t]] <- CalculateCooccurrence(tree_list[[t]])
+  descendancy_add <- tree_list[[t]]$Descendancy
+  descendancy_add$Tree <- names(tree_list)[t]
+  descendancy_add <- merge(descendancy_add, tree_list[[t]]$Node_entropy)
+  full_descendancy <- rbind(full_descendancy, descendancy_add)
+}
+
+full_descendancy_plot <- full_descendancy[full_descendancy$Cell_type == target &
+                                            full_descendancy$Precursor %in% potential_prec, ]
+full_descendancy_plot$Precursor <- factor(full_descendancy_plot$Precursor, levels = precursor_ranking$Precursor)
+full_descendancy_plot$Log10p_bottom <- 
+  sapply(full_descendancy_plot$Precursor_presence_p, function(x) max(log10(x), -10))
+
+# png(paste("./Images/", target, "precursor_node_probs_7dpi.png", sep = ""),
+    # width = 768, height = 256 * ceiling(length(potential_prec)/5))
+print(
+  # ggplot(full_descendancy[full_descendancy$Cell_type == zoom_to[i] &
+  ggplot(full_descendancy_plot) +
+    geom_jitter(aes(x = 0, y = Log10p_bottom, color = Precursor), height = 0) +
+    # scale_y_continuous(limits = c(-10.1, 0.1)) + 
+    # labs(title = paste(zoom_to[i], "precursors"),
+    labs(title = paste(target, "precursors"),
+         y = "Probability (log10)", x = "") +
+    theme(axis.text.x = element_text(angle = 90),
+          legend.position = "none") +
+    scale_color_manual(values = ann_colors$Celltype) +
+    facet_wrap(~Precursor, ncol = 5) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          strip.text.x = element_text(size = 12, face = "bold"))
+)
+# dev.off()
+
+
