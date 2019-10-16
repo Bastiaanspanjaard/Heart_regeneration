@@ -239,6 +239,7 @@ Hr15 <- ReadTree("Hr15", reference_set = cell_types[cell_types$orig.ident == "Hr
 # 3 and 7dpi
 tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr26, Hr27 = Hr27,
                   Hr1 = Hr1, Hr2 = Hr2, Hr13 = Hr13, Hr14 = Hr14, Hr15 = Hr15)
+# tree_list <- list(Hr2 = Hr2)
 
 # Create tree visualization and zoom visualization
 for(t in 1:length(tree_list)){
@@ -296,6 +297,20 @@ for(t in 1:length(tree_list)){
       colSums(sample_type_count[grep(node, rownames(sample_type_count)), ])
   }
   sample_type_nf <- sample_type_cumulative/rowSums(sample_type_cumulative)
+  
+  # COMPARISON WITH BELOW:
+  # nodes <- tree$Get('name', filterFun = function(x) {!isLeaf(x)})
+  # edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+  # pure_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
+  # colnames(pure_counts) <- c("Node", "Cell_type", "Type_count")
+  # pure_sizes <- aggregate(pure_counts$Type_count,
+  #                         by = list(Node = pure_counts$Node),
+  #                         sum)
+  # colnames(pure_sizes)[2] <- "Node_count"
+  # pure_sizes <- merge(pure_sizes, pure_counts[pure_counts$Cell_type == target, ])
+  # colnames(pure_sizes)[3:4] <- c("Progeny", "Progeny_count")
+  
+  
   
   # Philipp-normalized frequencies (node frequencies normalized to top node frequencies)
   # sample_type_pn <- sample_type_nf
@@ -496,6 +511,7 @@ for(t in 1:length(tree_list)){
   # names(sample_tree_list)[length(sample_tree_list)] <- names(tree_list)[length(sample_tree_list)]
   pure_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
   colnames(pure_counts) <- c("Node", "Cell_type", "Type_count")
+  pure_counts <- pure_counts[pure_counts$Cell_type != "NA", ]
   
   sample_tree_list[[t]] <- list(Pure_counts = pure_counts)
   names(sample_tree_list)[t] <- names(tree_list)[t]
@@ -528,12 +544,17 @@ for(t in 1:length(tree_list)){
   # sample_tree_list[[length(sample_tree_list)]]$Pure_counts <- pure_counts
 }
 
+# Testing influence of trees
+# full_s_tree_list <- sample_tree_list
+# sample_tree_list <- full_s_tree_list[4]
+
 # Step III: Perform sampling and calculate correlations
 samples <- 100
 sampled_wcors <- data.frame(matrix(nrow = samples, ncol = nrow(precursor_ranking) - 1))
 colnames(sampled_wcors) <- precursor_ranking$Precursor[-nrow(precursor_ranking)]
 
 set.seed(42)
+bootstrap_list <- list()
 for(p in 1:(nrow(precursor_ranking) - 1)){
   bootstrap_precursor <- as.character(precursor_ranking$Precursor[p])
   print(paste("Potential precursor:", bootstrap_precursor))
@@ -631,6 +652,11 @@ for(p in 1:(nrow(precursor_ranking) - 1)){
     all_tree_progeny_frequencies <- rbind(all_tree_progeny_frequencies, progeny_frequencies)
   }
   
+  bootstrap_list[[p]] <- list(Node_sizes = all_tree_sampled_node_sizes,
+                              Precursor_sampled_freqs = all_tree_sample_frequencies,
+                              Progeny_frequencies = all_tree_progeny_frequencies)
+  names(bootstrap_list)[p] <- bootstrap_precursor
+  
   # Step IIIb: Calculate weighted progeny-node correlation
   for(s in 1:samples){
     sampled_wcors[s, p] <- 
@@ -669,17 +695,48 @@ for(p in 1:(nrow(precursor_ranking) - 1)){
     (precursor_ranking$Weighted_cor_progpos[p] - mean(sampled_wcors[, p]))/sd(sampled_wcors[, p])
 }
 
+
+data_cors <- comparison_list$Normalized_frequencies[, c(target, "M (apoeb)")]
+colnames(data_cors) <- c("F_nppc", "M_apoeb")
+dc <- data_cors[data_cors$F_nppc != 0,]
+dc_b1 <- data.frame(F_nppc = bootstrap_list$`M (apoeb)`$Progeny_frequencies[, 1],
+                    M_apoeb = bootstrap_list$`M (apoeb)`$Precursor_sampled_freqs[, 1])
+dc_b1 <- dc_b1[dc_b1$F_nppc != 0, ]
+
+ggplot(dc) +
+  geom_point(aes(x = F_nppc, y = M_apoeb))
+ggplot(dc_b1) +
+  geom_point(aes(x = F_nppc, y = M_apoeb))
+
+cor(dc)
+cor(dc_b1)
+cor(dc[grep("Hr24", rownames(dc)), ])
+cor(dc_b1[grep("Hr24", rownames(dc_b1)), ])
+cor(dc[grep("Hr26", rownames(dc)), ])
+cor(dc_b1[grep("Hr26", rownames(dc_b1)), ])
+cor(dc[grep("Hr27", rownames(dc)), ])
+cor(dc_b1[grep("Hr27", rownames(dc_b1)), ])
+cor(dc[grep("Hr1", rownames(dc)), ])
+cor(dc_b1[grep("Hr1", rownames(dc_b1)), ])
+cor(dc[grep("Hr2", rownames(dc)), ])
+cor(dc_b1[grep("Hr2", rownames(dc_b1)), ])
+cor(dc[grep("Hr14", rownames(dc)), ])
+cor(dc_b1[grep("Hr14", rownames(dc_b1)), ])
+
+dc_b1 <- data.frame(F_nppc = bootstrap_list$`M (apoeb)`$Progeny_frequencies[, 1],
+  M_apoeb = bootstrap_list$`M (apoeb)`$Precursor_sampled_freqs[, 1])
+dc_b1 <- dc_b1[dc_b1$F_nppc != 0, ]
 # sampled_wcors_smcv2 <- sampled_wcors
 # sampled_wcors_endoV <- sampled_wcors
 
 
 
-sampled_wcors_endfrzbV <- sampled_wcors
-ggplot(sampled_wcors_endoV) +
-  geom_histogram(aes(x = Wt_cor))
-mean(sampled_wcors_endoV$Wt_cor)
-sd(sampled_wcors_endoV$Wt_cor)
-
+# sampled_wcors_endfrzbV <- sampled_wcors
+# ggplot(sampled_wcors_endoV) +
+#   geom_histogram(aes(x = Wt_cor))
+# mean(sampled_wcors_endoV$Wt_cor)
+# sd(sampled_wcors_endoV$Wt_cor)
+# 
 
 # Analyse evidence against precursors ####
 full_descendancy <- data.frame(Cell_type = character(),
