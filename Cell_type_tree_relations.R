@@ -216,7 +216,12 @@ target <- "Fibroblast (nppc)"
 # target <- "Fibroblast (proliferating)"
 # target <- "Fibroblast (col12a1a)"
 # target <- "Ventricle (ttn.2/aSMA)"
-precursors_include <- c("Smooth muscle cells (Vasculature) 2", "Endocardium (Ventricle)")
+precursors_include_incl_target <- 
+  # c("Fibroblast (cxcl12a)", "Fibroblasts", "Epicardium (V)",
+  #   "Fibroblast (proliferating)", "Smooth muscle cells (Vasculature)", "Ery. Duplex",
+  #   "Fibroblast (col11a1a)", "M (Fibro Duplex)", "Epicardium (A)")
+c("Smooth muscle cells (Vasculature) 2", "Endocardium (Ventricle)")
+precursors_include <- setdiff(precursors_include_incl_target, target)
 
 # Load tree objects, append cell types, create lineage trees ####
 # 3dpi
@@ -277,13 +282,28 @@ comparison_list <- list(Comparison = data.frame(Tree = character(),
 colnames(comparison_list$Normalized_frequencies) <- unique(cell_types$Cell_type)
 # colnames(comparison_list$PNormalized_frequencies) <- unique(cell_types$Cell_type)
 
+analysis_stats <-
+  data.frame(Tree = character(),
+           Included = logical(),
+           Cell_type = character(),
+           Count = integer())
+
 for(t in 1:length(tree_list)){
   tree <- tree_list[[t]]$Tree
   
   edge_list <- ToDataFrameNetwork(tree, "Cell.type")
-  if(!(target %in% edge_list$Cell.type)){
+  analysis_stats_add <-
+    data.frame(table(edge_list$Cell.type[edge_list$Cell.type != "NA"]))
+  colnames(analysis_stats_add) <- c("Cell_type", "Count")
+  analysis_stats_add$Tree <- names(tree_list)[t]
+  if(!(target %in% edge_list$Cell.type) | sum(edge_list$Cell.type == target) < 20){
+    analysis_stats_add$Included <- F
+    analysis_stats <- rbind(analysis_stats, analysis_stats_add)
     next
   }
+  analysis_stats_add$Included <- T
+  analysis_stats <- rbind(analysis_stats, analysis_stats_add)
+  
   sample_type_count <- 
     dcast(data.frame(table(edge_list$from, edge_list$Cell.type)), Var1 ~ Var2, value.var = "Freq")
   rownames(sample_type_count) <- paste(names(tree_list)[t], sample_type_count$Var1, sep = ":")
@@ -374,8 +394,11 @@ comparison_list$All_trees_distances <-
              #Weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
              #Reverse_weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
              #PN_weighted_cor = numeric(ncol(comparison_list$Normalized_frequencies)),
-             Weighted_cor_progpos = numeric(ncol(comparison_list$Normalized_frequencies)))#,
+             Weighted_cor_progpos = numeric(ncol(comparison_list$Normalized_frequencies)),
+             # Weighted_boot_cor = numeric(ncol(comparison_list$Normalized_frequencies)))#,
+             Weighted_cor_se = numeric(ncol(comparison_list$Normalized_frequencies)))#,
              #Distance = numeric(ncol(comparison_list$Normalized_frequencies)))
+comparison_list$All_trees_distances[, unique(analysis_stats$Tree[analysis_stats$Included])] <- 0
 
 for(p in 1:ncol(comparison_list$Normalized_frequencies)){
   precursor <- names(comparison_list$Normalized_frequencies)[p]
@@ -402,11 +425,26 @@ for(p in 1:ncol(comparison_list$Normalized_frequencies)){
   
   progpos <- comparison_list$Normalized_frequencies[comparison_list$Normalized_frequencies[[target]] > 0, ]
   progpos_weights <- comparison_list$Node_sizes[comparison_list$Normalized_frequencies[[target]] > 0, ]
-  comparison_list$All_trees_distances$Weighted_cor_progpos[p] <-
-    wtd.cors(progpos[[precursor]],
-             progpos[[target]],
-             weight = progpos_weights$Size)
+  weighted_cor <- data.frame(wtd.cor(progpos[[precursor]],
+                                     progpos[[target]],
+                                     weight = progpos_weights$Size))#, bootse = T))
+  comparison_list$All_trees_distances$Weighted_cor_progpos[p] <- weighted_cor$correlation
+  # comparison_list$All_trees_distances$Weighted_boot_cor[p] <- weighted_cor$bootcor
+  comparison_list$All_trees_distances$Weighted_cor_se[p] <- weighted_cor$std.err
   
+  for(t in unique(analysis_stats$Tree[analysis_stats$Included])){
+    progpos_oneout <- progpos[!grepl(paste(t, ":", sep = ""), rownames(progpos)), ]
+    weights_oneout <- progpos_weights[!grepl(paste(t, ":", sep = ""), rownames(progpos_weights)), ]
+    comparison_list$All_trees_distances[p, t] <-
+      wtd.cors(progpos_oneout[[precursor]],
+             progpos_oneout[[target]],
+             weight = weights_oneout$Size)
+    }
+  
+  # comparison_list$All_trees_distances$Weighted_cor_progpos[p] <-
+  #   wtd.cors(progpos[[precursor]],
+  #            progpos[[target]],
+  #            weight = progpos_weights$Size)
   # correlations <-
   #   data.frame(
   #     Precursor_cor =
@@ -441,42 +479,37 @@ precursor_ranking <- precursor_ranking[order(-precursor_ranking$Weighted_cor_pro
 precursor_ranking$Precursor <- factor(precursor_ranking$Precursor, precursor_ranking$Precursor)
 
 # png(paste("./Images/", target, "_precursors_PN_7dpi.png", sep = ""))
-print(
-  ggplot(precursor_ranking[precursor_ranking$Precursor != target, ]) +
-    geom_bar(aes(x = Precursor, y = Weighted_cor_progpos, fill = Precursor, 
-                 alpha = ifelse(Mean_count < 10, 0.5, 1)), stat = "identity") +
-    scale_fill_manual(values = ann_colors$Celltype) +
-    labs(title = paste(target, ""), y = "Fitness") +
-    theme(legend.position = "none",
-          axis.ticks.x = element_blank(),
-          axis.text.x = element_blank())
-)
+# print(
+#   ggplot(precursor_ranking[precursor_ranking$Precursor != target, ]) +
+#     geom_bar(aes(x = Precursor, y = Weighted_cor_progpos, fill = Precursor, 
+#                  alpha = ifelse(Mean_count < 10, 0.5, 1)), stat = "identity") +
+#     scale_fill_manual(values = ann_colors$Celltype) +
+#     labs(title = paste(target, ""), y = "Fitness") +
+#     theme(legend.position = "none",
+#           axis.ticks.x = element_blank(),
+#           axis.text.x = element_blank())
+# )
 # dev.off()
-potential_prec <- 
-  union(precursor_ranking$Precursor[precursor_ranking$Weighted_cor_progpos > 0.5 & 
-                                precursor_ranking$Mean_count >= 10],
-        precursors_include)
-print(potential_prec)
 
 # Plot correlations of two top-scoring precursors and two low-scoring precursors
-for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
-  pot_prec <- as.character(precursor_ranking$Precursor[i])
-  plot_freqs <- 
-    data.frame(comparison_list$Normalized_frequencies)[,make.names(c(pot_prec, target))]
-  colnames(plot_freqs) <- c("Precursor", "Progenitor")
-  plot_freqs$Size <- comparison_list$Node_sizes$Size
-  # png(paste("./Images/", pot_prec, "precursor_to_", target, "_7dpi.png", sep = ""))
-  print(
-    ggplot() +
-      geom_point(data = plot_freqs[plot_freqs$Progenitor == 0, ], 
-                 aes(x = Precursor, y = Progenitor, size = Size), color = "grey") +
-      geom_point(data = plot_freqs[plot_freqs$Progenitor > 0, ], 
-                 aes(x = Precursor, y = Progenitor, size = Size)) +
-      labs(x = pot_prec, y = target) +
-      theme(legend.position = "none")
-  )
-  # dev.off()
-}
+# for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
+#   pot_prec <- as.character(precursor_ranking$Precursor[i])
+#   plot_freqs <- 
+#     data.frame(comparison_list$Normalized_frequencies)[,make.names(c(pot_prec, target))]
+#   colnames(plot_freqs) <- c("Precursor", "Progenitor")
+#   plot_freqs$Size <- comparison_list$Node_sizes$Size
+#   # png(paste("./Images/", pot_prec, "precursor_to_", target, "_7dpi.png", sep = ""))
+#   print(
+#     ggplot() +
+#       geom_point(data = plot_freqs[plot_freqs$Progenitor == 0, ], 
+#                  aes(x = Precursor, y = Progenitor, size = Size), color = "grey") +
+#       geom_point(data = plot_freqs[plot_freqs$Progenitor > 0, ], 
+#                  aes(x = Precursor, y = Progenitor, size = Size)) +
+#       labs(x = pot_prec, y = target) +
+#       theme(legend.position = "none")
+#   )
+#   # dev.off()
+# }
 
 # ** Calculate one-(tree-)out correlations ####
 
@@ -549,7 +582,7 @@ for(t in 1:length(tree_list)){
 # sample_tree_list <- full_s_tree_list[4]
 
 # Step III: Perform sampling and calculate correlations
-samples <- 100
+samples <- 1000
 sampled_wcors <- data.frame(matrix(nrow = samples, ncol = nrow(precursor_ranking) - 1))
 colnames(sampled_wcors) <- precursor_ranking$Precursor[-nrow(precursor_ranking)]
 
@@ -566,7 +599,7 @@ for(p in 1:(nrow(precursor_ranking) - 1)){
   for(t in 1:length(sample_tree_list)){
     pure_counts <- sample_tree_list[[t]]$Pure_counts
     if(#!(bootstrap_precursor %in% pure_counts$Cell_type) |
-       !(target %in% pure_counts$Cell_type)){
+       !(target %in% pure_counts$Cell_type) | sum(pure_counts$Type_count[pure_counts$Cell_type == target]) < 20){
       next
     }
     
@@ -684,9 +717,21 @@ for(p in 1:(nrow(precursor_ranking) - 1)){
   }
 }
 
+precursor_ranking$Wcor_plus095 <- precursor_ranking$Weighted_cor_progpos + 2 * precursor_ranking$Weighted_cor_se
+precursor_ranking$Wcor_minus095 <- precursor_ranking$Weighted_cor_progpos - 2 * precursor_ranking$Weighted_cor_se
+
 precursor_ranking$Cor_bootstrap_p <- NA
 precursor_ranking$Z_bootstrap <- NA
+precursor_ranking$Mean_cor <- NA
+precursor_ranking$Plus095 <- NA
+precursor_ranking$Minus095 <- NA
 for(p in 1:(nrow(precursor_ranking) - 1)){
+  # Average bootstrap correlation
+  precursor_ranking$Mean_cor[p] <- mean(sampled_wcors[, p])
+  higher_cors <- sampled_wcors[sampled_wcors[, p] > mean(sampled_wcors[, p]), p]
+  precursor_ranking$Plus095[p] <- quantile(sort(higher_cors), probs = 0.95)
+  lower_cors <- sampled_wcors[sampled_wcors[, p] < mean(sampled_wcors[, p]), p]
+  precursor_ranking$Minus095[p] <- quantile(sort(lower_cors), probs = 0.05)
   # Calculate how many samples have a higher correlation than the measured one
   precursor_ranking$Cor_bootstrap_p[p] <-
     sum(sampled_wcors[, p] > precursor_ranking$Weighted_cor_progpos[p])/samples
@@ -694,38 +739,164 @@ for(p in 1:(nrow(precursor_ranking) - 1)){
   precursor_ranking$Z_bootstrap[p] <-
     (precursor_ranking$Weighted_cor_progpos[p] - mean(sampled_wcors[, p]))/sd(sampled_wcors[, p])
 }
+# precursor_ranking_plot <- precursor_ranking[(precursor_ranking$Weighted_cor_progpos > 0 &
+#                                               precursor_ranking$Cor_bootstrap_p < 0.001) |
+#                                               precursor_ranking$Precursor %in% precursors_include, ]
+precursor_ranking_plot <- precursor_ranking[(precursor_ranking$Weighted_cor_progpos > 0 &
+                                               precursor_ranking$Wcor_minus095 > precursor_ranking$Plus095) |
+                                              precursor_ranking$Precursor %in% precursors_include, ]
+prp_m <- melt(precursor_ranking_plot[, c("Precursor", "Weighted_cor_progpos", "Mean_cor")])
+prp_m$Type_alpha <- ifelse(prp_m$variable == "Weighted_cor_progpos", 1, 0.9)
+prp_bebar <- precursor_ranking_plot[, c("Precursor", "Minus095", "Plus095")]
+prp_m <- merge(prp_m, prp_bebar)
+prp_cebar <- precursor_ranking_plot[, c("Precursor", "Wcor_minus095", "Wcor_plus095")]
+prp_m <- merge(prp_m, prp_cebar)
+
+prp_m$Eplus <- ifelse(prp_m$variable == "Weighted_cor_progpos",
+                      prp_m$Wcor_plus095, prp_m$Plus095)
+prp_m$Eminus <- ifelse(prp_m$variable == "Weighted_cor_progpos",
+                      prp_m$Wcor_minus095, prp_m$Minus095)
+
+# prp_m$Minus099[prp_m$variable == "Weighted_cor_progpos"] <- NA
+# prp_m$Plus099[prp_m$variable == "Weighted_cor_progpos"] <- NA
 
 
-data_cors <- comparison_list$Normalized_frequencies[, c(target, "M (apoeb)")]
-colnames(data_cors) <- c("F_nppc", "M_apoeb")
-dc <- data_cors[data_cors$F_nppc != 0,]
-dc_b1 <- data.frame(F_nppc = bootstrap_list$`M (apoeb)`$Progeny_frequencies[, 1],
-                    M_apoeb = bootstrap_list$`M (apoeb)`$Precursor_sampled_freqs[, 1])
-dc_b1 <- dc_b1[dc_b1$F_nppc != 0, ]
+png(paste("./Images/", target, "_precursors_with_bootstrap.png", sep = ""), type = "quartz")
+print(
+  ggplot(prp_m) +
+    geom_bar(aes(x = Precursor, y = value, fill = Precursor, group = variable, alpha = Type_alpha),
+             stat = "identity", position = "dodge") +
+    # geom_errorbar(aes(x = Precursor, ymin = Minus099, ymax = Plus099, group = variable), 
+    #               position = position_dodge(width = 1), width = 0.5) +
+    geom_errorbar(aes(x = Precursor, ymin = Eminus, ymax = Eplus, group = variable), 
+                  position = position_dodge(width = 1), width = 0.5) +
+    scale_fill_manual(values = ann_colors$Celltype) +
+    scale_alpha(range = c(0.35, 1)) +
+    labs(title = paste(target, ""), y = "Correlation") +
+    theme(legend.position = "none",
+          axis.ticks.x = element_blank(),
+          axis.text.x = element_blank())
+)
+dev.off()
 
-ggplot(dc) +
-  geom_point(aes(x = F_nppc, y = M_apoeb))
-ggplot(dc_b1) +
-  geom_point(aes(x = F_nppc, y = M_apoeb))
+potential_prec <- 
+  union(precursor_ranking$Precursor[precursor_ranking$Cor_bootstrap_p < 0.001 &
+                                      precursor_ranking$Weighted_cor_progpos > 0],
+        precursors_include)
+# union(precursor_ranking$Precursor[precursor_ranking$Weighted_cor_progpos > 0.5 & 
+#                               precursor_ranking$Mean_count >= 10],
+#       precursors_include)
+print(potential_prec)
 
-cor(dc)
-cor(dc_b1)
-cor(dc[grep("Hr24", rownames(dc)), ])
-cor(dc_b1[grep("Hr24", rownames(dc_b1)), ])
-cor(dc[grep("Hr26", rownames(dc)), ])
-cor(dc_b1[grep("Hr26", rownames(dc_b1)), ])
-cor(dc[grep("Hr27", rownames(dc)), ])
-cor(dc_b1[grep("Hr27", rownames(dc_b1)), ])
-cor(dc[grep("Hr1", rownames(dc)), ])
-cor(dc_b1[grep("Hr1", rownames(dc_b1)), ])
-cor(dc[grep("Hr2", rownames(dc)), ])
-cor(dc_b1[grep("Hr2", rownames(dc_b1)), ])
-cor(dc[grep("Hr14", rownames(dc)), ])
-cor(dc_b1[grep("Hr14", rownames(dc_b1)), ])
+# precursor_ranking_plot <- precursor_ranking_plot[order(-precursor_ranking_plot$Z_bootstrap), ]
+# precursor_ranking_plot$Precursor <- factor(precursor_ranking_plot$Precursor, 
+#                                            levels = precursor_ranking_plot$Precursor)
 
-dc_b1 <- data.frame(F_nppc = bootstrap_list$`M (apoeb)`$Progeny_frequencies[, 1],
-  M_apoeb = bootstrap_list$`M (apoeb)`$Precursor_sampled_freqs[, 1])
-dc_b1 <- dc_b1[dc_b1$F_nppc != 0, ]
+# ggplot(precursor_ranking_plot) +
+#   geom_bar(aes(x = Precursor, y = Z_bootstrap, fill = Precursor,
+#                alpha = 1 - Cor_bootstrap_p), stat = "identity") +
+#   scale_fill_manual(values = ann_colors$Celltype) +
+#   labs(title = paste(target, ""), y = "Fitness") +
+#   theme(legend.position = "none",
+#         axis.ticks.x = element_blank(),
+#         axis.text.x = element_blank())
+
+# print(
+#   ggplot(precursor_ranking[precursor_ranking$Precursor != target, ]) +
+#     geom_bar(aes(x = Precursor, y = Weighted_cor_progpos, fill = Precursor, 
+#                  alpha = ifelse(Mean_count < 10, 0.5, 1)), stat = "identity") +
+#     scale_fill_manual(values = ann_colors$Celltype) +
+#     labs(title = paste(target, ""), y = "Fitness") +
+#     theme(legend.position = "none",
+#           axis.ticks.x = element_blank(),
+#           axis.text.x = element_blank())
+# )
+
+
+# make.names("M (apoeb)")
+# precursor_candidate <- "Fibroblasts"
+# # 
+# data_cors <- comparison_list$Normalized_frequencies[, c(target, precursor_candidate)]
+# colnames(data_cors) <- c("Target", "Precursor")
+# dc <- data_cors[data_cors$Target != 0,]
+# dc_b1 <- data.frame(Target = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, 2],
+#                     Precursor = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, 2])
+# dc_b1 <- dc_b1[dc_b1$Target != 0, ]
+
+# ggplot(dc) +
+#   geom_point(aes(x = F_nppc, y = M_apoeb))
+# ggplot(dc_b1) +
+#   geom_point(aes(x = F_nppc, y = M_apoeb))
+# 
+# for(t in 1:length(sample_tree_list)){
+#   counts <- sample_tree_list[[t]]$Pure_counts
+#   print(paste(names(sample_tree_list)[t], "-", target, ":", sum(counts$Type_count[counts$Cell_type == target]),
+#               precursor_candidate, ":", sum(counts$Type_count[counts$Cell_type== precursor_candidate])))
+# }
+
+# cor(dc)
+# cor(dc_b1)
+# cor(dc[grep("Hr24", rownames(dc)), ])
+# cor(dc_b1[grep("Hr24", rownames(dc_b1)), ])
+# cor(dc[grep("Hr26", rownames(dc)), ])
+# cor(dc_b1[grep("Hr26", rownames(dc_b1)), ])
+# cor(dc[grep("Hr27", rownames(dc)), ])
+# cor(dc_b1[grep("Hr27", rownames(dc_b1)), ])
+# cor(dc[grep("Hr1", rownames(dc)), ])
+# cor(dc_b1[grep("Hr1", rownames(dc_b1)), ])
+# cor(dc[grep("Hr2", rownames(dc)), ])
+# cor(dc_b1[grep("Hr2", rownames(dc_b1)), ])
+# cor(dc[grep("Hr14", rownames(dc)), ])
+# cor(dc_b1[grep("Hr14", rownames(dc_b1)), ])
+
+# dc_n_b1 <- cbind(dc, dc_b1)[, c(1, 2, 4)]
+# dc_n_b1$Tree <- sapply(rownames(dc_n_b1), function(x){unlist(strsplit(x, ":"))[1]})
+# ggplot(dc_n_b1) +
+#   geom_point(aes(x = Target, y = Precursor, color = Tree)) +
+#   geom_segment(aes(x = Target, xend = Target, y = Precursor, yend = Precursor.1, color = Tree),
+#                arrow = arrow(length=unit(0.30,"cm"))) +
+#   labs(x = target, y = precursor_candidate)
+# for(t in unique(dc_n_b1$Tree)){
+#   print(
+#     paste("Tree", t, "observed correlation:",
+#           cor(dc_n_b1$Target[dc_n_b1$Tree == t], dc_n_b1$Precursor[dc_n_b1$Tree == t]),
+#           "bootstrapped correlation:",
+#           cor(dc_n_b1$Target[dc_n_b1$Tree == t], dc_n_b1$Precursor.1[dc_n_b1$Tree == t]))
+#   )        
+# }
+# 
+# tree_to_look_at <- "Hr27"
+# 
+# precursor_candidate <- "Epicardium (V)"
+# bootstrapping_cors <-
+#   data.frame(Precursor = rep(precursor_candidate, samples),
+#              Sample = 1:samples,
+#              Bootstrapped_cor = numeric(1000))
+# data_cors <- data.frame(comparison_list$Normalized_frequencies[, c(target, precursor_candidate)],
+#                         comparison_list$Node_sizes)
+# colnames(data_cors)[1:2] <- c("Target", "Precursor")
+# dc <- data_cors[data_cors$Target != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(data_cors)),]
+# 
+# for(b in 1:samples){
+#   dc_boot <- data.frame(Node_sizes = bootstrap_list[[precursor_candidate]]$Node_sizes[, b],
+#                         Prec_freq = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, b],
+#                         Prog_freq = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, b])
+#   dc_boot <- dc_boot[dc_boot$Prog_freq != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(dc_boot)), ]
+#   bootstrapping_cors$Bootstrapped_cor[b] <-
+#     wtd.cors(dc_boot$Prec_freq, dc_boot$Prog_freq, weight = dc_boot$Node_sizes)
+# }
+# 
+# ggplot(bootstrapping_cors) +
+#   geom_histogram(aes(x = Bootstrapped_cor), binwidth = 0.05) +
+#   geom_vline(xintercept = mean(bootstrapping_cors$Bootstrapped_cor), color = "red") +
+#   geom_vline(xintercept = wtd.cors(dc$Target, dc$Precursor, weight = dc$Size), color = "blue") +
+#   labs(title = paste(tree_to_look_at, ":", precursor_candidate, "to", target))
+  # labs(title = paste("All trees:", precursor_candidate, "to", target))
+
+# 
+# dc_b1 <- data.frame(F_nppc = bootstrap_list$`M (apoeb)`$Progeny_frequencies[, 1],
+#   M_apoeb = bootstrap_list$`M (apoeb)`$Precursor_sampled_freqs[, 1])
+# dc_b1 <- dc_b1[dc_b1$F_nppc != 0, ]
 # sampled_wcors_smcv2 <- sampled_wcors
 # sampled_wcors_endoV <- sampled_wcors
 
@@ -751,6 +922,11 @@ full_descendancy <- data.frame(Cell_type = character(),
                                Tree = character())
 for(t in 1:length(tree_list)){
   tree_list[[t]] <- CalculateCooccurrence(tree_list[[t]])
+  edge_list <- ToDataFrameNetwork(tree_list[[t]]$Tree, "Cell.type")
+  if(!(target %in% edge_list$Cell.type) | sum(edge_list$Cell.type == target) < 20){
+    next
+  }
+  
   descendancy_add <- tree_list[[t]]$Descendancy
   descendancy_add$Tree <- names(tree_list)[t]
   descendancy_add <- merge(descendancy_add, tree_list[[t]]$Node_entropy)
@@ -763,8 +939,11 @@ full_descendancy_plot$Precursor <- factor(full_descendancy_plot$Precursor, level
 full_descendancy_plot$Log10p_bottom <- 
   sapply(full_descendancy_plot$Precursor_presence_p, function(x) max(log10(x), -10))
 
+x <- length(potential_prec)
 # png(paste("./Images/", target, "precursor_node_probs_7dpi.png", sep = ""),
     # width = 768, height = 256 * ceiling(length(potential_prec)/5))
+png(paste("./Images/", target, "precursor_node_probs_7dpi.png", sep = ""),
+    width = max(512, 384 * ceiling(x/5)), height = 256 * min(x, min(3, x)))
 print(
   # ggplot(full_descendancy[full_descendancy$Cell_type == zoom_to[i] &
   ggplot(full_descendancy_plot) +
@@ -776,11 +955,11 @@ print(
     theme(axis.text.x = element_text(angle = 90),
           legend.position = "none") +
     scale_color_manual(values = ann_colors$Celltype) +
-    facet_wrap(~Precursor, ncol = 5) +
+    facet_wrap(~Precursor, nrow = 3) +
     theme(axis.text.x = element_blank(),
           axis.ticks.x = element_blank(),
           strip.text.x = element_text(size = 12, face = "bold"))
 )
-# dev.off()
+dev.off()
 
 
