@@ -211,16 +211,16 @@ zoom_types <- setdiff(type_colors$celltype[type_colors$colo1 != ""],
 # vertex_colors <- vertex_colors[order(vertex_colors$Order), ]
 # rownames(vertex_colors) <- vertex_colors$celltype
 
-target <- "Fibroblast (nppc)"
-# target <- "Fibroblast (col11a1a)"
+# target <- "Fibroblast (nppc)"
+target <- "Fibroblast (col11a1a)"
 # target <- "Fibroblast (proliferating)"
 # target <- "Fibroblast (col12a1a)"
 # target <- "Ventricle (ttn.2/aSMA)"
 precursors_include_incl_target <- 
-  # c("Fibroblast (cxcl12a)", "Fibroblasts", "Epicardium (V)",
-  #   "Fibroblast (proliferating)", "Smooth muscle cells (Vasculature)", "Ery. Duplex",
-  #   "Fibroblast (col11a1a)", "M (Fibro Duplex)", "Epicardium (A)")
-c("Smooth muscle cells (Vasculature) 2", "Endocardium (Ventricle)")
+  c("Fibroblast (cxcl12a)", "Fibroblasts", "Epicardium (V)",
+    "Fibroblast (proliferating)", "Smooth muscle cells (Vasculature)", "Ery. Duplex",
+    "Fibroblast (col11a1a)", "M (Fibro Duplex)", "Epicardium (A)", "Fibroblast (col12a1a)")
+  # c("Smooth muscle cells (Vasculature) 2", "Endocardium (Ventricle)")
 precursors_include <- setdiff(precursors_include_incl_target, target)
 
 # Load tree objects, append cell types, create lineage trees ####
@@ -761,7 +761,7 @@ prp_m$Eminus <- ifelse(prp_m$variable == "Weighted_cor_progpos",
 # prp_m$Plus099[prp_m$variable == "Weighted_cor_progpos"] <- NA
 
 
-png(paste("./Images/", target, "_precursors_with_bootstrap.png", sep = ""), type = "quartz")
+png(paste("./Images/", target, "_precursors_with_bootstrap_37dpi.png", sep = ""), type = "quartz")
 print(
   ggplot(prp_m) +
     geom_bar(aes(x = Precursor, y = value, fill = Precursor, group = variable, alpha = Type_alpha),
@@ -803,7 +803,7 @@ print(potential_prec)
 
 # print(
 #   ggplot(precursor_ranking[precursor_ranking$Precursor != target, ]) +
-#     geom_bar(aes(x = Precursor, y = Weighted_cor_progpos, fill = Precursor, 
+#     geom_bar(aes(x = Precursor, y = Weighted_cor_progpos, fill = Precursor,
 #                  alpha = ifelse(Mean_count < 10, 0.5, 1)), stat = "identity") +
 #     scale_fill_manual(values = ann_colors$Celltype) +
 #     labs(title = paste(target, ""), y = "Fitness") +
@@ -814,14 +814,14 @@ print(potential_prec)
 
 
 # make.names("M (apoeb)")
-# precursor_candidate <- "Fibroblasts"
+precursor_candidate <- "Fibroblasts"
 # # 
-# data_cors <- comparison_list$Normalized_frequencies[, c(target, precursor_candidate)]
-# colnames(data_cors) <- c("Target", "Precursor")
-# dc <- data_cors[data_cors$Target != 0,]
-# dc_b1 <- data.frame(Target = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, 2],
-#                     Precursor = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, 2])
-# dc_b1 <- dc_b1[dc_b1$Target != 0, ]
+data_cors <- comparison_list$Normalized_frequencies[, c(target, precursor_candidate)]
+colnames(data_cors) <- c("Target", "Precursor")
+dc <- data_cors[data_cors$Target != 0,]
+dc_b1 <- data.frame(Target = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, 2],
+                    Precursor = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, 2])
+dc_b1 <- dc_b1[dc_b1$Target != 0, ]
 
 # ggplot(dc) +
 #   geom_point(aes(x = F_nppc, y = M_apoeb))
@@ -849,13 +849,13 @@ print(potential_prec)
 # cor(dc[grep("Hr14", rownames(dc)), ])
 # cor(dc_b1[grep("Hr14", rownames(dc_b1)), ])
 
-# dc_n_b1 <- cbind(dc, dc_b1)[, c(1, 2, 4)]
-# dc_n_b1$Tree <- sapply(rownames(dc_n_b1), function(x){unlist(strsplit(x, ":"))[1]})
-# ggplot(dc_n_b1) +
-#   geom_point(aes(x = Target, y = Precursor, color = Tree)) +
-#   geom_segment(aes(x = Target, xend = Target, y = Precursor, yend = Precursor.1, color = Tree),
-#                arrow = arrow(length=unit(0.30,"cm"))) +
-#   labs(x = target, y = precursor_candidate)
+dc_n_b1 <- cbind(dc, dc_b1)[, c(1, 2, 4)]
+dc_n_b1$Tree <- sapply(rownames(dc_n_b1), function(x){unlist(strsplit(x, ":"))[1]})
+ggplot(dc_n_b1) +
+  geom_point(aes(x = Target, y = Precursor, color = Tree)) +
+  geom_segment(aes(x = Target, xend = Target, y = Precursor, yend = Precursor.1, color = Tree),
+               arrow = arrow(length=unit(0.30,"cm"))) +
+  labs(x = target, y = precursor_candidate)
 # for(t in unique(dc_n_b1$Tree)){
 #   print(
 #     paste("Tree", t, "observed correlation:",
@@ -865,33 +865,37 @@ print(potential_prec)
 #   )        
 # }
 # 
-# tree_to_look_at <- "Hr27"
+tree_to_look_at <- "Hr26"
 # 
-# precursor_candidate <- "Epicardium (V)"
-# bootstrapping_cors <-
-#   data.frame(Precursor = rep(precursor_candidate, samples),
-#              Sample = 1:samples,
-#              Bootstrapped_cor = numeric(1000))
-# data_cors <- data.frame(comparison_list$Normalized_frequencies[, c(target, precursor_candidate)],
-#                         comparison_list$Node_sizes)
-# colnames(data_cors)[1:2] <- c("Target", "Precursor")
-# dc <- data_cors[data_cors$Target != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(data_cors)),]
+precursor_candidate <- "Fibroblasts"
+bootstrapping_cors <-
+  data.frame(Precursor = rep(precursor_candidate, samples),
+             Sample = 1:samples,
+             Bootstrapped_cor = numeric(1000))
+data_cors <- data.frame(comparison_list$Normalized_frequencies[, c(target, precursor_candidate)],
+                        comparison_list$Node_sizes)
+colnames(data_cors)[1:2] <- c("Target", "Precursor")
+dc <- data_cors[data_cors$Target != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(data_cors)),]
+
+for(b in 1:samples){
+  dc_boot <- data.frame(Node_sizes = bootstrap_list[[precursor_candidate]]$Node_sizes[, b],
+                        Prec_freq = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, b],
+                        Prog_freq = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, b])
+  dc_boot <- dc_boot[dc_boot$Prog_freq != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(dc_boot)), ]
+  bootstrapping_cors$Bootstrapped_cor[b] <-
+    wtd.cors(dc_boot$Prec_freq, dc_boot$Prog_freq, weight = dc_boot$Node_sizes)
+}
 # 
-# for(b in 1:samples){
-#   dc_boot <- data.frame(Node_sizes = bootstrap_list[[precursor_candidate]]$Node_sizes[, b],
-#                         Prec_freq = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, b],
-#                         Prog_freq = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, b])
-#   dc_boot <- dc_boot[dc_boot$Prog_freq != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(dc_boot)), ]
-#   bootstrapping_cors$Bootstrapped_cor[b] <-
-#     wtd.cors(dc_boot$Prec_freq, dc_boot$Prog_freq, weight = dc_boot$Node_sizes)
-# }
-# 
-# ggplot(bootstrapping_cors) +
-#   geom_histogram(aes(x = Bootstrapped_cor), binwidth = 0.05) +
-#   geom_vline(xintercept = mean(bootstrapping_cors$Bootstrapped_cor), color = "red") +
-#   geom_vline(xintercept = wtd.cors(dc$Target, dc$Precursor, weight = dc$Size), color = "blue") +
-#   labs(title = paste(tree_to_look_at, ":", precursor_candidate, "to", target))
-  # labs(title = paste("All trees:", precursor_candidate, "to", target))
+# png(paste("./Images/", tree_to_look_at, "_", precursor_candidate, "_to_", target, ".png", sep = ""),
+#     width = 738)
+ggplot(bootstrapping_cors) +
+  geom_histogram(aes(x = Bootstrapped_cor), binwidth = 0.05) +
+  geom_vline(xintercept = mean(bootstrapping_cors$Bootstrapped_cor), color = "red") +
+  geom_vline(xintercept = wtd.cors(dc$Target, dc$Precursor, weight = dc$Size), color = "blue") +
+  labs(title = paste(tree_to_look_at, ":", precursor_candidate, "to", target),
+       x = "Bootstrapped correlation")
+# dev.off()
+labs(title = paste("All trees:", precursor_candidate, "to", target))
 
 # 
 # dc_b1 <- data.frame(F_nppc = bootstrap_list$`M (apoeb)`$Progeny_frequencies[, 1],
@@ -940,14 +944,14 @@ full_descendancy_plot$Log10p_bottom <-
   sapply(full_descendancy_plot$Precursor_presence_p, function(x) max(log10(x), -10))
 
 x <- length(potential_prec)
+png(paste("./Images/", target, "precursor_node_probs_37dpi.png", sep = ""),
+width = 768, height = 256 * ceiling(length(potential_prec)/5))
 # png(paste("./Images/", target, "precursor_node_probs_7dpi.png", sep = ""),
-    # width = 768, height = 256 * ceiling(length(potential_prec)/5))
-png(paste("./Images/", target, "precursor_node_probs_7dpi.png", sep = ""),
-    width = max(512, 384 * ceiling(x/5)), height = 256 * min(x, min(3, x)))
+#     width = max(512, 384 * ceiling(x/5)), height = 256 * min(x, min(3, x)))
 print(
   # ggplot(full_descendancy[full_descendancy$Cell_type == zoom_to[i] &
   ggplot(full_descendancy_plot) +
-    geom_jitter(aes(x = 0, y = Log10p_bottom, color = Precursor), height = 0) +
+    geom_jitter(aes(x = 0, y = Log10p_bottom, color = Precursor), height = 0, size = 3) +
     # scale_y_continuous(limits = c(-10.1, 0.1)) + 
     # labs(title = paste(zoom_to[i], "precursors"),
     labs(title = paste(target, "precursors"),
