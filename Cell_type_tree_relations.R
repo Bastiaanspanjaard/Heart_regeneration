@@ -5,6 +5,7 @@ require(pheatmap)
 require(RColorBrewer)
 require(igraph)
 require(weights)
+require(data.table)
 
 CalculateCooccurrence <- function(tree_sample){
   node_counts <- count_cumulative(tree_sample$Tree)
@@ -162,6 +163,9 @@ ZoomCellTypes <- function(node, zoom_types){
   }
 }
 
+# library_name = "H5"
+# reference_set
+# load("./Data/Trees/A5_Ltree_pie.Robj")
 ReadTree <- function(library_name, reference_set){
   load(paste("./Data/Trees/", library_name, "_tree_pie.Robj", sep = ""))
   list_out <- list(Tree = LINNAEUS.pie)
@@ -180,7 +184,7 @@ MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ct_colors){
   tree_sample$CTree <-    
     collapsibleTree(df = tree_to_plot, root = tree_to_plot$scar, pieNode = T,
                     pieSummary = T, collapsed = F,
-                    width = 600, height = 500,
+                    width = 1000, height = 500,
                     ctypes = type_colors$celltype,linkLength=60, 
                     ct_colors = ct_colors, angle = pi/2,fontSize = 0,
                     nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6)) 
@@ -191,20 +195,70 @@ MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ct_colors){
 }
 
 # Prepare colors and cell type data ####
-type_colors <- read.csv("./Data/color.table.all.sub.csv", sep = ";", stringsAsFactors = F)[, -1]
+# type_colors <- read.csv("./Data/color.table.all.sub.csv", sep = ";", stringsAsFactors = F)[, -1]
 
-cell_types <- read.csv("./Data/all.hearts.all.cells.all.sub.sept03.csv", stringsAsFactors = F)
-cell_types$Cell_type <- cell_types$immune.fibro.CM.subtypes
-cell_types$Cell_name <- paste("nd", cell_types$X, sep = "")
+# cell_types <- read.csv("./Data/all.hearts.all.cells.all.sub.sept03.csv", stringsAsFactors = F)
+cell_types <- fread("./Data/celltypes_zoom_allcells.csv",
+                    header = T)
+# cell_types$Cell_type <- cell_types$zoom.subtypes #cell_types$immune.fibro.CM.subtypes
+cell_types$Cell_name <- paste("nd", cell_types$V1, sep = "")
 
-ph_annotation <- data.frame(Celltype = type_colors$celltype, row.names = type_colors$celltype)
-ph_zoom_annotation <- data.frame(Zoomtype = type_colors$celltype, row.names = type_colors$celltype)
+type_rename <- data.frame(zoom.subtypes = unique(cell_types$zoom.subtypes))
+type_rename$Cell_type <- as.character(type_rename$zoom.subtypes)
+type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+                        c("CM Atrium", "CM Ventricle (ttn.2)", "CM Ventricle", "CM Atrium (ttn.2)",
+                          "CM (Proliferating)")] <- "Cardiomyocytes"
+type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+                        c("Bl.ves.EC (apnln)", "Bl.ves.EC (plvapb)", 
+                          "Bl.ves.EC (lyve1)")] <- "Blood vessel EC"
+type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+                        c("Fibroblast (acta2)")] <- "Fibroblast"
+type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+                        c("Ery Duplex")] <- NA
+type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+                        c("Immune Duplex")] <- NA
+type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+                        c("Fibroblast (proliferating)")] <- "Fibroblast (col11a1a)"
+type_rename <- type_rename[complete.cases(type_rename), ]
+cell_types <- merge(cell_types, type_rename, by = "zoom.subtypes")
+
+type_colors <- data.frame(celltype = unique(type_rename$Cell_type))
+type_colors$Color <-
+  c("#B79F00", "#7CAE00", "#e41a1c", "#00B4F0",
+    "#f781bf", "#FF64B0", "#00BA38", "#b2df8a",
+    "#F8766D", "#ff7f00", "#4daf4a", "#b15928",
+    "#F564E3", "#bebada", "#377eb8", "#984ea3",
+    "#C77CFF", "#b2b223", "#ffff33", "#DE8C00")
+# for(clr in c('Epicardium A', 'Epicardium V', 'Fibroblast', 'Fibroblast (cfd)',
+#     'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)',
+#     'Fibroblast (cxcl12a)', 'Perivascular cells')){
+#   print(type_colors$Color[type_colors$Cell_type == clr])
+# }
+# type_colors <- 
+#   type_colors[!(type_colors$celltype %in% 
+#                   c("CM (Ery Duplex)", "CM (Immune Duplex)", "Dead cells", "Ery. Duplex",
+#                     "M. duplex")), ]
+# type_colors$Cell_type <-
+#   c("Immune Cells", "Blood vessel EC", "Blood vessel EC", "Blood vessel EC",
+#     "Cardiomyocytes", "Cardiomyocytes", "Cardiomyocytes", "Cardiomyocytes", 
+#     "Cardiomyocytes", "Cardiomyocytes", "Cardiomyocytes", "Cardiac neurons",
+#     "Endocardium", "Endocardium", "Endocardium", "Endocardium",
+#     "Endocardium", "Endocardium", )
+# type_colors$celltype
+
+
+# ph_annotation <- data.frame(Celltype = type_colors$celltype, row.names = type_colors$celltype)
+# ph_zoom_annotation <- data.frame(Zoomtype = type_colors$celltype, row.names = type_colors$celltype)
 ann_colors <-
-  list(Celltype = setNames(type_colors$Color2, type_colors$celltype),
-       Zoomtype = setNames(type_colors$colo1, type_colors$celltype))
+  list(Celltype = setNames(type_colors$Color, type_colors$Cell_type))
 
-zoom_types <- setdiff(type_colors$celltype[type_colors$colo1 != ""],
-                      c("Ery. Duplex", "M. Duplex"))
+
+# ann_colors <-
+#   list(Celltype = setNames(type_colors$Color2, type_colors$celltype),
+#        Zoomtype = setNames(type_colors$colo1, type_colors$celltype))
+
+# zoom_types <- setdiff(type_colors$celltype[type_colors$colo1 != ""],
+#                       c("Ery. Duplex", "M. Duplex"))
 # vertex_colors <- data.frame(celltype = zoom_types,
 #                             Order = 1:(length(zoom_types)))
 # vertex_colors <- merge(vertex_colors, type_colors[, c("celltype", "colo1")])
@@ -212,18 +266,25 @@ zoom_types <- setdiff(type_colors$celltype[type_colors$colo1 != ""],
 # rownames(vertex_colors) <- vertex_colors$celltype
 
 # target <- "Fibroblast (nppc)"
-target <- "Fibroblast (col11a1a)"
+# target <- "Fibroblast (col11a1a)"
+target <- "Fibroblast-like cells"
+# target <- "Perivascular cells"
 # target <- "Fibroblast (proliferating)"
 # target <- "Fibroblast (col12a1a)"
 # target <- "Ventricle (ttn.2/aSMA)"
-precursors_include_incl_target <- 
-  c("Fibroblast (cxcl12a)", "Fibroblasts", "Epicardium (V)",
-    "Fibroblast (proliferating)", "Smooth muscle cells (Vasculature)", "Ery. Duplex",
-    "Fibroblast (col11a1a)", "M (Fibro Duplex)", "Epicardium (A)", "Fibroblast (col12a1a)")
-  # c("Smooth muscle cells (Vasculature) 2", "Endocardium (Ventricle)")
+precursors_include_incl_target <- #NULL
+  # c("Fibroblast (cxcl12a)", "Fibroblast", "Epicardium V",
+  #   "Perivascular cells",
+  #   "Fibroblast (col11a1a)", "Epicardium A", "Fibroblast (col12a1a)")
+  c("Fibroblast-like cells", "Endocardium", "Fibroblast (spock3)")
 precursors_include <- setdiff(precursors_include_incl_target, target)
 
 # Load tree objects, append cell types, create lineage trees ####
+# Control
+H5 <- ReadTree("H5", reference_set = cell_types[cell_types$orig.ident == "H5", ])
+H6 <- ReadTree("H6", reference_set = cell_types[cell_types$orig.ident == "H6", ])
+H7 <- ReadTree("H7", reference_set = cell_types[cell_types$orig.ident == "H7", ])
+# tree_list <- list(H5 = H5, H6 = H6, H7 = H7)
 # 3dpi
 Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ])
 Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ])
@@ -248,13 +309,13 @@ tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr2
 
 # Create tree visualization and zoom visualization
 for(t in 1:length(tree_list)){
-  tree_list[[t]] <- MakePieTree(tree_list[[t]], "Full_tree", ct_colors = type_colors$Color2)
-  tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
-                                ct_colors = type_colors$colo1)
-  # htmlwidgets::saveWidget(
-  #   tree_list[[t]]$Full_tree,
-  #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_", 
-  #                names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
+  tree_list[[t]] <- MakePieTree(tree_list[[t]], "Full_tree", ct_colors = type_colors$Color)
+  # tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
+  #                               ct_colors = type_colors$colo1)
+  htmlwidgets::saveWidget(
+    tree_list[[t]]$Full_tree,
+    file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
+                 names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
   # htmlwidgets::saveWidget(
   #   tree_list[[t]]$Fibrozoom_tree,
   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
@@ -305,7 +366,7 @@ for(t in 1:length(tree_list)){
   analysis_stats <- rbind(analysis_stats, analysis_stats_add)
   
   sample_type_count <- 
-    dcast(data.frame(table(edge_list$from, edge_list$Cell.type)), Var1 ~ Var2, value.var = "Freq")
+    reshape2::dcast(data.frame(table(edge_list$from, edge_list$Cell.type)), Var1 ~ Var2, value.var = "Freq")
   rownames(sample_type_count) <- paste(names(tree_list)[t], sample_type_count$Var1, sep = ":")
   sample_type_count <- sample_type_count[, !(colnames(sample_type_count) %in% c("NA", "Var1"))]
   
@@ -492,24 +553,26 @@ precursor_ranking$Precursor <- factor(precursor_ranking$Precursor, precursor_ran
 # dev.off()
 
 # Plot correlations of two top-scoring precursors and two low-scoring precursors
-# for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
-#   pot_prec <- as.character(precursor_ranking$Precursor[i])
-#   plot_freqs <- 
-#     data.frame(comparison_list$Normalized_frequencies)[,make.names(c(pot_prec, target))]
-#   colnames(plot_freqs) <- c("Precursor", "Progenitor")
-#   plot_freqs$Size <- comparison_list$Node_sizes$Size
-#   # png(paste("./Images/", pot_prec, "precursor_to_", target, "_7dpi.png", sep = ""))
-#   print(
-#     ggplot() +
-#       geom_point(data = plot_freqs[plot_freqs$Progenitor == 0, ], 
-#                  aes(x = Precursor, y = Progenitor, size = Size), color = "grey") +
-#       geom_point(data = plot_freqs[plot_freqs$Progenitor > 0, ], 
-#                  aes(x = Precursor, y = Progenitor, size = Size)) +
-#       labs(x = pot_prec, y = target) +
-#       theme(legend.position = "none")
-#   )
-#   # dev.off()
-# }
+i <- 2
+for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
+  pot_prec <- as.character(precursor_ranking$Precursor[i])
+  plot_freqs <-
+    data.frame(comparison_list$Normalized_frequencies)[,make.names(c(pot_prec, target))]
+  colnames(plot_freqs) <- c("Precursor", "Progenitor")
+  plot_freqs$Size <- comparison_list$Node_sizes$Size
+  # png(paste("./Images/", pot_prec, "precursor_to_", target, "_37dpi_all.png", sep = ""))
+  print(
+    ggplot() +
+      geom_point(data = plot_freqs[plot_freqs$Progenitor == 0, ],
+                 aes(x = Precursor, y = Progenitor), size = 6) + #, size = Size)) + #, color = "grey") +
+      geom_point(data = plot_freqs[plot_freqs$Progenitor > 0, ],
+                 aes(x = Precursor, y = Progenitor), size = 6) + #, size = Size)) +
+      labs(x = pot_prec, y = target) +
+      theme(text = element_text(size = 36))#+
+      # theme(legend.position = "none")
+  )
+  # dev.off()
+}
 
 # ** Calculate one-(tree-)out correlations ####
 
@@ -717,6 +780,22 @@ for(p in 1:(nrow(precursor_ranking) - 1)){
   }
 }
 
+example_sample <- sampled_wcors[, 2, drop = F]
+colnames(example_sample) <- "Wcor"
+
+# Example plot
+# png("./Images/Ventricular_endocardium_to_nppc_fibroblast_bootcor.png",
+#     width = 600, height = 400)
+ggplot(example_sample) +
+  geom_histogram(aes(x = Wcor)) +
+  geom_vline(xintercept = mean(example_sample$Wcor), col = "red", size = 3) +
+  geom_vline(xintercept = 
+               precursor_ranking$Weighted_cor_progpos[precursor_ranking$Precursor == "Endocardium (Ventricle)"],
+             col = "blue", size = 3) +
+  labs(x = "Correlation", y = "Count") +
+  theme(text = element_text(size = 36))
+# dev.off()
+
 precursor_ranking$Wcor_plus095 <- precursor_ranking$Weighted_cor_progpos + 2 * precursor_ranking$Weighted_cor_se
 precursor_ranking$Wcor_minus095 <- precursor_ranking$Weighted_cor_progpos - 2 * precursor_ranking$Weighted_cor_se
 
@@ -742,10 +821,19 @@ for(p in 1:(nrow(precursor_ranking) - 1)){
 # precursor_ranking_plot <- precursor_ranking[(precursor_ranking$Weighted_cor_progpos > 0 &
 #                                               precursor_ranking$Cor_bootstrap_p < 0.001) |
 #                                               precursor_ranking$Precursor %in% precursors_include, ]
-precursor_ranking_plot <- precursor_ranking[(precursor_ranking$Weighted_cor_progpos > 0 &
-                                               precursor_ranking$Wcor_minus095 > precursor_ranking$Plus095) |
-                                              precursor_ranking$Precursor %in% precursors_include, ]
-prp_m <- melt(precursor_ranking_plot[, c("Precursor", "Weighted_cor_progpos", "Mean_cor")])
+potential_prec <-
+  union(precursor_ranking$Precursor[precursor_ranking$Cor_bootstrap_p < 0.001 &
+                                      precursor_ranking$Weighted_cor_progpos > 0],
+        precursors_include)
+# potential_prec <- precursor_ranking$Precursor[precursor_ranking$Precursor != target]
+# potential_prec <- potential_prec[grep("Duplex", potential_prec, invert = T)]
+
+# OLD
+# precursor_ranking_plot <- precursor_ranking[(precursor_ranking$Weighted_cor_progpos > 0 &
+#                                                precursor_ranking$Wcor_minus095 > precursor_ranking$Plus095) |
+#                                               precursor_ranking$Precursor %in% precursors_include, ]
+precursor_ranking_plot <- precursor_ranking[precursor_ranking$Precursor %in% potential_prec, ]
+prp_m <- reshape2::melt(precursor_ranking_plot[, c("Precursor", "Weighted_cor_progpos", "Mean_cor")])
 prp_m$Type_alpha <- ifelse(prp_m$variable == "Weighted_cor_progpos", 1, 0.9)
 prp_bebar <- precursor_ranking_plot[, c("Precursor", "Minus095", "Plus095")]
 prp_m <- merge(prp_m, prp_bebar)
@@ -759,9 +847,16 @@ prp_m$Eminus <- ifelse(prp_m$variable == "Weighted_cor_progpos",
 
 # prp_m$Minus099[prp_m$variable == "Weighted_cor_progpos"] <- NA
 # prp_m$Plus099[prp_m$variable == "Weighted_cor_progpos"] <- NA
+prp_m$Eminus[prp_m$variable == "Weighted_cor_progpos"] <- NA
+prp_m$Eplus[prp_m$variable == "Weighted_cor_progpos"] <- NA
 
 
-png(paste("./Images/", target, "_precursors_with_bootstrap_37dpi.png", sep = ""), type = "quartz")
+# pdf(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi.pdf", sep = ""),
+    #width = 1400, height = 768)
+png(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi_legend.png", sep = ""),
+    type = "quartz", width = 900, height = 768)
+# png("./Images/Fibroblast_col11_sources.png",
+    # width = 960, height = 480)
 print(
   ggplot(prp_m) +
     geom_bar(aes(x = Precursor, y = value, fill = Precursor, group = variable, alpha = Type_alpha),
@@ -769,24 +864,25 @@ print(
     # geom_errorbar(aes(x = Precursor, ymin = Minus099, ymax = Plus099, group = variable), 
     #               position = position_dodge(width = 1), width = 0.5) +
     geom_errorbar(aes(x = Precursor, ymin = Eminus, ymax = Eplus, group = variable), 
-                  position = position_dodge(width = 1), width = 0.5) +
+                  position = position_dodge(width = 1), width = 0.5) +#, size = 2) +
     scale_fill_manual(values = ann_colors$Celltype) +
-    scale_alpha(range = c(0.35, 1)) +
-    labs(title = paste(target, ""), y = "Correlation") +
-    theme(legend.position = "none",
+    scale_alpha(range = c(0.35, 1), guide = F) +
+    labs(title = paste(target, ""), y = "Correlation", fill = "Source") +
+    theme(#legend.position = "none",
+          text = element_text(size = 36),
           axis.ticks.x = element_blank(),
           axis.text.x = element_blank())
 )
 dev.off()
 
-potential_prec <- 
-  union(precursor_ranking$Precursor[precursor_ranking$Cor_bootstrap_p < 0.001 &
-                                      precursor_ranking$Weighted_cor_progpos > 0],
-        precursors_include)
+# potential_prec <- 
+#   union(precursor_ranking$Precursor[precursor_ranking$Cor_bootstrap_p < 0.001 &
+#                                       precursor_ranking$Weighted_cor_progpos > 0],
+#         precursors_include)
 # union(precursor_ranking$Precursor[precursor_ranking$Weighted_cor_progpos > 0.5 & 
 #                               precursor_ranking$Mean_count >= 10],
 #       precursors_include)
-print(potential_prec)
+# print(potential_prec)
 
 # precursor_ranking_plot <- precursor_ranking_plot[order(-precursor_ranking_plot$Z_bootstrap), ]
 # precursor_ranking_plot$Precursor <- factor(precursor_ranking_plot$Precursor, 
@@ -814,14 +910,14 @@ print(potential_prec)
 
 
 # make.names("M (apoeb)")
-precursor_candidate <- "Fibroblasts"
+# precursor_candidate <- "Fibroblasts"
 # # 
-data_cors <- comparison_list$Normalized_frequencies[, c(target, precursor_candidate)]
-colnames(data_cors) <- c("Target", "Precursor")
-dc <- data_cors[data_cors$Target != 0,]
-dc_b1 <- data.frame(Target = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, 2],
-                    Precursor = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, 2])
-dc_b1 <- dc_b1[dc_b1$Target != 0, ]
+# data_cors <- comparison_list$Normalized_frequencies[, c(target, precursor_candidate)]
+# colnames(data_cors) <- c("Target", "Precursor")
+# dc <- data_cors[data_cors$Target != 0,]
+# dc_b1 <- data.frame(Target = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, 2],
+#                     Precursor = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, 2])
+# dc_b1 <- dc_b1[dc_b1$Target != 0, ]
 
 # ggplot(dc) +
 #   geom_point(aes(x = F_nppc, y = M_apoeb))
@@ -849,13 +945,13 @@ dc_b1 <- dc_b1[dc_b1$Target != 0, ]
 # cor(dc[grep("Hr14", rownames(dc)), ])
 # cor(dc_b1[grep("Hr14", rownames(dc_b1)), ])
 
-dc_n_b1 <- cbind(dc, dc_b1)[, c(1, 2, 4)]
-dc_n_b1$Tree <- sapply(rownames(dc_n_b1), function(x){unlist(strsplit(x, ":"))[1]})
-ggplot(dc_n_b1) +
-  geom_point(aes(x = Target, y = Precursor, color = Tree)) +
-  geom_segment(aes(x = Target, xend = Target, y = Precursor, yend = Precursor.1, color = Tree),
-               arrow = arrow(length=unit(0.30,"cm"))) +
-  labs(x = target, y = precursor_candidate)
+# dc_n_b1 <- cbind(dc, dc_b1)[, c(1, 2, 4)]
+# dc_n_b1$Tree <- sapply(rownames(dc_n_b1), function(x){unlist(strsplit(x, ":"))[1]})
+# ggplot(dc_n_b1) +
+#   geom_point(aes(x = Target, y = Precursor, color = Tree)) +
+#   geom_segment(aes(x = Target, xend = Target, y = Precursor, yend = Precursor.1, color = Tree),
+#                arrow = arrow(length=unit(0.30,"cm"))) +
+#   labs(x = target, y = precursor_candidate)
 # for(t in unique(dc_n_b1$Tree)){
 #   print(
 #     paste("Tree", t, "observed correlation:",
@@ -865,37 +961,37 @@ ggplot(dc_n_b1) +
 #   )        
 # }
 # 
-tree_to_look_at <- "Hr26"
+# tree_to_look_at <- "Hr26"
 # 
-precursor_candidate <- "Fibroblasts"
-bootstrapping_cors <-
-  data.frame(Precursor = rep(precursor_candidate, samples),
-             Sample = 1:samples,
-             Bootstrapped_cor = numeric(1000))
-data_cors <- data.frame(comparison_list$Normalized_frequencies[, c(target, precursor_candidate)],
-                        comparison_list$Node_sizes)
-colnames(data_cors)[1:2] <- c("Target", "Precursor")
-dc <- data_cors[data_cors$Target != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(data_cors)),]
-
-for(b in 1:samples){
-  dc_boot <- data.frame(Node_sizes = bootstrap_list[[precursor_candidate]]$Node_sizes[, b],
-                        Prec_freq = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, b],
-                        Prog_freq = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, b])
-  dc_boot <- dc_boot[dc_boot$Prog_freq != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(dc_boot)), ]
-  bootstrapping_cors$Bootstrapped_cor[b] <-
-    wtd.cors(dc_boot$Prec_freq, dc_boot$Prog_freq, weight = dc_boot$Node_sizes)
-}
+# precursor_candidate <- "Fibroblasts"
+# bootstrapping_cors <-
+#   data.frame(Precursor = rep(precursor_candidate, samples),
+#              Sample = 1:samples,
+#              Bootstrapped_cor = numeric(1000))
+# data_cors <- data.frame(comparison_list$Normalized_frequencies[, c(target, precursor_candidate)],
+#                         comparison_list$Node_sizes)
+# colnames(data_cors)[1:2] <- c("Target", "Precursor")
+# dc <- data_cors[data_cors$Target != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(data_cors)),]
 # 
-# png(paste("./Images/", tree_to_look_at, "_", precursor_candidate, "_to_", target, ".png", sep = ""),
-#     width = 738)
-ggplot(bootstrapping_cors) +
-  geom_histogram(aes(x = Bootstrapped_cor), binwidth = 0.05) +
-  geom_vline(xintercept = mean(bootstrapping_cors$Bootstrapped_cor), color = "red") +
-  geom_vline(xintercept = wtd.cors(dc$Target, dc$Precursor, weight = dc$Size), color = "blue") +
-  labs(title = paste(tree_to_look_at, ":", precursor_candidate, "to", target),
-       x = "Bootstrapped correlation")
-# dev.off()
-labs(title = paste("All trees:", precursor_candidate, "to", target))
+# for(b in 1:samples){
+#   dc_boot <- data.frame(Node_sizes = bootstrap_list[[precursor_candidate]]$Node_sizes[, b],
+#                         Prec_freq = bootstrap_list[[precursor_candidate]]$Precursor_sampled_freqs[, b],
+#                         Prog_freq = bootstrap_list[[precursor_candidate]]$Progeny_frequencies[, b])
+#   dc_boot <- dc_boot[dc_boot$Prog_freq != 0 & grepl(paste(tree_to_look_at, ":", sep = ""), rownames(dc_boot)), ]
+#   bootstrapping_cors$Bootstrapped_cor[b] <-
+#     wtd.cors(dc_boot$Prec_freq, dc_boot$Prog_freq, weight = dc_boot$Node_sizes)
+# }
+# # 
+# # png(paste("./Images/", tree_to_look_at, "_", precursor_candidate, "_to_", target, ".png", sep = ""),
+# #     width = 738)
+# ggplot(bootstrapping_cors) +
+#   geom_histogram(aes(x = Bootstrapped_cor), binwidth = 0.05) +
+#   geom_vline(xintercept = mean(bootstrapping_cors$Bootstrapped_cor), color = "red") +
+#   geom_vline(xintercept = wtd.cors(dc$Target, dc$Precursor, weight = dc$Size), color = "blue") +
+#   labs(title = paste(tree_to_look_at, ":", precursor_candidate, "to", target),
+#        x = "Bootstrapped correlation")
+# # dev.off()
+# labs(title = paste("All trees:", precursor_candidate, "to", target))
 
 # 
 # dc_b1 <- data.frame(F_nppc = bootstrap_list$`M (apoeb)`$Progeny_frequencies[, 1],
@@ -944,9 +1040,9 @@ full_descendancy_plot$Log10p_bottom <-
   sapply(full_descendancy_plot$Precursor_presence_p, function(x) max(log10(x), -10))
 
 x <- length(potential_prec)
-png(paste("./Images/", target, "precursor_node_probs_37dpi.png", sep = ""),
-width = 768, height = 256 * ceiling(length(potential_prec)/5))
-# png(paste("./Images/", target, "precursor_node_probs_7dpi.png", sep = ""),
+# png(paste("./Images/", target, "precursor_node_probs_37dpi.png", sep = ""),
+# width = 768, height = 256 * ceiling(length(potential_prec)/5))
+# png(paste("./Images/", target, "precursor_node_probs_37dpi.png", sep = ""),
 #     width = max(512, 384 * ceiling(x/5)), height = 256 * min(x, min(3, x)))
 print(
   # ggplot(full_descendancy[full_descendancy$Cell_type == zoom_to[i] &
@@ -964,6 +1060,119 @@ print(
           axis.ticks.x = element_blank(),
           strip.text.x = element_text(size = 12, face = "bold"))
 )
-dev.off()
+# dev.off()
 
+
+
+# Calculate distance between cell types in a tree ####
+t <- 1
+tree <- tree_list[[t]]$Tree
+# ** Compute background tree distance distribution ####
+# Calculate node distances
+edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+nodes <- setdiff(unique(c(edge_list$from, edge_list$to[edge_list$Cell.type == "NA"])), "nd0")
+node_distances <- data.frame(t(combn(nodes, 2)))
+colnames(node_distances) <- c("Node_1", "Node_2")
+node_distances$Distance <- 
+  apply(node_distances[, c("Node_1", "Node_2")], 1,
+        function(x){
+          v_1 <- unlist(strsplit(as.character(x[1]), "_"))
+          v_2 <- unlist(strsplit(as.character(x[2]), "_"))
+          # For comparison, add "-1"'s to the shortest vector
+          v_1f <- c(v_1, rep(-1, max(length(v_2) - length(v_1), 0)))
+          v_2f <- c(v_2, rep(-1, max(length(v_1) - length(v_2), 0)))
+          # Distance = d(str_1 - mcra) + d(str_2 - mcra) =
+          #            d(str_1) - d(mcra) + d(str_2) - d(mcra) =
+          #            d(str_1) + d(str_2) - 2*d(mcra)
+          return(length(v_1) + length(v_2) - 2*sum(cumprod(v_1f == v_2f)))
+        })
+node_distances <- rbind(node_distances,
+                        data.frame(Node_1 = nodes,
+                                   Node_2 = nodes,
+                                   Distance = 0))
+# Calculate node chances
+pure_sizes <- aggregate(pure_counts$Type_count,
+                        by = list(Node = pure_counts$Node),
+                        sum)
+colnames(pure_sizes)[2] <- "Node_count"
+pure_sizes <- pure_sizes[pure_sizes$Node != "nd0", ]
+pure_sizes$Chance <- pure_sizes$Node_count/sum(pure_sizes$Node_count)
+# Calculate distance chances
+node_distances <- merge(node_distances, pure_sizes[, c("Node", "Chance")],
+                        by.x = "Node_1", by.y = "Node")
+colnames(node_distances)[4] <- "Chance_1"
+node_distances <- merge(node_distances, pure_sizes[, c("Node", "Chance")],
+                        by.x = "Node_2", by.y = "Node")
+colnames(node_distances)[5] <- "Chance_2"
+node_distances$Distance_chance <- node_distances$Chance_1 * node_distances$Chance_2
+node_distances$Distance_chance[node_distances$Node_1 != node_distances$Node_2] <-
+  2*node_distances$Distance_chance[node_distances$Node_1 != node_distances$Node_2]
+# Calculate distance distribution and average
+distance_distribution <- 
+  aggregate(node_distances$Distance_chance,
+          by = list(Distance = node_distances$Distance),
+          sum)
+colnames(distance_distribution)[2] <- "Chance"
+ggplot(distance_distribution) +
+  geom_bar(aes(x = Distance, y = Chance), stat = "identity") +
+  labs(title = paste("Distance distribution for tree ", names(tree_list)[t],
+                     ", average ", 
+                     round(weighted.mean(distance_distribution$Distance, distance_distribution$Chance), 2),
+                     sep = ""))
+       
+# ** Calculate distance distribution for cell type pairs ####
+cell_type_distances <-
+  data.frame(t(combn(setdiff(unique(edge_list$Cell.type), "NA"), 2)))
+colnames(cell_type_distances) <- c("Type_1", "Type_2")
+cell_type_distances <-
+  rbind(cell_type_distances,
+        data.frame(Type_1 = setdiff(unique(edge_list$Cell.type), "NA"),
+           Type_2 = setdiff(unique(edge_list$Cell.type), "NA")))
+cell_type_distances$Distance <- -1
+cell_type_distances$Measurements <- 0
+# d <- 1126
+for(d in 1:nrow(cell_type_distances)){
+  print(paste(d, " out of ", nrow(cell_type_distances), sep = ""))
+  type_1 <- cell_type_distances$Type_1[d]
+  type_2 <- cell_type_distances$Type_2[d]
+  # Calculate distances - node 1, node 2, distance. Note the number of comparisons is m*n for
+  # two different cell types, but 0.5*m(m-1) for inter-cell type distances.
+  if(type_1 == type_2){
+    type_positions <- edge_list[edge_list$Cell.type == type_1 &
+                                    edge_list$from != "nd0", ]
+    colnames(type_positions)[1:2] <- c("Node", "Cell")
+    if(nrow(type_positions) > 1){
+      type_distances <- data.frame(t(combn(type_positions$Cell, 2)))
+      colnames(type_distances) <- c("Cell_1", "Cell_2")
+      type_distances <- merge(type_distances, type_positions[, c("Node", "Cell")],
+                              by.x = "Cell_1", by.y = "Cell")
+      colnames(type_distances)[3] <- "Node_1"
+      type_distances <- merge(type_distances, type_positions[, c("Node", "Cell")],
+                              by.x = "Cell_2", by.y = "Cell")
+      colnames(type_distances)[4] <- "Node_2"
+      type_distances <- merge(type_distances, node_distances[, c("Node_1", "Node_2", "Distance")])
+      cell_type_distances$Distance[d] <- mean(type_distances$Distance)
+      cell_type_distances$Measurements[d] <- nrow(type_distances)
+    }
+  }else{
+    type_1_positions <- edge_list[edge_list$Cell.type == type_1 &
+                                    edge_list$from != "nd0", ]
+    colnames(type_1_positions) <- c("Node_1", "Cell_1", "Type_1")
+    type_2_positions <- edge_list[edge_list$Cell.type == type_2 &
+                                    edge_list$from != "nd0", ]
+    colnames(type_2_positions) <- c("Node_2", "Cell_2", "Type_2")
+    type_distances <- merge(type_1_positions, type_2_positions)
+    type_distances <- merge(type_distances, node_distances[, c("Node_1", "Node_2", "Distance")])
+    cell_type_distances$Distance[d] <- mean(type_distances$Distance)
+    cell_type_distances$Measurements[d] <- nrow(type_distances)
+  }
+}  
+
+# ** Compare distances for cell type pairs to background distribution by calculating z-values ####
+mean_dist <- weighted.mean(distance_distribution$Distance, distance_distribution$Chance)
+distance_distribution$x_m <- distance_distribution$Distance - mean_dist
+dist_sd <- sqrt(sum(distance_distribution$Chance * distance_distribution$x_m^2)/nrow(distance_distribution))
+cell_type_distances$Z_distance <- 
+  sqrt(cell_type_distances$Measurements) * (cell_type_distances$Distance - mean_dist)/dist_sd
+View(cell_type_distances[cell_type_distances$Type_1 == cell_type_distances$Type_2, ])
 
