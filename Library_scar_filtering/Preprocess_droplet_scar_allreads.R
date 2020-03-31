@@ -6,7 +6,7 @@
 
 # Parameters ####
 log2.cutoff <- 3
-library_name <- "Hr10"
+library_name <- "Hr23"
 
 # Dependencies ####
 source("~/Documents/Projects/TOMO_scar/Scripts/linnaeus-scripts/scar_helper_functions.R")
@@ -231,8 +231,8 @@ scars.output <- scars.filter.1[!(scars.filter.1$Scar.id %in% sequencing.error.sc
 # Undersequencing filter
 ggplot(scars.output[scars.output$Library == library_name, ]) +
   geom_histogram(aes(x = Reads), binwidth = 10) +
-  scale_x_continuous(limits = c(-10, 3000))
-min.scar.reads <- 500
+  scale_x_continuous(limits = c(-10, 5000))
+min.scar.reads <- 1000
 scars.output.2 <- scars.output[scars.output$Reads >= min.scar.reads, ]
 
 # Doublet filter ####
@@ -249,6 +249,10 @@ cell.scar.count <- merge(cell.scar.count, wt.cells[, c("Cell", "Cell.type")])
 
 maximum.scars <- data.frame(Cell.type = unique(cell.scar.count$Cell.type),
                             Maximum = NA)
+cell_type_freqs <- data.frame(table(cell.scar.count$Cell.type))
+colnames(cell_type_freqs) <- c("Cell.type", "Frequency")
+maximum.scars <- merge(maximum.scars, cell_type_freqs)
+maximum.scars <- maximum.scars[order(maximum.scars$Frequency, decreasing = T), ]
 
 for(c.row in 1:nrow(maximum.scars)){
   c.cell.type <- maximum.scars$Cell.type[c.row]
@@ -263,8 +267,8 @@ for(c.row in 1:nrow(maximum.scars)){
 }
 maximum.scars$Maximum <- as.integer(maximum.scars$Maximum)
 
-# postscript(paste("./Images/", library_name", _cell_type_scar_counts_with_cutoff.eps", sep = ""),
-#     width = 7, height = 4.5)
+postscript(paste("./Images/", library_name, "_cell_type_scar_counts_with_cutoff.eps", sep = ""),
+    width = 7, height = 4.5)
 ggplot() +
   geom_histogram(data = cell.scar.count, aes(x = Scars), binwidth = 1) +
   geom_vline(data = maximum.scars, aes(xintercept = Maximum + 0.5), color = "red") +
@@ -273,7 +277,7 @@ ggplot() +
   theme(axis.title = element_text(size = 12),
         axis.text = element_text(size = 6),
         strip.text = element_text(size = 4))
-# dev.off()
+dev.off()
 
 cell.scar.count <- merge(cell.scar.count, maximum.scars)
 
@@ -285,3 +289,4 @@ scars.output.2 <- scars.output.2[!(scars.output.2$Cell %in% cells.too.many.scars
 write.csv(scars.output.2, paste("./Data/scars/", library_name, "_used_scars.csv", sep = ""),
           row.names = F, quote = F)
 write.csv(maximum.scars, paste("./Data/scars/", library_name, "_max_scars.csv", sep = ""))
+
