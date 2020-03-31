@@ -19,10 +19,9 @@
 # expected value. After calculating this p-value for all scars, we select the
 # scar with the highest p-value as the first scar.
 
-# Dependencies ####
-source("~/Documents/Projects/TOMO_scar/Scripts/linnaeus-scripts/scar_helper_functions.R")
-
 # Parameters ####
+sample_name <- "Hr27"
+library_names <- c(sample_name, paste(sample_name, "a", sep = ""), paste(sample_name, "v", sep = ""), paste(sample_name, "b", sep = ""))
 # Fraction of doublets expected.
 doublet.rate <- 0.1 # Default is 0.1, set to 0 to turn off.
 # The minimum detection rate for a scar to be considered as top scar.
@@ -45,6 +44,9 @@ parameters <-
 # most frequent scars, set to NA to include all)
 number.scars <- NA
 
+# Dependencies ####
+source("~/Documents/Projects/TOMO_scar/Scripts/linnaeus-scripts/scar_helper_functions.R")
+
 # Load data ####
 print("Loading data")
 # mRNA larvae
@@ -58,7 +60,8 @@ tsne.coord.in$Cell.type[grepl("Macrophage", tsne.coord.in$Cell.type)] <- "Macrop
 tsne.coord.in$Cell.type[grepl("Endocardium", tsne.coord.in$Cell.type)] <- 
   tsne.coord.in$final.zoom[grepl("Endocardium", tsne.coord.in$Cell.type)]
 tsne.coord.in$Cell.type[grepl("Endocardium frzb", tsne.coord.in$Cell.type)] <- "Endocardium (frzb)"
-tsne.coord <- tsne.coord.in[tsne.coord.in$orig.ident %in% "Hr10", c("Cell", "Cell.type")]
+tsne.coord <- tsne.coord.in[tsne.coord.in$orig.ident %in% library_names, c("Cell", "Cell.type")]
+# tsne.coord <- tsne.coord.in[tsne.coord.in$orig.ident %in% "Hr10", c("Cell", "Cell.type")]
 N <- nrow(tsne.coord)
 
 # Cell type colors
@@ -94,7 +97,8 @@ celltype_colors <- merge(celltype_colors[, c("name", "color", "Cell.type")], cel
 
 # Scars
 scar.input <- 
-  read.csv("./Data/scars/Hr10_scars_compared.csv", stringsAsFactors = F)
+  read.csv(paste("./Data/scars/", sample_name, "_scars_compared.csv", sep = ""),
+           stringsAsFactors = F)
 
 scar.input <- merge(scar.input[, c("Cell", "Scar", "Presence", "p")],
                     tsne.coord)
@@ -758,7 +762,7 @@ tree.plot.cells <-
 tree.plot.cells.scar.blind <- tree.plot.cells
 tree.plot.cells.scar.blind$Scar.acquisition <- ""
 LINNAEUS.pie <- generate_tree(tree.plot.cells.scar.blind)
-# save(LINNAEUS.pie, file = "~/Documents/Projects/heart_Bo/Data/Trees/Hr10_tree_pie.Robj")
+save(LINNAEUS.pie, file = paste("~/Documents/Projects/heart_Bo/Data/Trees/", sample_name, "_tree_pie.Robj", sep = ""))
 # Without cells
 LINNAEUS.pie.wg <-
   collapsibleTree(df = LINNAEUS.pie, root = LINNAEUS.pie$scar, pieNode = T,
@@ -767,12 +771,12 @@ LINNAEUS.pie.wg <-
                   ctypes = celltype_colors$Cell.type,linkLength=50,
                   ct_colors = celltype_colors$color, angle = pi/2,
                   nodeSize_class = c(10, 20, 35), nodeSize_breaks = c(0, 50, 1000, 1e6))
-LINNAEUS.pie.wg
-# htmlwidgets::saveWidget(
-#   LINNAEUS.pie.wg,
-#   file = "~/Documents/Projects/heart_Bo/Images/Trees/tree_Hr10_LINNAEUS_pie.html")
+print(LINNAEUS.pie.wg)
+htmlwidgets::saveWidget(
+  LINNAEUS.pie.wg,
+  file = paste("~/Documents/Projects/heart_Bo/Images/Trees/tree_", sample_name, "_LINNAEUS_pie.html", sep = ""))
 
 # Write parameters and statistics ####
-parst.output <- data.frame(Hr10 = rbind(t(parameters), t(tree.statistics)))
-# write.csv(parst.output, "./Data/Trees/Hr10_LINNAUS_par_stat.csv",
-#           quote = F)
+parst.output <- data.frame(rbind(t(parameters), t(tree.statistics)))
+write.csv(parst.output, paste("./Data/Trees/", sample_name, "_LINNAUS_par_stat.csv", sep = ""),
+          quote = F)
