@@ -1,5 +1,7 @@
 # Dependencies ####
 source("../Devtree/Scripts/Devtree_library.R")
+# source("~/Documents/Projects/TOMO_scar/Scripts/linnaeus-scripts/scar_helper_functions.R")
+
 library(reshape2)
 require(pheatmap)
 require(RColorBrewer)
@@ -136,6 +138,9 @@ count_cumulative <- function(tree){
 }
 
 RemapCellTypes <- function(node, reference_set){
+  if(!("Cell_type" %in% names(reference_set))){
+    stop("Expecting column named Cell_type in reference_set")
+  }
   for(c in names(node$children)){
     type_bc <- unlist(strsplit(c, "_"))
     if(type_bc[1] == "nd0"){
@@ -167,7 +172,7 @@ ZoomCellTypes <- function(node, zoom_types){
 # reference_set
 # load("./Data/Trees/A5_Ltree_pie.Robj")
 ReadTree <- function(library_name, reference_set){
-  load(paste("./Data/Trees/", library_name, "_tree_pie.Robj", sep = ""))
+  load(paste("./Data/Trees/Old_trees/", library_name, "_tree_pie.Robj", sep = ""))
   list_out <- list(Tree = LINNAEUS.pie)
   list_out$Tree$Do(RemapCellTypes, 
                    reference_set = reference_set)
@@ -175,7 +180,7 @@ ReadTree <- function(library_name, reference_set){
   return(list_out)
 }
 
-MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ct_colors){
+MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ctypes, ct_colors){
   tree_to_plot <- Clone(tree_sample$Tree)
   if(!is.null(types)){
     tree_to_plot$Do(ZoomCellTypes, 
@@ -185,7 +190,7 @@ MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ct_colors){
     collapsibleTree(df = tree_to_plot, root = tree_to_plot$scar, pieNode = T,
                     pieSummary = T, collapsed = F,
                     width = 1000, height = 500,
-                    ctypes = type_colors$celltype,linkLength=60, 
+                    ctypes = ctypes,linkLength=60, 
                     ct_colors = ct_colors, angle = pi/2,fontSize = 0,
                     nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6)) 
 
@@ -197,38 +202,77 @@ MakePieTree <- function(tree_sample, pie_tree_name, types = NULL, ct_colors){
 # Prepare colors and cell type data ####
 # type_colors <- read.csv("./Data/color.table.all.sub.csv", sep = ";", stringsAsFactors = F)[, -1]
 
+# OLD cell types
 # cell_types <- read.csv("./Data/all.hearts.all.cells.all.sub.sept03.csv", stringsAsFactors = F)
-cell_types <- fread("./Data/celltypes_zoom_allcells.csv",
-                    header = T)
-# cell_types$Cell_type <- cell_types$zoom.subtypes #cell_types$immune.fibro.CM.subtypes
-cell_types$Cell_name <- paste("nd", cell_types$V1, sep = "")
+# cell_types <- fread("./Data/celltypes_zoom_allcells.csv",
+#                     header = T)
+# # cell_types$Cell_type <- cell_types$zoom.subtypes #cell_types$immune.fibro.CM.subtypes
+# cell_types$Cell_name <- paste("nd", cell_types$V1, sep = "")
+# 
+# type_rename <- data.frame(zoom.subtypes = unique(cell_types$zoom.subtypes))
+# type_rename$Cell_type <- as.character(type_rename$zoom.subtypes)
+# type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+#                         c("CM Atrium", "CM Ventricle (ttn.2)", "CM Ventricle", "CM Atrium (ttn.2)",
+#                           "CM (Proliferating)")] <- "Cardiomyocytes"
+# type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+#                         c("Bl.ves.EC (apnln)", "Bl.ves.EC (plvapb)", 
+#                           "Bl.ves.EC (lyve1)")] <- "Blood vessel EC"
+# type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+#                         c("Fibroblast (acta2)")] <- "Fibroblast"
+# type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+#                         c("Ery Duplex")] <- NA
+# type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+#                         c("Immune Duplex")] <- NA
+# type_rename$Cell_type[type_rename$zoom.subtypes %in% 
+#                         c("Fibroblast (proliferating)")] <- "Fibroblast (col11a1a)"
+# type_rename <- type_rename[complete.cases(type_rename), ]
+# cell_types <- merge(cell_types, type_rename, by = "zoom.subtypes")
+# cell_types_oldformat <- cell_types
 
-type_rename <- data.frame(zoom.subtypes = unique(cell_types$zoom.subtypes))
-type_rename$Cell_type <- as.character(type_rename$zoom.subtypes)
-type_rename$Cell_type[type_rename$zoom.subtypes %in% 
-                        c("CM Atrium", "CM Ventricle (ttn.2)", "CM Ventricle", "CM Atrium (ttn.2)",
-                          "CM (Proliferating)")] <- "Cardiomyocytes"
-type_rename$Cell_type[type_rename$zoom.subtypes %in% 
-                        c("Bl.ves.EC (apnln)", "Bl.ves.EC (plvapb)", 
-                          "Bl.ves.EC (lyve1)")] <- "Blood vessel EC"
-type_rename$Cell_type[type_rename$zoom.subtypes %in% 
-                        c("Fibroblast (acta2)")] <- "Fibroblast"
-type_rename$Cell_type[type_rename$zoom.subtypes %in% 
-                        c("Ery Duplex")] <- NA
-type_rename$Cell_type[type_rename$zoom.subtypes %in% 
-                        c("Immune Duplex")] <- NA
-type_rename$Cell_type[type_rename$zoom.subtypes %in% 
-                        c("Fibroblast (proliferating)")] <- "Fibroblast (col11a1a)"
-type_rename <- type_rename[complete.cases(type_rename), ]
-cell_types <- merge(cell_types, type_rename, by = "zoom.subtypes")
+# NEW cell types
+cell_types <- read.csv("./Data/final_metadata.csv", stringsAsFactors = F)
+colnames(cell_types)[1] <- "Cell"
+# Cell type decisions as follows: all T-cell types and all macrophage types become T-cells/macrophages. 
+# Split endocardium into 1 and 2, A and V but merge endocardium frzb.
+cell_types$Cell_type <- cell_types$lineage.ident
+cell_types$Celltype[grepl("T-cell", cell_types$Cell_type)] <- "T-cells"
+cell_types$Cell_type[grepl("Macrophage", cell_types$Cell_type)] <- "Macrophages"
+cell_types$Cell_type[grepl("Endocardium", cell_types$Cell_type)] <- 
+  cell_types$final.zoom[grepl("Endocardium", cell_types$Cell_type)]
+cell_types$Cell_type[grepl("Endocardium frzb", cell_types$Cell_type)] <- "Endocardium (frzb)"
+cell_types$Cell_name <- paste("nd", cell_types$Cell, sep = "")
 
-type_colors <- data.frame(celltype = unique(type_rename$Cell_type))
-type_colors$Color <-
-  c("#B79F00", "#7CAE00", "#e41a1c", "#00B4F0",
-    "#f781bf", "#FF64B0", "#00BA38", "#b2df8a",
-    "#F8766D", "#ff7f00", "#4daf4a", "#b15928",
-    "#F564E3", "#bebada", "#377eb8", "#984ea3",
-    "#C77CFF", "#b2b223", "#ffff33", "#DE8C00")
+celltypes <- data.frame(table(cell_types$Cell_type))
+colnames(celltypes)[1] <- c("Cell_type")
+
+celltype_colors <- data.frame(lapply(readRDS("./Data/col.table.rds")[, ], as.character), stringsAsFactors = F)
+celltype_colors <- celltype_colors[celltype_colors$set1 != "Perivascular cells" | is.na(celltype_colors$set1), ]
+celltype_colors$Cell_type <- celltype_colors$setCM
+celltype_colors$Cell_type[is.na(celltype_colors$Cell_type)] <- celltype_colors$setFibro[is.na(celltype_colors$Cell_type)]
+# For the remaining cell types, take the color according to set1 if the color has not been taken yet.
+celltype_colors$Cell_type[!(celltype_colors$set1 %in% celltype_colors$Cell_type) & !is.na(celltype_colors$set1) & is.na(celltype_colors$Cell_type)] <- 
+  celltype_colors$set1[!(celltype_colors$set1 %in% celltype_colors$Cell_type) & !is.na(celltype_colors$set1) & is.na(celltype_colors$Cell_type)]
+# celltype_colors$Cell_type[is.na(celltype_colors$Cell_type)] <- celltype_colors$set1[is.na(celltype_colors$Cell_type)]
+endo_add <- celltype_colors[celltype_colors$Cell_type %in% c("Endocardium (V)", "Endocardium (A)"), ]
+endo_add$Cell_type[endo_add$Cell_type == "Endocardium (V)"] <- 
+  "Endocardium 2 (V)"
+endo_add$Cell_type[endo_add$Cell_type == "Endocardium (A)"] <- 
+  "Endocardium 2 (A)"
+celltype_colors$Cell_type[celltype_colors$Cell_type == "Endocardium (V)"] <- 
+  "Endocardium 1 (V)"
+celltype_colors$Cell_type[celltype_colors$Cell_type == "Endocardium (A)"] <- 
+  "Endocardium 1 (A)"
+celltype_colors <- rbind(celltype_colors, endo_add)
+celltype_colors <- merge(celltype_colors[, c("name", "color", "Cell_type")], celltypes, all.y = T)
+
+
+# type_colors <- data.frame(celltype = unique(type_rename$Cell_type))
+# type_colors$Color <-
+#   c("#B79F00", "#7CAE00", "#e41a1c", "#00B4F0",
+#     "#f781bf", "#FF64B0", "#00BA38", "#b2df8a",
+#     "#F8766D", "#ff7f00", "#4daf4a", "#b15928",
+#     "#F564E3", "#bebada", "#377eb8", "#984ea3",
+#     "#C77CFF", "#b2b223", "#ffff33", "#DE8C00")
 # for(clr in c('Epicardium A', 'Epicardium V', 'Fibroblast', 'Fibroblast (cfd)',
 #     'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)',
 #     'Fibroblast (cxcl12a)', 'Perivascular cells')){
@@ -249,8 +293,10 @@ type_colors$Color <-
 
 # ph_annotation <- data.frame(Celltype = type_colors$celltype, row.names = type_colors$celltype)
 # ph_zoom_annotation <- data.frame(Zoomtype = type_colors$celltype, row.names = type_colors$celltype)
+# ann_colors <-
+#   list(Celltype = setNames(type_colors$Color, type_colors$Cell_type))
 ann_colors <-
-  list(Celltype = setNames(type_colors$Color, type_colors$Cell_type))
+  list(Celltype = setNames(celltype_colors$color, celltype_colors$Cell.type))
 
 
 # ann_colors <-
@@ -265,9 +311,9 @@ ann_colors <-
 # vertex_colors <- vertex_colors[order(vertex_colors$Order), ]
 # rownames(vertex_colors) <- vertex_colors$celltype
 
-# target <- "Fibroblast (nppc)"
+target <- "Fibroblast (nppc)"
 # target <- "Fibroblast (col11a1a)"
-target <- "Fibroblast-like cells"
+# target <- "Fibroblast-like cells"c
 # target <- "Perivascular cells"
 # target <- "Fibroblast (proliferating)"
 # target <- "Fibroblast (col12a1a)"
@@ -297,6 +343,7 @@ Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr
 Hr1_ref <- cell_types[cell_types$orig.ident == "Hr1", ]
 Hr1_ref$Cell_name <- paste("nd", sapply(Hr1_ref$Cell_name, function(x){unlist(strsplit(x, "_"))[2]}), sep = "")
 Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref)
+# Hr1 <- ReadTree("Hr1", reference_set = cell_types[cell_types$orig.ident == "Hr1", ])
 Hr2 <- ReadTree("Hr2", reference_set = cell_types[cell_types$orig.ident %in% c("Hr2a", "Hr2b"), ])
 Hr13 <- ReadTree("Hr13", reference_set = cell_types[cell_types$orig.ident == "Hr13", ])
 Hr14 <- ReadTree("Hr14", reference_set = cell_types[cell_types$orig.ident == "Hr14", ])
@@ -309,13 +356,14 @@ tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr2
 
 # Create tree visualization and zoom visualization
 for(t in 1:length(tree_list)){
-  tree_list[[t]] <- MakePieTree(tree_list[[t]], "Full_tree", ct_colors = type_colors$Color)
+  tree_list[[t]] <- MakePieTree(tree_list[[t]], "Full_tree", 
+                                ctypes = celltype_colors$Cell.type, ct_colors = celltype_colors$color)
   # tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
   #                               ct_colors = type_colors$colo1)
-  htmlwidgets::saveWidget(
-    tree_list[[t]]$Full_tree,
-    file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
-                 names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
+  # htmlwidgets::saveWidget(
+  #   tree_list[[t]]$Full_tree,
+  #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
+  #                names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
   # htmlwidgets::saveWidget(
   #   tree_list[[t]]$Fibrozoom_tree,
   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
@@ -561,7 +609,7 @@ for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
   colnames(plot_freqs) <- c("Precursor", "Progenitor")
   plot_freqs$Size <- comparison_list$Node_sizes$Size
   # png(paste("./Images/", pot_prec, "precursor_to_", target, "_37dpi_all.png", sep = ""))
-  print(
+  # print(
     ggplot() +
       geom_point(data = plot_freqs[plot_freqs$Progenitor == 0, ],
                  aes(x = Precursor, y = Progenitor), size = 6) + #, size = Size)) + #, color = "grey") +
@@ -570,7 +618,7 @@ for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
       labs(x = pot_prec, y = target) +
       theme(text = element_text(size = 36))#+
       # theme(legend.position = "none")
-  )
+  # )
   # dev.off()
 }
 
@@ -786,14 +834,14 @@ colnames(example_sample) <- "Wcor"
 # Example plot
 # png("./Images/Ventricular_endocardium_to_nppc_fibroblast_bootcor.png",
 #     width = 600, height = 400)
-ggplot(example_sample) +
-  geom_histogram(aes(x = Wcor)) +
-  geom_vline(xintercept = mean(example_sample$Wcor), col = "red", size = 3) +
-  geom_vline(xintercept = 
-               precursor_ranking$Weighted_cor_progpos[precursor_ranking$Precursor == "Endocardium (Ventricle)"],
-             col = "blue", size = 3) +
-  labs(x = "Correlation", y = "Count") +
-  theme(text = element_text(size = 36))
+# ggplot(example_sample) +
+#   geom_histogram(aes(x = Wcor)) +
+#   geom_vline(xintercept = mean(example_sample$Wcor), col = "red", size = 3) +
+#   geom_vline(xintercept = 
+#                precursor_ranking$Weighted_cor_progpos[precursor_ranking$Precursor == "Endocardium (Ventricle)"],
+#              col = "blue", size = 3) +
+#   labs(x = "Correlation", y = "Count") +
+#   theme(text = element_text(size = 36))
 # dev.off()
 
 precursor_ranking$Wcor_plus095 <- precursor_ranking$Weighted_cor_progpos + 2 * precursor_ranking$Weighted_cor_se
@@ -853,8 +901,8 @@ prp_m$Eplus[prp_m$variable == "Weighted_cor_progpos"] <- NA
 
 # pdf(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi.pdf", sep = ""),
     #width = 1400, height = 768)
-png(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi_legend.png", sep = ""),
-    type = "quartz", width = 900, height = 768)
+# png(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi_legend.png", sep = ""),
+#     type = "quartz", width = 900, height = 768)
 # png("./Images/Fibroblast_col11_sources.png",
     # width = 960, height = 480)
 print(
@@ -873,7 +921,7 @@ print(
           axis.ticks.x = element_blank(),
           axis.text.x = element_blank())
 )
-dev.off()
+# dev.off()
 
 # potential_prec <- 
 #   union(precursor_ranking$Precursor[precursor_ranking$Cor_bootstrap_p < 0.001 &
