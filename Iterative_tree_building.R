@@ -31,7 +31,7 @@ branch.size.ratio <- 0.125 # Default 0.125, set to 0 to turn off
 # Maximum scar probability to include scar in tree building
 max.scar.p <- 0.01
 # Maximum number of embryos a scar can be present in to include in tree building
-max.larvae <- 1
+max.larvae <- 100
 
 parameters <-
   data.frame(Doublet.rate = doublet.rate,
@@ -97,7 +97,7 @@ celltype_colors <- merge(celltype_colors[, c("name", "color", "Cell.type")], cel
 
 # Scars
 scar.input <- 
-  read.csv(paste("./Data/scars/", sample_name, "_scars_compared.csv", sep = ""),
+  read.csv(paste("./Data/scars/Seurat_bc_filter/", sample_name, "_scars_compared.csv", sep = ""),
            stringsAsFactors = F)
 
 scar.input <- merge(scar.input[, c("Cell", "Scar", "Presence", "p")],
@@ -279,6 +279,8 @@ repeat{
 
       if(nrow(scar.lls.select) > 0){
         scar.remove <- scar.lls.select$Scar[1]
+        # Difficult scars are scars that look more likely to be top scar but do not have a high enough
+        # detection rate.
         difficult.scars <-
           scar.lls$Scar[scar.lls$Degree.p >
                           scar.lls$Degree.p[scar.lls$Scar == scar.remove]]
@@ -286,6 +288,11 @@ repeat{
         # How to relate this to weak scars?
         print("No scar above minimum detection rate. Taking best scar under minimum detection rate")
         scar.remove <- scar.lls$Scar[1]
+        # Without scars that have a high enough detection rate, there are by definition no difficult
+        # scars. We still define them for code reasons.
+        difficult.scars <-
+          scar.lls$Scar[scar.lls$Degree.p >
+                          scar.lls$Degree.p[scar.lls$Scar == scar.remove]]
       }
       
       it.tree.element <- list(Scar = scar.remove,
@@ -336,6 +343,8 @@ repeat{
       tree.summary <- rbind(tree.summary, tree.summary.add)
     }
     
+    # This doesn't work but there's an issue with the difficult scars.
+    # rm(difficult.scars)
     scar.index <- scar.index + 1
   }
   if(!weak.scar.found){break}
@@ -762,7 +771,7 @@ tree.plot.cells <-
 tree.plot.cells.scar.blind <- tree.plot.cells
 tree.plot.cells.scar.blind$Scar.acquisition <- ""
 LINNAEUS.pie <- generate_tree(tree.plot.cells.scar.blind)
-save(LINNAEUS.pie, file = paste("~/Documents/Projects/heart_Bo/Data/Trees/", sample_name, "_tree_pie.Robj", sep = ""))
+# save(LINNAEUS.pie, file = paste("~/Documents/Projects/heart_Bo/Data/Trees/", sample_name, "_tree_pie.Robj", sep = ""))
 # Without cells
 LINNAEUS.pie.wg <-
   collapsibleTree(df = LINNAEUS.pie, root = LINNAEUS.pie$scar, pieNode = T,
@@ -774,9 +783,30 @@ LINNAEUS.pie.wg <-
 print(LINNAEUS.pie.wg)
 htmlwidgets::saveWidget(
   LINNAEUS.pie.wg,
-  file = paste("~/Documents/Projects/heart_Bo/Images/Trees/tree_", sample_name, "_LINNAEUS_pie.html", sep = ""))
-
+  file = paste("~/Documents/Projects/heart_Bo/Images/Trees_Sbcf/tree_", sample_name, "_LINNAEUS_pie.html", sep = ""))
+# Without cells but with all information
+tree.plot.cells.all <- tree.plot.cells
+tree.plot.cells.all <-
+  merge(tree.plot.cells,
+        node.count.cumulative.agg[, c("Node", "Freq")],
+        by.x = "Child", by.y = "Node", all.x = T)
+tree.plot.cells.all$Freq[is.na(tree.plot.cells.all$Freq)] <- ""
+tree.plot.cells.all$Scar.acquisition[tree.plot.cells.all$Freq != ""] <-
+  paste(tree.plot.cells.all$Scar.acquisition[tree.plot.cells.all$Freq != ""],
+        ", N = ", tree.plot.cells.all$Freq[tree.plot.cells.all$Freq != ""],
+        sep = "")
+LINNAEUS.pie.all.info <- generate_tree(tree.plot.cells.all)
+save(LINNAEUS.pie.all.info, file = paste("~/Documents/Projects/heart_Bo/Data/Trees/Sbcf/", sample_name, "_tree_pie.Robj", sep = ""))
+# LINNAEUS.pie.all.info.wg <-
+#   collapsibleTree(LINNAEUS.pie.all.info, root = LINNAEUS.pie.all.info$scar,
+#                   pieNode = T,
+#                   pieSummary = T,collapsed = F,
+#                   width = 800, height = 600,
+#                   ctypes = celltype_colors$Cell.type,
+#                   ct_colors = celltype_colors$color,
+#                   nodeSize_class = c(10, 20, 35), nodeSize_breaks = c(0, 50, 1000, 1e6))
+# LINNAEUS.pie.all.info.wg
 # Write parameters and statistics ####
 parst.output <- data.frame(rbind(t(parameters), t(tree.statistics)))
-write.csv(parst.output, paste("./Data/Trees/", sample_name, "_LINNAUS_par_stat.csv", sep = ""),
+write.csv(parst.output, paste("./Data/Trees/Sbcf/", sample_name, "_LINNAUS_par_stat.csv", sep = ""),
           quote = F)
