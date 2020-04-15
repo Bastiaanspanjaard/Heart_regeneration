@@ -6,14 +6,14 @@
 
 # Parameters ####
 log2.cutoff <- 3
-library_name <- "Hr23"
+library_name <- "Hr27"
 
 # Dependencies ####
 source("~/Documents/Projects/TOMO_scar/Scripts/linnaeus-scripts/scar_helper_functions.R")
 
 # Load data ####
 # Scars
-scars.in <- read.csv(paste("./Data/scars/", library_name, "_scar_filtered_scars.csv", sep = ""),
+scars.in <- read.csv(paste("./Data/scars/Seurat_bc_filter/", library_name, "_scar_filtered_scars.csv", sep = ""),
                        stringsAsFactors = F, sep = "\t")
 scars.in$Library <- library_name
 scars.in$Cell <- paste(scars.in$Library, scars.in$Barcode, sep = "_")
@@ -42,7 +42,7 @@ scars.unfiltered$Pair <- "With"
 cells <- unique(scars.unfiltered$Cell)
 
 # Read in all >1 read sequences (all UMIs)
-all.scars.g1 <- read.table(paste("./Data/scars/", library_name, "_scar_reads_over1.txt", sep = ""),
+all.scars.g1 <- read.table(paste("./Data/scars/Seurat_bc_filter/", library_name, "_scar_reads_over1.txt", sep = ""),
                              sep = "\t", stringsAsFactors = F)
 colnames(all.scars.g1)[-1] <- c("Barcode", "UMI", "Location", "Sequence")
 all.scars.g1$Library <- library_name
@@ -231,8 +231,8 @@ scars.output <- scars.filter.1[!(scars.filter.1$Scar.id %in% sequencing.error.sc
 # Undersequencing filter
 ggplot(scars.output[scars.output$Library == library_name, ]) +
   geom_histogram(aes(x = Reads), binwidth = 10) +
-  scale_x_continuous(limits = c(-10, 5000))
-min.scar.reads <- 1000
+  scale_x_continuous(limits = c(-10, 500))
+min.scar.reads <- 100
 scars.output.2 <- scars.output[scars.output$Reads >= min.scar.reads, ]
 
 # Doublet filter ####
@@ -286,7 +286,8 @@ cells.too.many.scars <-
 scars.output.2 <- scars.output.2[!(scars.output.2$Cell %in% cells.too.many.scars), ]
 
 # Write final output ####
-write.csv(scars.output.2, paste("./Data/scars/", library_name, "_used_scars.csv", sep = ""),
+write.csv(scars.output.2, paste("./Data/scars/Seurat_bc_filter/", library_name, "_used_scars.csv", sep = ""),
           row.names = F, quote = F)
-write.csv(maximum.scars, paste("./Data/scars/", library_name, "_max_scars.csv", sep = ""))
-
+write.csv(maximum.scars, paste("./Data/scars/Seurat_bc_filter/", library_name, "_max_scars.csv", sep = ""))
+rm(list=ls())
+# scars.output.2_old <- read.csv("./Data/scars/Hr4_used_scars.csv", stringsAsFactors = F)

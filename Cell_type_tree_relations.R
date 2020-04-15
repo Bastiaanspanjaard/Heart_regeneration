@@ -9,6 +9,12 @@ require(igraph)
 require(weights)
 require(data.table)
 
+loadRData <- function(fileName){
+  # Loads Rdata/Robj, and returns it so it can be named
+  load(fileName)
+  get(ls()[ls() != "fileName"])
+}
+
 CalculateCooccurrence <- function(tree_sample){
   node_counts <- count_cumulative(tree_sample$Tree)
   
@@ -171,9 +177,10 @@ ZoomCellTypes <- function(node, zoom_types){
 # library_name = "H5"
 # reference_set
 # load("./Data/Trees/A5_Ltree_pie.Robj")
-ReadTree <- function(library_name, reference_set){
-  load(paste("./Data/Trees/Old_trees/", library_name, "_tree_pie.Robj", sep = ""))
-  list_out <- list(Tree = LINNAEUS.pie)
+ReadTree <- function(library_name, reference_set, tree_path){
+  # load(paste(tree_path, library_name, "_tree_pie.Robj", sep = ""))
+  # load(paste("./Data/Trees/Old_trees/", library_name, "_tree_pie.Robj", sep = ""))
+  list_out <- list(Tree = loadRData(paste(tree_path, library_name, "_tree_pie.Robj", sep = "")))
   list_out$Tree$Do(RemapCellTypes, 
                    reference_set = reference_set)
   
@@ -296,7 +303,7 @@ celltype_colors <- merge(celltype_colors[, c("name", "color", "Cell_type")], cel
 # ann_colors <-
 #   list(Celltype = setNames(type_colors$Color, type_colors$Cell_type))
 ann_colors <-
-  list(Celltype = setNames(celltype_colors$color, celltype_colors$Cell.type))
+  list(Celltype = setNames(celltype_colors$color, celltype_colors$Cell_type))
 
 
 # ann_colors <-
@@ -313,7 +320,7 @@ ann_colors <-
 
 target <- "Fibroblast (nppc)"
 # target <- "Fibroblast (col11a1a)"
-# target <- "Fibroblast-like cells"c
+# target <- "Fibroblast-like cells"
 # target <- "Perivascular cells"
 # target <- "Fibroblast (proliferating)"
 # target <- "Fibroblast (col12a1a)"
@@ -326,32 +333,48 @@ precursors_include_incl_target <- #NULL
 precursors_include <- setdiff(precursors_include_incl_target, target)
 
 # Load tree objects, append cell types, create lineage trees ####
+tree_path <- "./Data/Trees/Sbcf/"
 # Control
-H5 <- ReadTree("H5", reference_set = cell_types[cell_types$orig.ident == "H5", ])
-H6 <- ReadTree("H6", reference_set = cell_types[cell_types$orig.ident == "H6", ])
-H7 <- ReadTree("H7", reference_set = cell_types[cell_types$orig.ident == "H7", ])
+H5 <- ReadTree("H5", reference_set = cell_types[cell_types$orig.ident == "H5", ], tree_path = tree_path)
+H6 <- ReadTree("H6", reference_set = cell_types[cell_types$orig.ident == "H6", ], tree_path = tree_path)
+H7 <- ReadTree("H7", reference_set = cell_types[cell_types$orig.ident == "H7", ], tree_path = tree_path)
+H8 <- ReadTree("H8", reference_set = cell_types[cell_types$orig.ident == "H8", ], tree_path = tree_path)
 # tree_list <- list(H5 = H5, H6 = H6, H7 = H7)
 # 3dpi
-Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ])
-Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ])
-Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr12", ])
-Hr24 <- ReadTree("Hr24", reference_set = cell_types[cell_types$orig.ident == "Hr24", ])
-Hr26 <- ReadTree("Hr26", reference_set = cell_types[cell_types$orig.ident == "Hr26", ])
-Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr27", ])
+Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ], tree_path = tree_path)
+Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ], tree_path = tree_path)
+Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr12", ], tree_path = tree_path)
+Hr22 <- ReadTree("Hr22", reference_set = cell_types[cell_types$orig.ident == "Hr22", ], tree_path = tree_path)
+Hr23 <- ReadTree("Hr23", reference_set = cell_types[cell_types$orig.ident == "Hr23", ], tree_path = tree_path)
+Hr24 <- ReadTree("Hr24", reference_set = cell_types[cell_types$orig.ident == "Hr24", ], tree_path = tree_path)
+Hr25 <- ReadTree("Hr25", reference_set = cell_types[cell_types$orig.ident == "Hr25", ], tree_path = tree_path)
+Hr26 <- ReadTree("Hr26", reference_set = cell_types[cell_types$orig.ident == "Hr26", ], tree_path = tree_path)
+Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr27", ], tree_path = tree_path)
 # tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr26, Hr27 = Hr27)
 # 7dpi
-Hr1_ref <- cell_types[cell_types$orig.ident == "Hr1", ]
-Hr1_ref$Cell_name <- paste("nd", sapply(Hr1_ref$Cell_name, function(x){unlist(strsplit(x, "_"))[2]}), sep = "")
-Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref)
-# Hr1 <- ReadTree("Hr1", reference_set = cell_types[cell_types$orig.ident == "Hr1", ])
-Hr2 <- ReadTree("Hr2", reference_set = cell_types[cell_types$orig.ident %in% c("Hr2a", "Hr2b"), ])
-Hr13 <- ReadTree("Hr13", reference_set = cell_types[cell_types$orig.ident == "Hr13", ])
-Hr14 <- ReadTree("Hr14", reference_set = cell_types[cell_types$orig.ident == "Hr14", ])
-Hr15 <- ReadTree("Hr15", reference_set = cell_types[cell_types$orig.ident == "Hr15", ])
+# Hr1_ref <- cell_types[cell_types$orig.ident == "Hr1", ]
+# Hr1_ref$Cell_name <- paste("nd", sapply(Hr1_ref$Cell_name, function(x){unlist(strsplit(x, "_"))[2]}), sep = "")
+# Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref, tree_path = tree_path)
+Hr1 <- ReadTree("Hr1", reference_set = cell_types[cell_types$orig.ident == "Hr1", ], tree_path = tree_path)
+Hr2 <- ReadTree("Hr2", reference_set = cell_types[cell_types$orig.ident %in% c("Hr2a", "Hr2b"), ], tree_path = tree_path)
+Hr6 <- ReadTree("Hr6", reference_set = cell_types[cell_types$orig.ident %in% c("Hr6a", "Hr6v"), ], tree_path = tree_path)
+Hr7 <- ReadTree("Hr7", reference_set = cell_types[cell_types$orig.ident %in% c("Hr7a", "Hr7v"), ], tree_path = tree_path)
+Hr13 <- ReadTree("Hr13", reference_set = cell_types[cell_types$orig.ident == "Hr13", ], tree_path = tree_path)
+# Hr14 <- ReadTree("Hr14", reference_set = cell_types[cell_types$orig.ident == "Hr14", ], tree_path = tree_path)
+Hr15 <- ReadTree("Hr15", reference_set = cell_types[cell_types$orig.ident == "Hr15", ], tree_path = tree_path)
 # tree_list <- list(Hr1 = Hr1, Hr2 = Hr2, Hr13 = Hr13, Hr14 = Hr14, Hr15 = Hr15)
+# 30dpi
+Hr3 <- ReadTree("Hr3", reference_set = cell_types[cell_types$orig.ident == "Hr3", ], tree_path = tree_path)
+Hr4 <- ReadTree("Hr4", reference_set = cell_types[cell_types$orig.ident == "Hr4", ], tree_path = tree_path)
+Hr19 <- ReadTree("Hr19", reference_set = cell_types[cell_types$orig.ident == "Hr19", ], tree_path = tree_path)
+Hr20 <- ReadTree("Hr20", reference_set = cell_types[cell_types$orig.ident == "Hr20", ], tree_path = tree_path)
+Hr21 <- ReadTree("Hr21", reference_set = cell_types[cell_types$orig.ident == "Hr21", ], tree_path = tree_path)
+
 # 3 and 7dpi
-tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr26, Hr27 = Hr27,
-                  Hr1 = Hr1, Hr2 = Hr2, Hr13 = Hr13, Hr14 = Hr14, Hr15 = Hr15)
+tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr22 = Hr22, 
+                  Hr23 = Hr23, Hr24 = Hr24, Hr25 = Hr25, Hr26 = Hr26, Hr27 = Hr27,
+                  Hr1 = Hr1, Hr2 = Hr2, Hr6 = Hr6, Hr7 = Hr7, Hr13 = Hr13, #Hr14 = Hr14, 
+                  Hr15 = Hr15)
 # tree_list <- list(Hr2 = Hr2)
 
 # Create tree visualization and zoom visualization
@@ -601,7 +624,7 @@ precursor_ranking$Precursor <- factor(precursor_ranking$Precursor, precursor_ran
 # dev.off()
 
 # Plot correlations of two top-scoring precursors and two low-scoring precursors
-i <- 2
+# i <- 2
 for(i in c(1:2, nrow(precursor_ranking) - 1, nrow(precursor_ranking))){
   pot_prec <- as.character(precursor_ranking$Precursor[i])
   plot_freqs <-
@@ -901,8 +924,8 @@ prp_m$Eplus[prp_m$variable == "Weighted_cor_progpos"] <- NA
 
 # pdf(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi.pdf", sep = ""),
     #width = 1400, height = 768)
-# png(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi_legend.png", sep = ""),
-#     type = "quartz", width = 900, height = 768)
+png(paste("./Images/", target, "_all_precursors_with_bootstrap_37dpi_legend.png", sep = ""),
+    type = "quartz", width = 900, height = 768)
 # png("./Images/Fibroblast_col11_sources.png",
     # width = 960, height = 480)
 print(
@@ -921,7 +944,7 @@ print(
           axis.ticks.x = element_blank(),
           axis.text.x = element_blank())
 )
-# dev.off()
+dev.off()
 
 # potential_prec <- 
 #   union(precursor_ranking$Precursor[precursor_ranking$Cor_bootstrap_p < 0.001 &

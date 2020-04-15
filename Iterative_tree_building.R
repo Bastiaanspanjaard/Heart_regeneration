@@ -91,6 +91,7 @@ celltype_colors$Cell.type[celltype_colors$Cell.type == "Endocardium (V)"] <-
 celltype_colors$Cell.type[celltype_colors$Cell.type == "Endocardium (A)"] <- 
   "Endocardium 1 (A)"
 celltype_colors <- rbind(celltype_colors, endo_add)
+# saveRDS(celltype_colors, file = "./Data/Cell_type_colors.rds")
 celltype_colors <- merge(celltype_colors[, c("name", "color", "Cell.type")], celltypes, all.y = T)
 # Endocardium frzb A/V still not on here.
 

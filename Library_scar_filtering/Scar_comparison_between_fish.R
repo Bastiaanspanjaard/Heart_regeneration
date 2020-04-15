@@ -5,19 +5,19 @@ min.presence <- 2 # Cells that have to have a scar for it to be considered
 
 # Load data ####
 libraries <- data.frame(Library_name = c("H5", "H6", "H7", "H8a", "H8v",
-                                         "Hr1", "Hr2b", "Hr3", "Hr4",
+                                         "Hr1", "Hr2a", "Hr2b", "Hr3", "Hr4",
                                          "Hr6a", "Hr6v", "Hr7a", "Hr7v",
                                          "Hr10", "Hr11", "Hr12", "Hr13",
                                          "Hr14", "Hr15", "Hr19", "Hr20",
                                          "Hr21", "Hr22", "Hr23", "Hr24",
-                                         "Hr26", "Hr27"),
+                                         "Hr25", "Hr26", "Hr27"),
                         Sample =  c("H5", "H6", "H7", "H8", "H8",
-                                    "Hr1", "Hr2", "Hr3", "Hr4",
+                                    "Hr1", "Hr2", "Hr2", "Hr3", "Hr4",
                                     "Hr6", "Hr6", "Hr7", "Hr7",
                                     "Hr10", "Hr11", "Hr12", "Hr13",
                                     "Hr14", "Hr15", "Hr19", "Hr20",
                                     "Hr21", "Hr22", "Hr23", "Hr24",
-                                    "Hr26", "Hr27"))
+                                    "Hr25", "Hr26", "Hr27"))
 
 # Loop over sample names. If sample name has >1 library, load all libraries
 # and rbind them. Outcome: list of samples, each with its scar dataframe.
@@ -26,7 +26,7 @@ for(sample_name in unique(libraries$Sample)){
   scars_to_list <- data.frame()
   for(library_name in libraries$Library_name[libraries$Sample == sample_name]){
     scars_to_list <- rbind(scars_to_list, 
-                           read.csv(paste("./Data/scars/", library_name, "_used_scars.csv", sep = ""),
+                           read.csv(paste("./Data/scars/Seurat_bc_filter/", library_name, "_used_scars.csv", sep = ""),
                                                    stringsAsFactors = F))
   }
   scar_list[[length(scar_list) + 1]] <- list(scars = scars_to_list)
@@ -71,8 +71,9 @@ unique.scars$Scar <- paste(0:(nrow(unique.scars)-1), unique.scars$CIGAR, sep = "
 # Write output ####
 for(sample_number in 1:length(scar_list)){
   scars_out <- merge(scar_list[[sample_number]]$scars, unique.scars[, c("Sequence", "Presence", "p", "Embryos", "Scar")])
+  print(cat("Sample", names(scar_list)[sample_number], "has", nrow(scars_out), "scars in", length(unique(scars_out$Cell)), "cells"))
   write.csv(scars_out,
-        file = paste("./Data/scars/", names(scar_list)[sample_number], "_scars_compared.csv", sep = ""),
+        file = paste("./Data/scars/Seurat_bc_filter/", names(scar_list)[sample_number], "_scars_compared.csv", sep = ""),
         quote = F, row.names = F)
 }
 
