@@ -37,7 +37,8 @@ libraries <- data.frame(Library_name = c("H5", "H6", "H7", "H8a", "H8v",
                                 "3", "3", "3", "7",
                                 "7", "7", "30", "30",
                                 "30", "3", "3", "3",
-                                "3", "3", "3"))
+                                "3", "3", "3"),
+                        stringsAsFactors = F)
 theme_bs <- 
   theme_update(text = element_text(size = 24),
                panel.background = element_rect(fill = "white", colour = "black"),
