@@ -3,18 +3,19 @@ source("./Scripts/HR_library.R")
 
 # Parameters ####
 tree_path <- "./Data/Trees/Sbcf/"
-target <- "Fibroblast (nppc)"
+target <- "Harpocytes"
+# target <- "Fibroblast (nppc)"
 # target <- "Fibroblast (col11a1a)"
 # target <- "Fibroblast-like cells"
 # target <- "Perivascular cells"
 # target <- "Fibroblast (proliferating)"
 # target <- "Fibroblast (col12a1a)"
 # target <- "Ventricle (ttn.2/aSMA)"
-precursors_include_incl_target <- #NULL
+precursors_include_incl_target <- NULL
   # c("Fibroblast (cxcl12a)", "Fibroblast", "Epicardium V",
   #   "Perivascular cells",
   #   "Fibroblast (col11a1a)", "Epicardium A", "Fibroblast (col12a1a)")
-  c("Fibroblast-like cells", "Endocardium", "Fibroblast (spock3)")
+  # c("Fibroblast-like cells", "Endocardium", "Fibroblast (spock3)")
 precursors_include <- setdiff(precursors_include_incl_target, target)
 
 # Prepare colors and cell type data ####
@@ -30,17 +31,15 @@ cell_types$Cell_type[grepl("Endocardium", cell_types$Cell_type)] <-
 cell_types$Cell_type[grepl("Endocardium frzb", cell_types$Cell_type)] <- "Endocardium (frzb)"
 cell_types$Cell_name <- paste("nd", cell_types$Cell, sep = "")
 
-celltypes <- data.frame(table(cell_types$Cell_type))
+celltypes <- data.frame(table(cell_types$Cell_type), stringsAsFactors = F)
 colnames(celltypes)[1] <- c("Cell_type")
+celltypes$Cell_type <- as.character(celltypes$Cell_type)
 
 celltype_colors <- readRDS("./Data/Cell_type_colors.rds")
 ann_colors <-
   list(Celltype = setNames(celltype_colors$color, celltype_colors$Cell_type))
 
 # Load tree objects, append cell types, create lineage trees ####
-
-
-# Control
 tree_list <- list()
 # lib <- unique(libraries$Sample)[1]
 for(lib in unique(libraries$Sample)){
@@ -48,83 +47,62 @@ for(lib in unique(libraries$Sample)){
                                                       ], tree_path = tree_path)
   tree.in <- list(metadata = list(dpi = libraries$Dpi[libraries$Sample == lib],
                                Name = lib), 
-               Tree = tree.in$Tree) #not quite yet but close
+               Tree = tree.in$Tree)
   tree_list[[length(tree_list) + 1]] <- tree.in
   names(tree_list)[[length(tree_list)]] <- lib
 }
+tree_list_real <- tree_list
 
-# H5 <- ReadTree("H5", reference_set = cell_types[cell_types$orig.ident == "H5", ], tree_path = tree_path)
-# H6 <- ReadTree("H6", reference_set = cell_types[cell_types$orig.ident == "H6", ], tree_path = tree_path)
-# H7 <- ReadTree("H7", reference_set = cell_types[cell_types$orig.ident == "H7", ], tree_path = tree_path)
-# H8 <- ReadTree("H8", reference_set = cell_types[cell_types$orig.ident == "H8", ], tree_path = tree_path)
-# H8 <- ReadTree("H8", reference_set = cell_types[cell_types$orig.ident %in% c("H8a", "H8v"), ], tree_path = tree_path)
-# tree_list <- list(H5 = H5, H6 = H6, H7 = H7)
-# 3dpi
-# Hr10 <- ReadTree("Hr10", reference_set = cell_types[cell_types$orig.ident == "Hr10", ], tree_path = tree_path)
-# Hr11 <- ReadTree("Hr11", reference_set = cell_types[cell_types$orig.ident == "Hr11", ], tree_path = tree_path)
-# Hr12 <- ReadTree("Hr12", reference_set = cell_types[cell_types$orig.ident == "Hr12", ], tree_path = tree_path)
-# Hr22 <- ReadTree("Hr22", reference_set = cell_types[cell_types$orig.ident == "Hr22", ], tree_path = tree_path)
-# Hr23 <- ReadTree("Hr23", reference_set = cell_types[cell_types$orig.ident == "Hr23", ], tree_path = tree_path)
-# Hr24 <- ReadTree("Hr24", reference_set = cell_types[cell_types$orig.ident == "Hr24", ], tree_path = tree_path)
-# Hr25 <- ReadTree("Hr25", reference_set = cell_types[cell_types$orig.ident == "Hr25", ], tree_path = tree_path)
-# Hr26 <- ReadTree("Hr26", reference_set = cell_types[cell_types$orig.ident == "Hr26", ], tree_path = tree_path)
-# Hr27 <- ReadTree("Hr27", reference_set = cell_types[cell_types$orig.ident == "Hr27", ], tree_path = tree_path)
-# tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr24 = Hr24, Hr26 = Hr26, Hr27 = Hr27)
-# 7dpi
-# Hr1_ref <- cell_types[cell_types$orig.ident == "Hr1", ]
-# Hr1_ref$Cell_name <- paste("nd", sapply(Hr1_ref$Cell_name, function(x){unlist(strsplit(x, "_"))[2]}), sep = "")
-# Hr1 <- ReadTree("Hr1", reference_set = Hr1_ref, tree_path = tree_path)
-# Hr1 <- ReadTree("Hr1", reference_set = cell_types[cell_types$orig.ident == "Hr1", ], tree_path = tree_path)
-# Hr2 <- ReadTree("Hr2", reference_set = cell_types[cell_types$orig.ident %in% c("Hr2a", "Hr2b"), ], tree_path = tree_path)
-# Hr6 <- ReadTree("Hr6", reference_set = cell_types[cell_types$orig.ident %in% c("Hr6a", "Hr6v"), ], tree_path = tree_path)
-# Hr7 <- ReadTree("Hr7", reference_set = cell_types[cell_types$orig.ident %in% c("Hr7a", "Hr7v"), ], tree_path = tree_path)
-# Hr13 <- ReadTree("Hr13", reference_set = cell_types[cell_types$orig.ident == "Hr13", ], tree_path = tree_path)
-# Hr14 <- ReadTree("Hr14", reference_set = cell_types[cell_types$orig.ident == "Hr14", ], tree_path = tree_path)
-# Hr15 <- ReadTree("Hr15", reference_set = cell_types[cell_types$orig.ident == "Hr15", ], tree_path = tree_path)
-# tree_list <- list(Hr1 = Hr1, Hr2 = Hr2, Hr13 = Hr13, Hr14 = Hr14, Hr15 = Hr15)
-# 30dpi
-# Hr3 <- ReadTree("Hr3", reference_set = cell_types[cell_types$orig.ident == "Hr3", ], tree_path = tree_path)
-# Hr4 <- ReadTree("Hr4", reference_set = cell_types[cell_types$orig.ident == "Hr4", ], tree_path = tree_path)
-# Hr19 <- ReadTree("Hr19", reference_set = cell_types[cell_types$orig.ident == "Hr19", ], tree_path = tree_path)
-# Hr20 <- ReadTree("Hr20", reference_set = cell_types[cell_types$orig.ident == "Hr20", ], tree_path = tree_path)
-# Hr21 <- ReadTree("Hr21", reference_set = cell_types[cell_types$orig.ident == "Hr21", ], tree_path = tree_path)
+# Split a cell type in two to see if these show up as related
+# Pick a set of trees (Hr1, Hr2, Hr6?).
+# tree_list_subset <- tree_list[c("Hr1", "Hr2", "Hr6")]
+tree_list <- list(Hr1 = list(Tree = Clone(tree_list_real$Hr1$Tree)), 
+                  Hr2 = list(Tree = Clone(tree_list_real$Hr2$Tree)), 
+                  Hr6 = list(Tree = Clone(tree_list_real$Hr6$Tree)))
+# Calculate cell type numbers per tree - Endocardium (V) seems like a good split candidate.
+# aggregate(sample_tree_list$Hr6$Pure_counts$Type_count,
+#           by = list(Cell_type = sample_tree_list$Hr6$Pure_counts$Cell_type),
+#           sum)
+fictional_source <- "Endocardium 1 (V)"
+fictional_target <- "Harpocytes"
+celltypes <- rbind(celltypes, c(fictional_target, 0))
 
-# 3 and 7dpi
-# tree_list <- list(Hr10 = Hr10, Hr11 = Hr11, Hr12 = Hr12, Hr22 = Hr22, 
-#                   Hr23 = Hr23, Hr24 = Hr24, Hr25 = Hr25, Hr26 = Hr26, Hr27 = Hr27,
-#                   Hr1 = Hr1, Hr2 = Hr2, Hr6 = Hr6, Hr7 = Hr7, Hr13 = Hr13, #Hr14 = Hr14, 
-#                   Hr15 = Hr15)
-# tree_list <- list(Hr2 = Hr2)
+# Extract all endocardium cells, randomly rename half of them, put cells "back in tree".
+set.seed(37)
+for(t in 1:length(tree_list)){
+  edge_list <- ToDataFrameNetwork(tree_list[[t]]$Tree, "Cell.type")
+  new_cell_types <- edge_list[edge_list$Cell.type != "NA", ]
+  new_cell_types$New_cell_type <- new_cell_types$Cell.type                            
+  new_cell_types$New_cell_type[new_cell_types$Cell.type == fictional_source] <-
+    ifelse(runif(sum(edge_list$Cell.type == fictional_source)) > 0.5, fictional_source, fictional_target)
+  
+  tree_list[[t]]$Tree$Do(function(node) {node$Cell.type = new_cell_types$New_cell_type[new_cell_types$to == node$name]}, filterFun = isLeaf)
+  # test_edge <- ToDataFrameNetwork(tree_list_subset$Hr2, "Cell.type")
+  # old_edge <- ToDataFrameNetwork(tree_list$Hr2$Tree, "Cell.type") # With cloning, this works.
+}
+# acme$Do(function(node) node$cost <- Cost(node), filterFun = isNotLeaf)
+# test_edge <- ToDataFrameNetwork(tree_list[[3]]$Tree, "Cell.type")
 
 # Create tree visualization and zoom visualization - only run if needed because this takes quite some time.
-for(t in 1:length(tree_list)){
-  # tree_list[[t]] <- MakePieTree(tree_list[[t]], "Full_tree", 
-  #                               ctypes = celltype_colors$Cell.type, ct_colors = celltype_colors$color)
-  tree_list[[t]]$Pie_tree <- 
-    collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
-                    pieSummary = T, collapsed = F,
-                    width = 1000, height = 500,
-                    ctypes = celltype_colors$Cell.type, linkLength=60, 
-                    ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
-                    nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6)) 
-  # tree_sample$CTree <-    
-  #   collapsibleTree(df = tree_to_plot, root = tree_to_plot$scar, pieNode = T,
-  #                   pieSummary = T, collapsed = F,
-  #                   width = 1000, height = 500,
-  #                   ctypes = ctypes,linkLength=60, 
-  #                   ct_colors = ct_colors, angle = pi/2,fontSize = 0,
-  #                   nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6)) 
-  # tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
-  #                               ct_colors = type_colors$colo1)
-  # htmlwidgets::saveWidget(
-  #   tree_list[[t]]$Full_tree,
-  #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
-  #                names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
-  # htmlwidgets::saveWidget(
-  #   tree_list[[t]]$Fibrozoom_tree,
-  #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
-  #                names(tree_list)[t], "_LINNAEUS_pie_fibrozoom.html", sep = ""))
-}
+# for(t in 1:length(tree_list)){
+#   tree_list[[t]]$Pie_tree <- 
+#     collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
+#                     pieSummary = T, collapsed = F,
+#                     width = 1000, height = 500,
+#                     ctypes = celltype_colors$Cell.type, linkLength=60, 
+#                     ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
+#                     nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6)) 
+#   # tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
+#   #                               ct_colors = type_colors$colo1)
+#   # htmlwidgets::saveWidget(
+#   #   tree_list[[t]]$Full_tree,
+#   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
+#   #                names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
+#   # htmlwidgets::saveWidget(
+#   #   tree_list[[t]]$Fibrozoom_tree,
+#   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
+#   #                names(tree_list)[t], "_LINNAEUS_pie_fibrozoom.html", sep = ""))
+# }
 
 # Finding precursor candidates ####
 # Start by calculating the correlations between a progenitor cell type and potential
@@ -139,8 +117,8 @@ comparison_list <- list(Comparison = data.frame(Tree = character(),
                                                 Precursor = character(),
                                                 Type_count = integer()),
                         Node_sizes = data.frame(Size = integer()),
-                        Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = length(unique(cell_types$Cell_type)))))
-colnames(comparison_list$Normalized_frequencies) <- unique(cell_types$Cell_type)
+                        Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltypes))))
+colnames(comparison_list$Normalized_frequencies) <- celltypes$Cell_type
 
 analysis_stats <-
   data.frame(Tree = character(),
@@ -150,7 +128,7 @@ analysis_stats <-
 
 for(t in 1:length(tree_list)){
   tree <- tree_list[[t]]$Tree
-  
+
   edge_list <- ToDataFrameNetwork(tree, "Cell.type")
   analysis_stats_add <-
     data.frame(table(edge_list$Cell.type[edge_list$Cell.type != "NA"]))
