@@ -17,6 +17,9 @@ precursors_include_incl_target <- NULL
   #   "Fibroblast (col11a1a)", "Epicardium A", "Fibroblast (col12a1a)")
   # c("Fibroblast-like cells", "Endocardium", "Fibroblast (spock3)")
 precursors_include <- setdiff(precursors_include_incl_target, target)
+uniform_conversion <- F
+uniform_conversion_chance <- 0.5
+chances <- c(0, 0.25, 0.5, 0.75, 1) # These are parameters. Move to script start.
 
 # Prepare colors and cell type data ####
 cell_types <- read.csv("./Data/final_metadata.csv", stringsAsFactors = F)
@@ -71,17 +74,53 @@ celltypes <- rbind(celltypes, c(fictional_target, 0))
 set.seed(37)
 for(t in 1:length(tree_list)){
   edge_list <- ToDataFrameNetwork(tree_list[[t]]$Tree, "Cell.type")
-  new_cell_types <- edge_list[edge_list$Cell.type != "NA", ]
-  new_cell_types$New_cell_type <- new_cell_types$Cell.type                            
-  new_cell_types$New_cell_type[new_cell_types$Cell.type == fictional_source] <-
-    ifelse(runif(sum(edge_list$Cell.type == fictional_source)) > 0.5, fictional_source, fictional_target)
   
+  node_chances <- data.frame(Node = unique(edge_list$from))
+  if(uniform_conversion){
+    # For uniform chance for all cells
+    node_chances$Conversion_chance <- uniform_conversion_chance
+  }else{
+    # For separate chances per node
+    node_chances$Leaf <- sapply(node_chances$Node, function(x) sum(Progenyl(x, node_chances$Node)) == 0)
+    # Assign chances to leaf nodes
+    node_chances$Conversion_chance <- 
+      sapply(node_chances$Leaf, 
+             function(x){
+               if(x){
+                 sample(chances, 1)
+               }else(return(NA))
+             }
+      )  
+    # Cumulate chances for non-leaf nodes. For leaf nodes, below formula returns the conversion chance of the
+    # leaf. The na.rm is necessary because the node itself (if not a leaf) will have NA as conversion
+    # probability.
+    # NOTE this should be scaled by cell number per node, and actually be done over multiple rounds
+    # to take into account that some nodes may have more cells than suggested by the cells in their
+    # progeny nodes.
+    node_chances$Conversion_chance <-
+      sapply(node_chances$Node,
+             function(x) mean(node_chances$Conversion_chance[grepl(x, node_chances$Node)], na.rm = T) )
+  }
+  
+  # Transform cells
+  new_cell_types <- edge_list[edge_list$Cell.type != "NA", ]
+  new_cell_types <- merge(new_cell_types, node_chances, by.x = "from", by.y = "Node")
+  new_cell_types$Roll <- runif(sum(nrow(new_cell_types)))
+  new_cell_types$New_cell_type <- 
+    apply(new_cell_types[, c("Cell.type", "Conversion_chance", "Roll")], 1,
+          function(x){
+            if(x[1] == fictional_source){
+              if(x[3] < x[2]){
+                return(fictional_target)
+              }else{
+                return(fictional_source)
+              }
+            }else{
+              return(x[1])
+            }
+          })
   tree_list[[t]]$Tree$Do(function(node) {node$Cell.type = new_cell_types$New_cell_type[new_cell_types$to == node$name]}, filterFun = isLeaf)
-  # test_edge <- ToDataFrameNetwork(tree_list_subset$Hr2, "Cell.type")
-  # old_edge <- ToDataFrameNetwork(tree_list$Hr2$Tree, "Cell.type") # With cloning, this works.
 }
-# acme$Do(function(node) node$cost <- Cost(node), filterFun = isNotLeaf)
-# test_edge <- ToDataFrameNetwork(tree_list[[3]]$Tree, "Cell.type")
 
 # Create tree visualization and zoom visualization - only run if needed because this takes quite some time.
 # for(t in 1:length(tree_list)){
@@ -462,6 +501,8 @@ prp_m$Eplus[prp_m$variable == "Weighted_cor_progpos"] <- NA
 #     type = "quartz", width = 900, height = 768)
 # png("./Images/Fibroblast_col11_sources.png",
     # width = 960, height = 480)
+# png("./Images/Harpocytes_from_endo1V_all_precursors_with_bootstrap_Hr1n2n6_legend.png",
+#     type = "quartz", width = 900, height = 768)
 print(
   ggplot(prp_m) +
     geom_bar(aes(x = Precursor, y = value, fill = Precursor, group = variable, alpha = Type_alpha),
