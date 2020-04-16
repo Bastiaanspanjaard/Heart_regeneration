@@ -182,6 +182,11 @@ count_cumulative <- function(tree){
   return(node_cocc)
 }
 
+Progenyl <- function(precursor, nodes){
+  # Find all progeny for a precursor node.
+  grepl(precursor, nodes) & precursor != nodes
+} 
+
 RemapCellTypes <- function(node, reference_set){
   if(!("Cell_type" %in% names(reference_set))){
     stop("Expecting column named Cell_type in reference_set")
