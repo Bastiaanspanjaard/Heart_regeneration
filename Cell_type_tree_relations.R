@@ -1,3 +1,34 @@
+# Refactoring notes ####
+# Modus: 
+#   1) All cell type (a)symmetric correlations in (subset of) trees, potentially together with bootstraps.
+#   2) Target-based (a)symmetric correlations in (subset of) trees, together with bootstraps.
+#   3) Simulation of conversion with (a)symmetric correlations in (subset of) trees, together with bootstraps.
+# Way of correlation: asymmetric/symmetric.
+# Trees to include. This should be a simple vector of tree lists that we can use to subset or loop over the
+# full tree list.
+# For 2: target cell type
+# For 3: source cell type, kind of conversion
+
+# Flow:
+#   Load data, compute edge lists and cell type abundancies, create visualizations if needed.
+#   For 3): create simulated data
+#   Calculate correlations
+#   Bootstrap correlations
+
+# Ideas
+# Append celltypes to tree list
+# Calculations like edge lists and abundancies should be done once. Implemented at loading: edge lists and node/type abundancies.
+# Simulation creates new trees that can also be visualized.
+# In general, visualization should be callable function.
+
+# Steps
+# Create input/output admin for segments
+#   Done for data simulation
+#   Done for correlation calculation
+#   Done for bootstrapping
+# Rewrite segments as functions
+# Identify refactoring opportunities for speed or readability efficiency
+
 # Dependencies ####
 source("./Scripts/HR_library.R")
 
@@ -49,15 +80,28 @@ tree_list <- list()
 for(lib in unique(libraries$Sample)){
   tree.in <- ReadTree(lib, reference_set = cell_types[cell_types$orig.ident %in% libraries$Library_name[libraries$Sample == lib],
                                                       ], tree_path = tree_path)
+  edge_list <- ToDataFrameNetwork(tree.in$Tree, "Cell.type")
+
+  node_type_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
+  colnames(node_type_counts) <- c("Node", "Cell_type", "Type_count")
+  node_type_counts$Node <- as.character(node_type_counts$Node)
+  node_type_counts$Cell_type <- as.character(node_type_counts$Cell_type)
+  node_type_counts <- node_type_counts[node_type_counts$Cell_type != "NA", ]
+  
   tree.in <- list(metadata = list(dpi = libraries$Dpi[libraries$Sample == lib],
-                               Name = lib), 
-               Tree = tree.in$Tree)
+                                  Name = lib), 
+                  Tree = tree.in$Tree,
+                  Node_type_counts = node_type_counts)
   tree_list[[length(tree_list) + 1]] <- tree.in
   names(tree_list)[[length(tree_list)]] <- lib
 }
 tree_list_real <- tree_list
 
 # Simulation of target/source process ####
+# Uses as input: tree_list_real, list of trees, fictional source and target, simulation seed.
+# Way of simulating conversion (+chances), celltypes
+# Creates as output: tree list with modified cell types (also in edge list and abundancies!)
+
 # Split a cell type in two to see if these show up as related
 # Pick a set of trees (Hr1, Hr2, Hr6?).
 # tree_list_subset <- tree_list[c("Hr1", "Hr2", "Hr6")]
@@ -147,9 +191,11 @@ for(t in 1:length(tree_list)){
             }
           })
   tree_list[[t]]$Tree$Do(function(node) {node$Cell.type = new_cell_types$New_cell_type[new_cell_types$to == node$name]}, filterFun = isLeaf)
+  # Also chance edge lists and cell type abundancies.
 }
 
-# Create tree visualization and zoom visualization - only run if needed because this takes quite some time.
+# Create tree visualization and zoom visualization ####
+#- only run if needed because this takes quite some time.
 # for(t in 1:length(tree_list)){
 #   tree_list[[t]]$Pie_tree <- 
 #     collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
@@ -178,6 +224,15 @@ for(t in 1:length(tree_list)){
 # is and how enriched the observed correlations are.
 
 # ** Calculate correlations between cell types over all trees ####
+# Input: tree list
+# The first loop here is over trees to create data frames of counts and frequencies per tree.
+# Can we do most of this in the initialization? We'd need most of this for every later step and
+# it also integrates well with creating edge lists and count tables.
+# The second loop does the actual correlations, using the normalized frequency and count tables.
+# Output: a dataframe with correlations between a progenitor and all other progenitors. Update
+# this to a list (dataframe for every progenitor) and also keep a condensed long list with only
+# the correlations, but between every two cell types.
+
 # Run this over all trees, keep distances top-level, create a new tree-level in the list
 comparison_list <- list(Comparison = data.frame(Tree = character(),
                                                 Precursor = character(),
@@ -326,6 +381,12 @@ precursor_ranking$Precursor <- factor(precursor_ranking$Precursor, precursor_ran
 # }
 
 # ** Bootstrap correlation ####
+# Input: tree list, but we could do this with edge lists and node counts as well.
+# Again, the first loop calculates tree statistics.
+# Second loop runs over all potential precursors to randomize each of them 
+# Output: for the second loop, a dataframe of calculated correlations, and then
+# afterwards, quantiles etc for the correlations.
+
 # If I randomly place cells in the tree, what is the correlation with the progeny?
 # Select a potential precursor; how many cells in each tree? Randomly place that amount
 # of cells in the tree, depending on 'pure' (i.e. not cumulative) node counts when progeny
