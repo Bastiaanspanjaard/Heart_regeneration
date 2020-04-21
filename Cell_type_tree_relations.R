@@ -9,6 +9,7 @@
 # For 2: target cell type
 # For 3: source cell type, kind of conversion
 
+
 # Flow:
 #   Load data, compute edge lists and cell type abundancies, create visualizations if needed.
 #   For 3): create simulated data
@@ -20,6 +21,10 @@
 # Calculations like edge lists and abundancies should be done once. Implemented at loading: edge lists and node/type abundancies.
 # Simulation creates new trees that can also be visualized.
 # In general, visualization should be callable function.
+# When to include a tree? If the celltypes we want to correlate are both over a certain threshold (e.g. at least 20 in a tree).
+# Can we use the weight parameter in wtd.cors for this? wtd.cors(x, weight), with x the node fractions, and weight in principle
+# the node size, but can we set weights to zero for a whole tree if that tree does not contain either of the cell types at high
+# enough abundance. Unfortunately, this does not really vectorize. Can we semi-vectorize this?
 
 # Steps
 # Create input/output admin for segments
@@ -27,6 +32,7 @@
 #   Done for correlation calculation
 #   Done for bootstrapping
 # Rewrite segments as functions
+#   Correlation calculation
 # Identify refactoring opportunities for speed or readability efficiency
 
 # Dependencies ####
@@ -48,6 +54,10 @@ precursors_include_incl_target <- NULL
   #   "Fibroblast (col11a1a)", "Epicardium A", "Fibroblast (col12a1a)")
   # c("Fibroblast-like cells", "Endocardium", "Fibroblast (spock3)")
 precursors_include <- setdiff(precursors_include_incl_target, target)
+inclusion_limit <- 20 # How many cells are needed of a certain type to include a tree for
+# that type.
+correlation_type <- "Asymmetric" # "Asymmetric": only correlate over the nodes with nonzero
+# target cell type. "Symmetric": correlate over all nodes.
 uniform_conversion <- F
 uniform_conversion_chance <- 0.5
 chances <- c(0, 0.25, 0.5, 0.75, 1)
@@ -91,6 +101,7 @@ for(lib in unique(libraries$Sample)){
   tree.in <- list(metadata = list(dpi = libraries$Dpi[libraries$Sample == lib],
                                   Name = lib), 
                   Tree = tree.in$Tree,
+                  Edge_list = edge_list,
                   Node_type_counts = node_type_counts)
   tree_list[[length(tree_list) + 1]] <- tree.in
   names(tree_list)[[length(tree_list)]] <- lib
@@ -224,7 +235,7 @@ for(t in 1:length(tree_list)){
 # is and how enriched the observed correlations are.
 
 # ** Calculate correlations between cell types over all trees ####
-# Input: tree list
+# Input: tree list, target
 # The first loop here is over trees to create data frames of counts and frequencies per tree.
 # Can we do most of this in the initialization? We'd need most of this for every later step and
 # it also integrates well with creating edge lists and count tables.
@@ -248,9 +259,10 @@ analysis_stats <-
            Count = integer())
 
 for(t in 1:length(tree_list)){
-  tree <- tree_list[[t]]$Tree
+  # tree <- tree_list[[t]]$Tree
 
-  edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+  # edge_list <- ToDataFrameNetwork(tree, "Cell.type")
+  edge_list <- tree_list[[t]]$Edge_list
   analysis_stats_add <-
     data.frame(table(edge_list$Cell.type[edge_list$Cell.type != "NA"]))
   colnames(analysis_stats_add) <- c("Cell_type", "Count")
@@ -297,13 +309,17 @@ comparison_list$Normalized_frequencies[is.na(comparison_list$Normalized_frequenc
 comparison_list$Normalized_frequencies <- 
   comparison_list$Normalized_frequencies[, colSums(comparison_list$Normalized_frequencies) > 0]
 comparison_list$Node_sizes$Weight <- comparison_list$Node_sizes$Size/sum(comparison_list$Node_sizes$Size)
-comparison_list$All_trees_prec <- list()
+# comparison_list$All_trees_prec <- list()
+
+# Calculate correlations
 comparison_list$All_trees_distances <- 
   data.frame(Precursor = names(comparison_list$Normalized_frequencies),
              Weighted_cor_progpos = numeric(ncol(comparison_list$Normalized_frequencies)),
              Weighted_cor_se = numeric(ncol(comparison_list$Normalized_frequencies)))#,
 # Add included trees
 comparison_list$All_trees_distances[, unique(analysis_stats$Tree[analysis_stats$Included])] <- 0
+
+type_tree_cor <- CalculateTypeCorrelations(tree_list, comparison_list)
 
 for(p in 1:ncol(comparison_list$Normalized_frequencies)){
   precursor <- names(comparison_list$Normalized_frequencies)[p]
@@ -322,6 +338,7 @@ for(p in 1:ncol(comparison_list$Normalized_frequencies)){
   comparison_list$All_trees_distances$Weighted_cor_progpos[p] <- weighted_cor$correlation
   comparison_list$All_trees_distances$Weighted_cor_se[p] <- weighted_cor$std.err
   
+  # One-out correlations: leave out one tree and recalculate the correlations.
   for(t in unique(analysis_stats$Tree[analysis_stats$Included])){
     progpos_oneout <- progpos[!grepl(paste(t, ":", sep = ""), rownames(progpos)), ]
     weights_oneout <- progpos_weights[!grepl(paste(t, ":", sep = ""), rownames(progpos_weights)), ]

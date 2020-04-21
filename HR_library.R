@@ -135,6 +135,65 @@ CalculateCooccurrence <- function(tree_sample){
   return(tree_sample)
 }
 
+CalculateTypeCorrelations <- function(tree_list, comparison_list, 
+                                      inclusion_limit = 20, correlation_type = "Symmetric"){
+  # Calculate correlations between cell types over trees. Correlations are calculated between
+  # cell type frequencies over all nodes, with nodes weighted by cell count.
+  # For each cell type, trees that have at least [inclusion_limit] cells of that type are
+  # included in the correlation calculation.
+  # Symmetric correlations include all nodes, asymmetric correlations only include the nodes
+  # in which cells of the target type are present; those are the types in the row of the output.
+  # Correlations between cell types that do not co-occur in nodes or trees will be returned
+  # as NaN.
+  norm_freq <- comparison_list$Normalized_frequencies
+  node_weights <- comparison_list$Node_sizes
+  
+  # Inclusion/exclusion inc_exc: use to include trees for cell types. Boolean matrix with same row/column 
+  # structure as norm_freq, entries F mean do not include in correlation calculation.
+  inc_exc <- norm_freq # Same structure as norm_freq
+  inc_exc[,] <- F # Set all entries to F
+  # Loop over all trees. In [inc_exc], set all nodes per tree to true for each cell types that has more than
+  # or equal to [inclusion_limit] cells. In type_inc, set all nodes that have cells of a specific
+  # type to T.
+  for(t in 1:length(tree_list)){
+    tree_name <- names(tree_list)[t]
+    tree_type_include <- aggregate(tree_list[[t]]$Node_type_counts$Type_count,
+                                   by = list(Cell_type = tree_list[[t]]$Node_type_counts$Cell_type),
+                                   sum) # Count cell type numbers in tree
+    tree_type_include$Include <- tree_type_include$x >= inclusion_limit # Set included celltypes to T in dataframe
+    inc_exc[grepl(tree_name, rownames(inc_exc)), tree_type_include$Cell_type] <- # Nodes in tree, cell types in tree (cells not in tree remain F)
+      matrix(rep(tree_type_include$Include, each = sum(grepl(tree_name, rownames(inc_exc)))), 
+             nrow = sum(grepl(tree_name, rownames(inc_exc))), 
+             ncol = nrow(tree_type_include)) # Create matrix of (nodes in tree) x (cell types in tree), with values T for cell types that
+    # have enough abundance.
+  }
+  # For asymmetric correlations, we also need to know which nodes (cumulatively!) contain which cell types.
+  # Type inclusion type_inc: use to include nodes for cell types in case of asymmetric correlation.
+  # Structure as norm_freq, entries F mean a node does not have any cells of a particular type.
+  type_inc <- comparison_list$Normalized_frequencies > 0 # This information is already in comparison_list$Normalized_frequencies
+  
+  # Calculate the correlations. For asymmetric correlations, the rows designate the target, meaning the
+  # nodes to correlate over are selected based on whether the cell type in the row is present in the node.
+  cor_output <- matrix(NA, nrow = ncol(norm_freq), ncol = ncol(norm_freq))
+  rownames(cor_output) <- colnames(norm_freq)
+  colnames(cor_output) <- colnames(norm_freq)
+  for(i in 1:ncol(norm_freq)){
+    for(j in 1:ncol(norm_freq)){
+      if(correlation_type == "Symmetric"){
+        nodes_include <- inc_exc[, i] & inc_exc[, j]
+      }else if(correlation_type == "Asymmetric"){
+        nodes_include <- inc_exc[, i] & inc_exc[, j] & type_inc[, i]
+      }
+      
+      cor_output[i, j] <- 
+        wtd.cors(norm_freq[nodes_include, i], norm_freq[nodes_include, j], 
+                 weight = node_weights$Size[nodes_include])#/sum(node_weights$Size[nodes_include]))
+    }
+  }
+  
+  return(cor_output)
+}
+
 count_cumulative <- function(tree){
   # For a tree, count the cumulative cell type numbers for each node, the full
   # cumulative cell count for that node, the frequency of the cell type in that
