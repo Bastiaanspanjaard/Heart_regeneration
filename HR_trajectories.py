@@ -19,9 +19,24 @@ results_file = './write/HR_trajectories.h5ad'
 sc.set_figure_params(dpi_save = 300)
 
 
+# In[2]:
+
+
+cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_unmerged.csv', index_col = 0)
+
+
+# In[19]:
+
+
+trajectory_subset = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
+                     'Fibroblast (cxcl12a)', 'Fibroblast (mpeg1.1)', 'Fibroblast (nppc)', 'Fibroblast (spock3)',
+                    'Fibroblast-like cells', 'Epicardium (Atrium)', 'Epicardium (Ventricle)',
+                    'Fibroblast (proliferating)', 'Perivascular cells']
+
+
 # # Load and annotate single-cell data
 
-# In[2]:
+# In[25]:
 
 
 H5_data = sc.read_10x_h5('../Data/all_h5_transfer/H5_Dr11_cr31_ffbm.h5')
@@ -112,7 +127,7 @@ Hr35_data = sc.read_10x_h5('../Data/all_h5_transfer/Hr35_Dr11_cr31_ffbm.h5')
 Hr35_data.var_names_make_unique()
 
 
-# In[48]:
+# In[26]:
 
 
 HR =    H5_data.concatenate(H6_data, H7_data, H8a_data, H8v_data,
@@ -126,7 +141,7 @@ HR =    H5_data.concatenate(H6_data, H7_data, H8a_data, H8v_data,
 HR.shape
 
 
-# In[49]:
+# In[27]:
 
 
 HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 
@@ -159,19 +174,19 @@ HR_obs = HR.obs
 HR.obs = HR.obs.reset_index().merge(HR_setnames, how="inner").set_index('index')
 
 
-# In[50]:
+# In[28]:
 
 
 HR.obs_names = [str(HR.obs.loc[x,'heart'])+'_'+str(x.split('-', 1)[0]) for x in HR.obs_names]
 
 
-# In[51]:
+# In[29]:
 
 
 annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged.csv', index_col = 0)
 
 
-# In[52]:
+# In[30]:
 
 
 # Drop annotations that are not in the single-cell object
@@ -180,7 +195,7 @@ anno_drop = annotations.index.difference(HR.obs_names)
 annotations = annotations.drop(anno_drop)
 
 
-# In[53]:
+# In[31]:
 
 
 HR_filter = HR[annotations.index]
@@ -188,66 +203,563 @@ HR_filter = HR[annotations.index]
 HR_filter
 
 
-# In[54]:
+# In[32]:
 
 
-HR_filter.obs['Cell_type'] = annotations_filter['Cell_type'].tolist()
+HR_filter.obs['Cell_type'] = annotations['Cell_type'].tolist()
+
+
+# In[4]:
+
+
+#HR_filter.write('./write/HR_filter.h5ad')
+HR_filter = sc.read('./write/HR_filter.h5ad')
+
+
+# # Gene expressions in the niche
+
+# In[5]:
+
+
+HR_niche = HR_filter[HR_filter.obs['Cell_type'].isin(trajectory_subset)]
+
+
+# In[7]:
+
+
+sc.pp.filter_genes(HR_niche, min_cells=3)
+sc.pp.normalize_per_cell(HR_niche, counts_per_cell_after=1e4,copy=False)
+sc.pp.log1p(HR_niche, copy=False)
+sc.pp.highly_variable_genes(HR_niche)
+sc.tl.pca(HR_niche)
+sc.pp.neighbors(HR_niche, n_neighbors=30)
+sc.external.pp.bbknn(HR_niche, batch_key='batch')
+sc.tl.umap(HR_niche)
+
+
+# In[8]:
+
+
+sc.pl.umap(HR_niche, color='batch',
+          title = 'Niche')#, save = 'subset1_3dpi_umap_batch.png')
+
+
+# In[9]:
+
+
+sc.pl.umap(HR_niche, color='dpi',
+          title = 'Niche')
+
+
+# In[13]:
+
+
+HR_niche.obs
+
+
+# In[15]:
+
+
+sc.pl.umap(HR_niche, color='Cell_type', palette = cell_type_colors.loc[HR_niche.obs.Cell_type.cat.categories.tolist()].color.tolist())
+
+
+# In[16]:
+
+
+HR_niche.obs.Cell_type.cat.categories.tolist()
 
 
 # # Pseudotime on fibroblasts, fibroblast-like cells and epicardium at 3dpi
 
-# In[55]:
+# In[34]:
 
 
-HR_ps_1 = HR_filter[HR_filter.obs['dpi'] == '3']
+#HR_ps_1 = HR_filter[HR_filter.obs['dpi'] == '3']
+#all_genes_but_RFP = [name for name in HR_ps_1.var_names if not name == 'RFP']
+#HR_ps_1 = HR_ps_1[:, all_genes_but_RFP]
 
 
-# In[56]:
+# In[35]:
 
 
-sc.pp.filter_genes(HR_ps_1, min_cells=3)
-HR_ps_1_norm = sc.pp.normalize_per_cell(HR_ps_1, counts_per_cell_after=1e4,copy=True)
-HR_ps_1 = sc.pp.log1p(HR_ps_1_norm, copy=True)
-sc.pp.highly_variable_genes(HR_ps_1)
-sc.tl.pca(HR_ps_1)
-sc.pp.neighbors(HR_ps_1, n_neighbors=30)
-sc.tl.umap(HR_ps_1)
-
-
-# In[57]:
-
-
-sc.pl.umap(HR_ps_1, color='Cell_type')
-
-
-# In[44]:
-
-
-cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors.csv', index_col = 0)
+#sc.pp.filter_genes(HR_ps_1, min_cells=3)
+#HR_ps_1_norm = sc.pp.normalize_per_cell(HR_ps_1, counts_per_cell_after=1e4,copy=True)
+#HR_ps_1 = sc.pp.log1p(HR_ps_1_norm, copy=True)
 
 
 # In[36]:
 
 
-cell_type_colors.index
+#sc.pp.highly_variable_genes(HR_ps_1)
+#sc.tl.pca(HR_ps_1)
+#sc.pp.neighbors(HR_ps_1, n_neighbors=30)
+#sc.tl.umap(HR_ps_1)
 
 
-# In[47]:
+# In[37]:
 
 
-np.setdiff1d(np.unique(HR_ps_1.obs.Cell_type), cell_type_colors.index)
+#HR_ps_1 = HR_ps_1[-HR_ps_1.obs['Cell_type'].isin(['Dead cells', 'Neuronal cells'])]
+
+
+# In[38]:
+
+
+#sc.pl.umap(HR_ps_1, color='Cell_type')
+
+
+# In[39]:
+
+
+# Set palette; this palette remains set
+#sc.pl.umap(HR_ps_1, color='Cell_type', palette = cell_type_colors.loc[HR_ps_1.obs.Cell_type.cat.categories.tolist()].color.tolist())
+
+
+# In[17]:
+
+
+#HR_ps_1.write('./write/HR_3dpi.h5ad')
+HR_ps_1 = sc.read('./write/HR_3dpi.h5ad')
+
+
+# In[5]:
+
+
+# Rewrite to disk when looks like everything works with proliferating cells.
+#HR_3d_subset1 = HR_ps_1[HR_ps_1.obs['Cell_type'].isin(trajectory_subset)]
+#HR_3d_subset1.write('./write/HR_3dpi_subset1.h5ad')
+#HR_3d_subset1 = sc.read('./write/HR_3dpi_subset1.h5ad')
+
+
+# In[4]:
+
+
+#sc.pp.highly_variable_genes(HR_3d_subset1)
+#sc.tl.pca(HR_3d_subset1)
+#sc.pp.neighbors(HR_3d_subset1, n_neighbors=30)
+#sc.tl.umap(HR_3d_subset1)
+
+
+# In[6]:
+
+
+#sc.pl.umap(HR_3d_subset1, color='Cell_type')#, palette = cell_type_colors.loc[HR_3d_subset1.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+  #        title = 'Subset 1, 3dpi')#, save = 'subset1_3dpi_umap.png')
+
+
+# In[14]:
+
+
+#cell_type_colors.head()
+
+
+# In[25]:
+
+
+fibro_colors = cell_type_colors[['color', 'setFibro']]
+fibro_colors = fibro_colors[fibro_colors.notna().setFibro]
+fibro_colors = fibro_colors.set_index('setFibro')
+#df[df.isnull().any(axis=1)]
+
+
+# In[29]:
+
+
+#sc.pl.umap(HR_3d_subset1, color='Cell_type', palette = fibro_colors.loc[HR_3d_subset1.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+#           title = 'Subset 1, 3dpi', save = 'subset1_3dpi_umap.png')
+
+
+# In[11]:
+
+
+#sc.pl.umap(HR_3d_subset1, color='batch',
+#          title = 'Subset 1, 3dpi', save = 'subset1_3dpi_umap_batch.png')
+
+
+# In[30]:
+
+
+#sc.tl.diffmap(HR_3d_subset1)
+
+
+# In[51]:
+
+
+#sc.pp.neighbors(HR_3d_subset1, n_neighbors=2, use_rep='X_diffmap')
+#sc.tl.draw_graph(HR_3d_subset1)
+#sc.pl.draw_graph(HR_3d_subset1, color='Cell_type', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_2n_diffmap.png')
+
+
+# In[52]:
+
+
+#sc.pp.neighbors(HR_3d_subset1, n_neighbors=4, use_rep='X_diffmap')
+#sc.tl.draw_graph(HR_3d_subset1)
+#sc.pl.draw_graph(HR_3d_subset1, color='Cell_type', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_4n_diffmap.png')
+
+
+# In[53]:
+
+
+#sc.pp.neighbors(HR_3d_subset1, n_neighbors=10, use_rep='X_diffmap')
+#sc.tl.draw_graph(HR_3d_subset1)
+#sc.pl.draw_graph(HR_3d_subset1, color='Cell_type', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_10n_diffmap.png')
+
+
+# In[7]:
+
+
+#sc.pp.neighbors(HR_3d_subset1, n_neighbors=20, use_rep='X_diffmap')
+#sc.tl.draw_graph(HR_3d_subset1)
+#sc.pl.draw_graph(HR_3d_subset1, color='Cell_type', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_20n_diffmap.png')
+
+
+# In[10]:
+
+
+# Batch effects?
+#HR_3d_subset1.obs
+#sc.pl.draw_graph(HR_3d_subset1, color = 'batch', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_20n_diffmap_batches.png')
+
+
+# In[18]:
+
+
+#sc.tl.louvain(HR_3d_subset1, resolution = 1)
+#sc.pl.draw_graph(HR_3d_subset1, color='louvain')
+
+
+# In[20]:
+
+
+#sc.tl.paga(HR_3d_subset1, groups='louvain')
+
+
+# In[22]:
+
+
+#sc.pl.paga(HR_3d_subset1, threshold=0.06, show=False)
+
+
+# In[20]:
+
+
+trajectory_subset
+
+
+# In[21]:
+
+
+HR_3d_sub1_cbr = HR_ps_1[HR_ps_1.obs['Cell_type'].isin(trajectory_subset)]
+
+#HR_3d_sub1_cbr = sc.read('./write/HR_3dpi_subset1.h5ad')
+
+
+# In[22]:
+
+
+sc.pp.highly_variable_genes(HR_3d_sub1_cbr)
+sc.tl.pca(HR_3d_sub1_cbr)
+sc.pp.neighbors(HR_3d_sub1_cbr, n_neighbors=30)
+sc.external.pp.bbknn(HR_3d_sub1_cbr, batch_key='batch')
+sc.tl.umap(HR_3d_sub1_cbr)
+# The order here is very important, to my surprise. If I run bbknn before neighbors, I do not get batch correction at all.
+
+
+# In[28]:
+
+
+sc.pl.umap(HR_3d_sub1_cbr, color='batch',
+          title = 'Subset 1, 3dpi', save = 'subset1_3dpi_umap_batch.png')
+
+
+# In[112]:
+
+
+sc.pl.umap(HR_3d_sub1_cbr, color='Cell_type', palette = fibro_colors.loc[HR_3d_sub1_cbr.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = 'Subset 1, 3dpi')#, save = 'subset1_3dpi_umap.png')
+
+
+# In[30]:
+
+
+sc.pl.umap(HR_3d_sub1_cbr, color=['aldh1a2', 'lxn'])
+
+
+# In[31]:
+
+
+sc.tl.diffmap(HR_3d_sub1_cbr)
 
 
 # In[32]:
 
 
-(np.unique(HR_ps_1.obs.Cell_type))
+sc.pp.neighbors(HR_3d_sub1_cbr, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_3d_sub1_cbr)
 
 
-# In[ ]:
+# In[33]:
 
 
-# Add correct colors
-# Subset celltypes
-# Do trajectory
+sc.pl.draw_graph(HR_3d_sub1_cbr, color='Cell_type', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_20n_diffmap.png')
 
+
+# In[34]:
+
+
+sc.pl.draw_graph(HR_3d_sub1_cbr, color = 'batch', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_20n_diffmap_batches.png')
+
+
+# In[35]:
+
+
+sc.tl.paga(HR_3d_sub1_cbr, groups='Cell_type')
+
+
+# In[36]:
+
+
+sc.pl.paga(HR_3d_sub1_cbr, threshold=0.3, show=True, labels = ['', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'subset1_3dpi_20n_diffmap.png')
+
+
+# In[37]:
+
+
+sc.tl.draw_graph(HR_3d_sub1_cbr, init_pos='paga')
+
+
+# In[38]:
+
+
+sc.pl.draw_graph(HR_3d_sub1_cbr, color = 'Cell_type', title = 'Subset 1, 3dpi', save = 'subset1_3dpi_20n_diffmap_pagainit.png')
+
+
+# In[97]:
+
+
+sc.tl.leiden(HR_3d_sub1_cbr, resolution=0.5)
+
+
+# In[98]:
+
+
+sc.pl.umap(HR_3d_sub1_cbr, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[102]:
+
+
+sc.pl.umap(HR_3d_sub1_cbr, color='Cell_type')
+
+
+# In[99]:
+
+
+sc.tl.paga(HR_3d_sub1_cbr, groups='leiden')
+
+
+# In[107]:
+
+
+sc.tl.draw_graph(HR_3d_sub1_cbr, init_pos='paga')
+
+
+# In[106]:
+
+
+sc.pl.paga(HR_3d_sub1_cbr, threshold = 0.2, color=['leiden'])
+
+
+# In[110]:
+
+
+sc.pl.draw_graph(HR_3d_sub1_cbr, color = ['Cell_type'])
+
+
+# In[111]:
+
+
+sc.pl.draw_graph(HR_3d_sub1_cbr, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# # Pseudotime on connected cell types 3dpi
+
+# In[39]:
+
+
+connected_3dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
+                     'Fibroblast (mpeg1.1)','Epicardium (Atrium)', 'Epicardium (Ventricle)',
+                    'Fibroblast (proliferating)', 'Perivascular cells']
+
+
+# In[40]:
+
+
+HR_3d_conn = HR_ps_1[HR_ps_1.obs['Cell_type'].isin(connected_3dpi)]
+
+
+# In[41]:
+
+
+sc.pp.highly_variable_genes(HR_3d_conn)
+sc.tl.pca(HR_3d_conn)
+sc.pp.neighbors(HR_3d_conn, n_neighbors=30)
+sc.external.pp.bbknn(HR_3d_conn, batch_key='batch')
+sc.tl.umap(HR_3d_conn)
+
+
+# In[94]:
+
+
+sc.pl.umap(HR_3d_conn, color='batch',
+          title = '3dpi connected niche')#, save = 'connected_niche_3dpi_umap_batch.png')
+
+
+# In[95]:
+
+
+sc.pl.umap(HR_3d_conn, color='Cell_type', palette = fibro_colors.loc[HR_3d_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '3dpi connected niche')#, save = 'connected_niche_3dpi_umap.png')
+
+
+# In[67]:
+
+
+sc.pl.umap(HR_3d_conn, color=['mpeg1.1', 'notch3', 'tcf21', 'tbx18', 'aldh1a2'])
+
+
+# In[45]:
+
+
+sc.tl.diffmap(HR_3d_conn)
+sc.pp.neighbors(HR_3d_conn, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_3d_conn)
+
+
+# In[46]:
+
+
+sc.tl.paga(HR_3d_conn, groups='Cell_type')
+
+
+# In[93]:
+
+
+sc.pl.paga(HR_3d_conn, threshold=0.3, show=True, labels = ['', '', '', '', '', '', '', '', ''], node_size_scale = 2)#, save = 'connected_niche_3dpi_20n_diffmap.png')
+
+
+# In[49]:
+
+
+sc.tl.draw_graph(HR_3d_conn, init_pos='paga')
+
+
+# In[113]:
+
+
+sc.pl.draw_graph(HR_3d_conn, color = 'Cell_type', title = '3dpi connected niche')#, save = 'connected_niche_3dpi_20n_diffmap_pagainit.png')
+
+
+# In[53]:
+
+
+sc.tl.leiden(HR_3d_conn, resolution=0.5)
+
+
+# In[74]:
+
+
+sc.pl.umap(HR_3d_conn, color='Cell_type')
+
+
+# In[79]:
+
+
+sc.pl.umap(HR_3d_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[55]:
+
+
+sc.tl.paga(HR_3d_conn, groups='leiden')
+
+
+# In[73]:
+
+
+sc.pl.paga(HR_3d_conn, color=['leiden', 'col1a1a', 'col11a1a'])
+
+
+# 0: shared col12, col11, proliferating
+# 1: part of fibroblast
+# 2: part of col11
+# 3: part of fibroblast
+# 4: part of col11
+# 5: part of epi A
+# 6: part of epi A
+# 7: part of fibroblast
+# 8: part of fibroblast
+# 9: epi V
+# 10: part of fibroblast
+# 11: part of fibroblast
+# 12: part of col12
+# 13: perivascular
+# 14: mpeg1.1
+# 15: shared fibroblast/prolif
+
+# In[82]:
+
+
+sc.pl.paga(HR_3d_conn, color=['col12a1a', 'pcna', 'cfd'])
+
+
+# In[81]:
+
+
+sc.pl.paga(HR_3d_conn, color=['mpeg1.1', 'notch3', 'aldh1a2'])
+
+
+# In[89]:
+
+
+sc.pl.paga(HR_3d_conn, show=True, labels = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'connected_niche_3dpi_20n_leiden_diffmap.png')
+
+
+# In[83]:
+
+
+sc.tl.draw_graph(HR_3d_conn, init_pos='paga')
+
+
+# In[90]:
+
+
+sc.pl.draw_graph(HR_3d_conn, color = ['Cell_type'], title = '3dpi connected niche', save = 'connected_niche_3dpi_20n_leiden_diffmap_pagainit.png')
+
+
+# In[91]:
+
+
+sc.pl.draw_graph(HR_3d_conn, color = ['pcna', 'aldh1a2'])
+
+
+# In[92]:
+
+
+sc.pl.draw_graph(HR_3d_conn, color = 'leiden', title = '3dpi connected niche', save = 'connected_niche_3dpi_20n_diffmap_leidenshow_pagainit.png')
+
+
+# In[114]:
+
+
+sc.pl.draw_graph(HR_3d_conn, color = ['tcf21', 'Cell_type'])
+
+
+# In[117]:
+
+
+sc.pl.draw_graph(HR_3d_conn, color = ['postnb', 'pdgfrb', 'stra6'])
+
+
+# # Control
