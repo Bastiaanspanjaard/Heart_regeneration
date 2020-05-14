@@ -489,6 +489,126 @@ sc.pl.draw_graph(HR_3d_conn, ncols = 3,
                           'pcna', 'aldh1a2', 'stra6'])
 
 
+# # Reproduce using RNA velocity
+
+# In[125]:
+
+
+import scvelo as scv
+scv.settings.set_figure_params('scvelo')
+
+
+# In[128]:
+
+
+H5_Rv_data = scv.read('../Data/RNAvelo/H5_v3Dr11.loom', cache=True)
+H5_Rv_data.var_names_make_unique()
+H6_Rv_data = scv.read('../Data/RNAvelo/H6_v3Dr11.loom', cache=True)
+H6_Rv_data.var_names_make_unique()
+H7_Rv_data = scv.read('../Data/RNAvelo/H7_v3Dr11.loom', cache=True)
+H7_Rv_data.var_names_make_unique()
+H8a_Rv_data = scv.read('../Data/RNAvelo/H8a_v3Dr11.loom', cache=True)
+H8a_Rv_data.var_names_make_unique()
+H8v_Rv_data = scv.read('../Data/RNAvelo/H8v_v3Dr11.loom', cache=True)
+H8v_Rv_data.var_names_make_unique()
+Hr1_Rv_data = scv.read('../Data/RNAvelo/Hr1_v3Dr11.loom', cache=True)
+Hr1_Rv_data.var_names_make_unique()
+Hr2a_Rv_data = scv.read('../Data/RNAvelo/Hr2a_v3Dr11.loom', cache=True)
+Hr2a_Rv_data.var_names_make_unique()
+Hr2b_Rv_data = scv.read('../Data/RNAvelo/Hr2b_v3Dr11.loom', cache=True)
+Hr2b_Rv_data.var_names_make_unique()
+Hr3_Rv_data = scv.read('../Data/RNAvelo/Hr3_v3Dr11.loom', cache=True)
+Hr3_Rv_data.var_names_make_unique()
+Hr4_Rv_data = scv.read('../Data/RNAvelo/Hr4_v3Dr11.loom', cache=True)
+Hr4_Rv_data.var_names_make_unique()
+Hr5_Rv_data = scv.read('../Data/RNAvelo/Hr5_v3Dr11.loom', cache=True)
+Hr5_Rv_data.var_names_make_unique()
+Hr6a_Rv_data = scv.read('../Data/RNAvelo/Hr6a_v3Dr11.loom', cache=True)
+Hr6a_Rv_data.var_names_make_unique()
+Hr6v_Rv_data = scv.read('../Data/RNAvelo/Hr6v_v3Dr11.loom', cache=True)
+Hr6v_Rv_data.var_names_make_unique()
+Hr7a_Rv_data = scv.read('../Data/RNAvelo/Hr7a_v3Dr11.loom', cache=True)
+Hr7a_Rv_data.var_names_make_unique()
+Hr7v_Rv_data = scv.read('../Data/RNAvelo/Hr7v_v3Dr11.loom', cache=True)
+Hr7v_Rv_data.var_names_make_unique()
+Hr8_Rv_data = scv.read('../Data/RNAvelo/Hr8_v3Dr11.loom', cache=True)
+Hr8_Rv_data.var_names_make_unique()
+Hr9_Rv_data = scv.read('../Data/RNAvelo/Hr9_v3Dr11.loom', cache=True)
+Hr9_Rv_data.var_names_make_unique()
+Hr10_Rv_data = scv.read('../Data/RNAvelo/Hr10_v3Dr11.loom', cache=True)
+Hr10_Rv_data.var_names_make_unique()
+Hr11_Rv_data = scv.read('../Data/RNAvelo/Hr11_v3Dr11.loom', cache=True)
+Hr11_Rv_data.var_names_make_unique()
+Hr12_Rv_data = scv.read('../Data/RNAvelo/Hr12_v3Dr11.loom', cache=True)
+Hr12_Rv_data.var_names_make_unique()
+Hr13_Rv_data = scv.read('../Data/RNAvelo/Hr13_v3Dr11.loom', cache=True)
+Hr13_Rv_data.var_names_make_unique()
+Hr14_Rv_data = scv.read('../Data/RNAvelo/Hr14_v3Dr11.loom', cache=True)
+Hr14_Rv_data.var_names_make_unique()
+Hr15_Rv_data = scv.read('../Data/RNAvelo/Hr15_v3Dr11.loom', cache=True)
+Hr15_Rv_data.var_names_make_unique()
+Hr16_Rv_data = scv.read('../Data/RNAvelo/Hr16_v3Dr11.loom', cache=True)
+Hr16_Rv_data.var_names_make_unique()
+Hr17_Rv_data = scv.read('../Data/RNAvelo/Hr17_v3Dr11.loom', cache=True)
+Hr17_Rv_data.var_names_make_unique()
+Hr18_Rv_data = scv.read('../Data/RNAvelo/Hr18_v3Dr11.loom', cache=True)
+Hr18_Rv_data.var_names_make_unique()
+Hr19_Rv_data = scv.read('../Data/RNAvelo/Hr19_v3Dr11.loom', cache=True)
+Hr19_Rv_data.var_names_make_unique()
+Hr20_Rv_data = scv.read('../Data/RNAvelo/Hr20_v3Dr11.loom', cache=True)
+Hr20_Rv_data.var_names_make_unique()
+Hr21_Rv_data = scv.read('../Data/RNAvelo/Hr21_v3Dr11.loom', cache=True)
+Hr21_Rv_data.var_names_make_unique()
+Hr22_Rv_data = scv.read('../Data/RNAvelo/Hr22_v3Dr11.loom', cache=True)
+Hr22_Rv_data.var_names_make_unique()
+Hr23_Rv_data = scv.read('../Data/RNAvelo/Hr23_v3Dr11.loom', cache=True)
+Hr23_Rv_data.var_names_make_unique()
+Hr24_Rv_data = scv.read('../Data/RNAvelo/Hr24_v3Dr11.loom', cache=True)
+Hr24_Rv_data.var_names_make_unique()
+Hr25_Rv_data = scv.read('../Data/RNAvelo/Hr25_v3Dr11.loom', cache=True)
+Hr25_Rv_data.var_names_make_unique()
+Hr26_Rv_data = scv.read('../Data/RNAvelo/Hr26_v3Dr11.loom', cache=True)
+Hr26_Rv_data.var_names_make_unique()
+Hr27_Rv_data = scv.read('../Data/RNAvelo/Hr27_v3Dr11.loom', cache=True)
+Hr27_Rv_data.var_names_make_unique()
+Hr28_Rv_data = scv.read('../Data/RNAvelo/Hr28_v3Dr11.loom', cache=True)
+Hr28_Rv_data.var_names_make_unique()
+Hr29_Rv_data = scv.read('../Data/RNAvelo/Hr29_v3Dr11.loom', cache=True)
+Hr29_Rv_data.var_names_make_unique()
+Hr30_Rv_data = scv.read('../Data/RNAvelo/Hr30_v3Dr11.loom', cache=True)
+Hr30_Rv_data.var_names_make_unique()
+Hr31_Rv_data = scv.read('../Data/RNAvelo/Hr31_v3Dr11.loom', cache=True)
+Hr31_Rv_data.var_names_make_unique()
+Hr32_Rv_data = scv.read('../Data/RNAvelo/Hr32_v3Dr11.loom', cache=True)
+Hr32_Rv_data.var_names_make_unique()
+Hr33_Rv_data = scv.read('../Data/RNAvelo/Hr33_v3Dr11.loom', cache=True)
+Hr33_Rv_data.var_names_make_unique()
+Hr34_Rv_data = scv.read('../Data/RNAvelo/Hr34_v3Dr11.loom', cache=True)
+Hr34_Rv_data.var_names_make_unique()
+Hr35_Rv_data = scv.read('../Data/RNAvelo/Hr35_v3Dr11.loom', cache=True)
+Hr35_Rv_data.var_names_make_unique()
+
+
+# In[129]:
+
+
+HR_Rv =    H5_Rv_data.concatenate(H6_Rv_data, H7_Rv_data, H8a_Rv_data, H8v_Rv_data,
+                        Hr1_Rv_data, Hr2a_Rv_data, Hr2b_Rv_data, Hr3_Rv_data, Hr4_Rv_data, Hr5_Rv_data, 
+                        Hr6a_Rv_data, Hr6v_Rv_data, Hr7a_Rv_data, Hr7v_Rv_data, Hr8_Rv_data, Hr9_Rv_data, Hr10_Rv_data,
+                        Hr11_Rv_data, Hr12_Rv_data, Hr13_Rv_data, Hr14_Rv_data, Hr15_Rv_data,
+                        Hr16_Rv_data, Hr17_Rv_data, Hr18_Rv_data, Hr19_Rv_data, Hr20_Rv_data,
+                        Hr21_Rv_data, Hr22_Rv_data, Hr23_Rv_data, Hr24_Rv_data, Hr25_Rv_data,
+                        Hr26_Rv_data, Hr27_Rv_data, Hr28_Rv_data, Hr29_Rv_data, Hr30_Rv_data,
+                        Hr31_Rv_data, Hr32_Rv_data, Hr33_Rv_data, Hr34_Rv_data, Hr35_Rv_data)
+HR_Rv.shape
+
+
+# In[130]:
+
+
+HR_Rv.write('./write/HR_Rv.h5ad')
+
+
 # # Full niche
 
 # In[5]:
