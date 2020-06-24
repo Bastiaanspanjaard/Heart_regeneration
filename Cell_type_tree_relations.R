@@ -21,10 +21,6 @@
 # Calculations like edge lists and abundancies should be done once. Implemented at loading: edge lists and node/type abundancies.
 # Simulation creates new trees that can also be visualized.
 # In general, visualization should be callable function.
-# When to include a tree? If the celltypes we want to correlate are both over a certain threshold (e.g. at least 20 in a tree).
-# Can we use the weight parameter in wtd.cors for this? wtd.cors(x, weight), with x the node fractions, and weight in principle
-# the node size, but can we set weights to zero for a whole tree if that tree does not contain either of the cell types at high
-# enough abundance. Unfortunately, this does not really vectorize. Can we semi-vectorize this?
 
 # Steps
 # Create input/output admin for segments
@@ -32,7 +28,8 @@
 #   Done for correlation calculation
 #   Done for bootstrapping
 # Rewrite segments as functions
-#   Correlation calculation
+#   Done for all-all correlation calculation; this does not yet include one-out correlations and the comparison_list
+#   needs to be calculated beforehand.
 # Identify refactoring opportunities for speed or readability efficiency
 
 # Dependencies ####
@@ -56,57 +53,80 @@ precursors_include_incl_target <- NULL
 precursors_include <- setdiff(precursors_include_incl_target, target)
 inclusion_limit <- 20 # How many cells are needed of a certain type to include a tree for
 # that type.
-correlation_type <- "Asymmetric" # "Asymmetric": only correlate over the nodes with nonzero
+correlation_type <- "Symmetric" # "Asymmetric": only correlate over the nodes with nonzero
 # target cell type. "Symmetric": correlate over all nodes.
 uniform_conversion <- F
 uniform_conversion_chance <- 0.5
-chances <- c(0, 0.25, 0.5, 0.75, 1)
+chances <- c(0, 0.1, 0.2, 0.3)
 simulation_seed <- 37 # -> 0.16 # 69 -> 0.02 # 1337 -> 0.71 top # 6 -> 0.62 top # 420 -> 0.65, z-top 
 # Old list without weighted mean conversion chance: 6 -> 0.52 # 1337 -> 0.52 non-significant #420 -> 0.57 # 69 -> rho = 0.51 # 37 -> rho = 0.3
-
+zoom_types <- c("Fibroblast", "Fibroblast (cfd)", "Fibroblast (col11a1a)", 
+                "Fibroblast (col12a1a)", "Fibroblast (mpeg1.1)", "Epicardium (Atrium)", 
+                "Epicardium (Ventricle)", "Fibroblast (proliferating)", "Perivascular cells",
+                "Fibroblast (cxcl12a)", "Fibroblast (nppc)", "Fibroblast (spock3)",
+                "Fibroblast-like cells")
+# 'Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
+# 'Fibroblast (cxcl12a)', 'Fibroblast (mpeg1.1)', 'Fibroblast (nppc)', 'Fibroblast (spock3)',
+# 'Fibroblast-like cells', 'Epicardium (Atrium)', 'Epicardium (Ventricle)',
+# 'Fibroblast (proliferating)', 'Perivascular cells'
 # Prepare colors and cell type data ####
 cell_types <- read.csv("./Data/final_metadata.csv", stringsAsFactors = F)
 colnames(cell_types)[1] <- "Cell"
 # Cell type decisions as follows: all T-cell types and all macrophage types become T-cells/macrophages. 
-# Split endocardium into 1 and 2, A and V but merge endocardium frzb.
+# Merge endocardium frzb and do not split endocardium into 1 and 2.
+# Merge cardiomyocytes A and V but keep the regular, ttn.2 and proliferating subtypes.
 cell_types$Cell_type <- cell_types$lineage.ident
-cell_types$Celltype[grepl("T-cell", cell_types$Cell_type)] <- "T-cells"
+cell_types$Cell_type[grepl("T-cell", cell_types$Cell_type)] <- "T-cells"
 cell_types$Cell_type[grepl("Macrophage", cell_types$Cell_type)] <- "Macrophages"
-cell_types$Cell_type[grepl("Endocardium", cell_types$Cell_type)] <- 
-  cell_types$final.zoom[grepl("Endocardium", cell_types$Cell_type)]
+# cell_types$Cell_type[grepl("Endocardium", cell_types$Cell_type)] <- 
+#   cell_types$final.zoom[grepl("Endocardium", cell_types$Cell_type)]
 cell_types$Cell_type[grepl("Endocardium frzb", cell_types$Cell_type)] <- "Endocardium (frzb)"
+cell_types$Cell_type[grepl("ttn", cell_types$Cell_type)] <- "Cardiomyocytes (ttn.2)"
+# cell_types$Cell_type[grepl("Cardiomyocytes A|V", cell_types$Cell_type)] <- "Cardiomyocytes"
+cell_types <- cell_types[cell_types$Cell_type != "Dead cells", ]
 cell_types$Cell_name <- paste("nd", cell_types$Cell, sep = "")
+
+# write.csv(cell_types, "./Data/final_metadata_Tmacromerged_2.csv", row.names = F, quote = F)
 
 celltypes <- data.frame(table(cell_types$Cell_type), stringsAsFactors = F)
 colnames(celltypes)[1] <- c("Cell_type")
 celltypes$Cell_type <- as.character(celltypes$Cell_type)
 
-celltype_colors <- readRDS("./Data/Cell_type_colors.rds")
+# celltype_colors_1 <- readRDS("./Data/Cell_type_colors.rds")
+celltype_colors <- read.csv("./Data/Cell_type_colors_2.csv")
 ann_colors <- setNames(celltype_colors$color, celltype_colors$Cell.type)
+# write.csv(celltype_colors[!is.na(celltype_colors$Cell.type), c("Cell.type", "color")],
+          # "./Data/Cell_type_colors.csv", quote = F, row.names = F)
 
 # Load tree objects, append cell types, create lineage trees ####
-tree_list <- list()
+# tree_list_in <- list()
 # lib <- unique(libraries$Sample)[1]
-for(lib in unique(libraries$Sample)){
-  tree.in <- ReadTree(lib, reference_set = cell_types[cell_types$orig.ident %in% libraries$Library_name[libraries$Sample == lib],
-                                                      ], tree_path = tree_path)
-  edge_list <- ToDataFrameNetwork(tree.in$Tree, "Cell.type")
-
-  node_type_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
-  colnames(node_type_counts) <- c("Node", "Cell_type", "Type_count")
-  node_type_counts$Node <- as.character(node_type_counts$Node)
-  node_type_counts$Cell_type <- as.character(node_type_counts$Cell_type)
-  node_type_counts <- node_type_counts[node_type_counts$Cell_type != "NA", ]
-  
-  tree.in <- list(metadata = list(dpi = libraries$Dpi[libraries$Sample == lib],
-                                  Name = lib), 
-                  Tree = tree.in$Tree,
-                  Edge_list = edge_list,
-                  Node_type_counts = node_type_counts)
-  tree_list[[length(tree_list) + 1]] <- tree.in
-  names(tree_list)[[length(tree_list)]] <- lib
-}
-tree_list_real <- tree_list
+# for(lib in unique(libraries$Sample)){
+#   tree.in <- ReadTree(lib, reference_set = cell_types[cell_types$orig.ident %in% libraries$Library_name[libraries$Sample == lib],
+#                                                       ], tree_path = tree_path)
+#   tree.in$Tree$Do(RemapCellTypes, 
+#           reference_set = cell_types)
+#   edge_list <- ToDataFrameNetwork(tree.in$Tree, "Cell.type")
+# 
+#   node_type_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
+#   colnames(node_type_counts) <- c("Node", "Cell_type", "Type_count")
+#   node_type_counts$Node <- as.character(node_type_counts$Node)
+#   node_type_counts$Cell_type <- as.character(node_type_counts$Cell_type)
+#   node_type_counts <- node_type_counts[node_type_counts$Cell_type != "NA", ]
+# 
+#   tree.in <- list(metadata = list(dpi = libraries$Dpi[libraries$Sample == lib],
+#                                   Name = lib),
+#                   Tree = tree.in$Tree,
+#                   Edge_list = edge_list,
+#                   Node_type_counts = node_type_counts)
+#   tree_list_in[[length(tree_list_in) + 1]] <- tree.in
+#   names(tree_list_in)[[length(tree_list_in)]] <- lib
+# }
+# # tree_list_real <- tree_list
+# saveRDS(tree_list_in, "./Data/Trees/Tree_list_oneEndo.rds")
+tree_list_in <- readRDS("./Data/Trees/Tree_list_oneEndo.rds")
+# saveRDS(tree_list_in, "./Data/Trees/Tree_list.rds")
+# tree_list_in <- readRDS("./Data/Trees/Tree_list.rds")
 
 # Simulation of target/source process ####
 # Uses as input: tree_list_real, list of trees, fictional source and target, simulation seed.
@@ -208,15 +228,43 @@ for(t in 1:length(tree_list)){
 # Create tree visualization and zoom visualization ####
 #- only run if needed because this takes quite some time.
 # for(t in 1:length(tree_list)){
-#   tree_list[[t]]$Pie_tree <- 
-#     collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
-#                     pieSummary = T, collapsed = F,
-#                     width = 1000, height = 500,
-#                     ctypes = celltype_colors$Cell.type, linkLength=60, 
-#                     ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
-#                     nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6)) 
-#   # tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types, 
-#   #                               ct_colors = type_colors$colo1)
+  tree_list[[t]]$Pie_tree <-
+    collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
+                    pieSummary = T, collapsed = F,
+                    width = 1000, height = 500,
+                    ctypes = celltype_colors$Cell.type, linkLength=60,
+                    ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
+                    nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+# tree_list[[t]]$Pie_zoom_tree <-
+#   collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
+#                   pieSummary = T, collapsed = F,
+#                   width = 1000, height = 500,
+#                   ctypes = celltype_colors$Cell.type, linkLength=60,
+#                   ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
+#                   nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+# tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types,
+#                                 ct_colors = type_colors$colo1)
+tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types,
+                              ct_colors = celltype_colors$color[celltype_colors$Cell.type %in% zoom_types], 
+                              ctypes = celltype_colors$Cell.type[celltype_colors$Cell.type %in% zoom_types])
+tree_to_plot <- Clone(tree_list[[t]]$Tree)
+tree_to_plot$Do(ZoomCellTypes, 
+                zoom_types = zoom_types)
+# Still have fibroblast-like cells here.
+tree_zoom_plot <- 
+  collapsibleTree(df = tree_to_plot, root =tree_to_plot$scar, pieNode = T,
+                                  pieSummary = T, collapsed = F,
+                                  width = 1000, height = 500,
+                                  ctypes = celltype_colors$Cell.type, linkLength=60,
+                                  ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
+                                  nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+# htmlwidgets::saveWidget(
+#   tree_list$Hr27$Pie_tree,
+#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
+# htmlwidgets::saveWidget(
+#     tree_zoom_plot,
+#     file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
+
 #   # htmlwidgets::saveWidget(
 #   #   tree_list[[t]]$Full_tree,
 #   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
@@ -244,8 +292,47 @@ for(t in 1:length(tree_list)){
 # this to a list (dataframe for every progenitor) and also keep a condensed long list with only
 # the correlations, but between every two cell types.
 
+inclusion_limit <- 20
+trees_to_include <- 
+  unlist(lapply(tree_list_in, 
+                function(x){x$metadata$Name[x$metadata$dpi == "7"]}))
+types_force_include <- NULL
+  # c("B-cells", "Bl.ves.EC (apnln)", "Bl.ves.EC (lyve1)", "Bl.ves.EC (plvapb)", 
+  #   "Cardiomyocytes (proliferating)", "Cardiomyocytes (ttn.2)", "Cardiomyocytes (ttn.2)",
+  #   "Cardiomyocytes A", "Cardiomyocytes V", "Endocardium (frzb)", "Endocardium (A)", 
+  #   "Endocardium (V)", "Epicardium (Atrium)", "Epicardium (Ventricle)",
+  #   "Fibroblast", "Fibroblast (cfd)", "Fibroblast (col11a1a)", "Fibroblast (col12a1a)",
+  #   "Fibroblast (cxcl12a)", "Fibroblast (mpeg1.1)", "Fibroblast (nppc)", "Fibroblast (proliferating)",
+  #   "Fibroblast (spock3)", "Fibroblast-like cells", "Macrophages", "Myelin cells",
+  #   "Neuronal cells", "Neutrophils", "Perivascular cells", "Proliferating cells", "Smooth muscle cells",           
+  #   "T-cells", "Monocytes")
+trees_to_include <- trees_to_include[!is.na(trees_to_include)]
+tree_list <- tree_list_in[trees_to_include]
+tree_type_counts <- data.frame()
+for(t in 1:length(tree_list)){
+  tree_name <- names(tree_list)[t]
+  tree_list[[t]]$Tree <- Clone(tree_list_in[[tree_name]]$Tree)
+  # Cells of each type per tree: sum up over all nodes, output has columns cell type, count columns for each tree
+  # tree_counts <- 
+  this_tree_counts <- aggregate(tree_list[[t]]$Node_type_counts$Type_count,
+            by = list(tree_list[[t]]$Node_type_counts$Cell_type),
+            sum)
+  colnames(this_tree_counts) <- c("Cell_type", tree_name)
+  tree_type_counts <- merge(tree_type_counts, this_tree_counts, all = T)
+}
+tree_type_counts[is.na(tree_type_counts)] <- 0
+included_types <- 
+  tree_type_counts$Cell_type[apply(tree_type_counts[, -1], 1, function(x) sum(x >= inclusion_limit) > 0)]
+
 # Run this over all trees, keep distances top-level, create a new tree-level in the list
-comparison_list <- list(Comparison = data.frame(Tree = character(),
+set.seed <- 1
+sample_fraction <- 0.5
+cell_type_correspondence <- matrix(0, nrow = length(included_types), ncol = length(included_types),
+                                   dimnames = list(included_types, included_types))
+
+for(iter in 1:50){
+print(iter)
+  comparison_list <- list(Comparison = data.frame(Tree = character(),
                                                 Precursor = character(),
                                                 Type_count = integer()),
                         Node_sizes = data.frame(Size = integer()),
@@ -257,21 +344,26 @@ analysis_stats <-
            Included = logical(),
            Cell_type = character(),
            Count = integer())
-
 for(t in 1:length(tree_list)){
   # tree <- tree_list[[t]]$Tree
 
   # edge_list <- ToDataFrameNetwork(tree, "Cell.type")
-  edge_list <- tree_list[[t]]$Edge_list
+  edge_list_full <- tree_list[[t]]$Edge_list
+  # Cell.type == "NA" are nodes; leave those in, sample over the others.
+  cell_list <- edge_list_full[edge_list_full$Cell.type != "NA", ]
+  cell_list_s <- cell_list[sample.int(nrow(cell_list), round(size = sample_fraction * nrow(cell_list))), ]
+  edge_list <- rbind(edge_list_full[edge_list_full$Cell.type == "NA", ], cell_list_s)
+  # edge_list <- edge_list_full
   analysis_stats_add <-
     data.frame(table(edge_list$Cell.type[edge_list$Cell.type != "NA"]))
   colnames(analysis_stats_add) <- c("Cell_type", "Count")
   analysis_stats_add$Tree <- names(tree_list)[t]
-  if(!(target %in% edge_list$Cell.type) | sum(edge_list$Cell.type == target) < 20){
-    analysis_stats_add$Included <- F
-    analysis_stats <- rbind(analysis_stats, analysis_stats_add)
-    next
-  }
+  # NOTE: we may need this for the target-based correlations
+  # if(!(target %in% edge_list$Cell.type) | sum(edge_list$Cell.type == target) < 20){
+  #   analysis_stats_add$Included <- F
+  #   analysis_stats <- rbind(analysis_stats, analysis_stats_add)
+  #   next
+  # }
   analysis_stats_add$Included <- T
   analysis_stats <- rbind(analysis_stats, analysis_stats_add)
   
@@ -310,6 +402,29 @@ comparison_list$Normalized_frequencies <-
   comparison_list$Normalized_frequencies[, colSums(comparison_list$Normalized_frequencies) > 0]
 comparison_list$Node_sizes$Weight <- comparison_list$Node_sizes$Size/sum(comparison_list$Node_sizes$Size)
 # comparison_list$All_trees_prec <- list()
+# Collapse non-splitting branches:
+# 1) To find a non-splitting branch, identify nodes with exactly one child. Those are the parent nodes in
+# a non-splitting branch. We can recognize those nodes by counting the nodes whose name contains their name;
+# the nodes we are looking for have exactly two (themselves and their only child).
+# 2) Remove the child (note that weights and correlations are using the cumulative counts).
+# 3) Search for non-splitting branches again.
+repeat{
+  nodes_list <- data.frame(Node = rownames(comparison_list$Normalized_frequencies))
+  nodes_list$One_child <- 
+    sapply(nodes_list$Node, function(x) sum(grepl(x, nodes_list$Node))) == 2
+  if(sum(nodes_list$One_child) == 0){break}
+  nodes_list$In_one_child_parent <- 
+    sapply(nodes_list$Node, function(x){
+      sum(sapply(nodes_list$Node[nodes_list$One_child], function(y){grepl(y, x)}))
+    })
+  nodes_list$Last_only_child <-
+    !nodes_list$One_child & nodes_list$In_one_child_parent
+  comparison_list$Normalized_frequencies <- 
+    comparison_list$Normalized_frequencies[!(rownames(comparison_list$Normalized_frequencies) %in% nodes_list$Node[nodes_list$Last_only_child]), ]
+  comparison_list$Node_sizes <- 
+    comparison_list$Node_sizes[!(rownames(comparison_list$Node_sizes) %in% nodes_list$Node[nodes_list$Last_only_child]), ]
+}
+# View(comparison_list$Normalized_frequencies_sb)
 
 # Calculate correlations
 comparison_list$All_trees_distances <- 
@@ -319,7 +434,112 @@ comparison_list$All_trees_distances <-
 # Add included trees
 comparison_list$All_trees_distances[, unique(analysis_stats$Tree[analysis_stats$Included])] <- 0
 
-type_tree_cor <- CalculateTypeCorrelations(tree_list, comparison_list)
+type_tree_cor <- CalculateTypeCorrelations(tree_list, comparison_list, 
+                                           force_include = types_force_include, inclusion_limit = inclusion_limit)
+cor_present <- type_tree_cor[rownames(type_tree_cor) != "Dead cells", colnames(type_tree_cor) != "Dead cells"]
+# Remove cell types with largest amount of NaNs consecutively 
+while(T){
+  type_keep_decider <- apply(cor_present, 1, function(x) {sum(is.nan(x))})
+  if(max(type_keep_decider) == 0){break}
+  types_keep <- names(type_keep_decider[type_keep_decider < max(type_keep_decider)])
+  cor_present <- cor_present[types_keep, types_keep]
+}
+
+norm_freq <- comparison_list$Normalized_frequencies
+norm_freq <- norm_freq[, colnames(norm_freq) %in% colnames(cor_present)]
+
+# START Making an example correlation plot
+# inclusion_limit <- 10
+# inc_exc <- norm_freq # Same structure as norm_freq
+# inc_exc[,] <- F # Set all entries to F
+# for(t in 1:length(tree_list)){
+#   tree_name <- names(tree_list)[t]
+#   tree_type_include <- aggregate(tree_list[[t]]$Node_type_counts$Type_count,
+#                                  by = list(Cell_type = tree_list[[t]]$Node_type_counts$Cell_type),
+#                                  sum) # Count cell type numbers in tree
+#   tree_type_include$Include <- tree_type_include$x >= inclusion_limit # Set included celltypes to T in dataframe
+#   inc_exc[grepl(tree_name, rownames(inc_exc)), tree_type_include$Cell_type] <- # Nodes in tree, cell types in tree (cells not in tree remain F)
+#     matrix(rep(tree_type_include$Include, each = sum(grepl(tree_name, rownames(inc_exc)))), 
+#            nrow = sum(grepl(tree_name, rownames(inc_exc))), 
+#            ncol = nrow(tree_type_include)) # Create matrix of (nodes in tree) x (cell types in tree), with values T for cell types that
+#   # have enough abundance.
+# }
+# x_plot_name <- "Fibroblast-like cells"
+# y_plot_name <- "Fibroblast (col11a1a)"
+# x_plot_col <- which(colnames(norm_freq) == x_plot_name)
+# y_plot_col <- which(colnames(norm_freq) == y_plot_name)
+# nf_plot <- cbind(norm_freq[, c(x_plot_col, y_plot_col)], inc_exc[, c(x_plot_col, y_plot_col)])
+# colnames(nf_plot) <- c("Xp", "Yp", "Inc_X", "Inc_Y")
+# nf_plot <- nf_plot[nf_plot$Inc_X & nf_plot$Inc_Y, ]
+# png("./Images/Col11_fibro-like_3dpi_corplot.png")
+# ggplot(nf_plot) +
+#   geom_point(aes(x = Xp, y = Yp), size = 5) +
+#   labs(x = x_plot_name, y = y_plot_name)
+# dev.off()
+# END making example correlation plot
+
+cor_dist <- as.dist(1 - (cor_present + 1)/2)
+cell_type_cor_clust <- hclust(cor_dist)
+# gaps_determinant <- data.frame(Node = rownames(norm_freq))
+# gaps_determinant$Tree <-
+#   sapply(gaps_determinant$Node, function(x) unlist(strsplit(as.character(x), ":"))[1])
+# gaps_row <- cumsum(table(gaps_determinant$Tree))
+# # # pdf("./Images/Cell_type_relations_pheatmap_3dpi_min10_oneEndo.pdf")
+# pheatmap::pheatmap(norm_freq, cluster_rows = F, cluster_cols = cell_type_cor_clust,
+#                    cutree_cols = 5, gaps_row = gaps_row,
+#                    show_rownames = F,
+#                    main = "Cell type relations at 7dpi")
+# # dev.off()
+this_ds_hclust <- data.frame(cutree(cell_type_cor_clust, k = 5))
+colnames(this_ds_hclust)[1] <- "DS" #paste("DS", sample_fraction, iter, sep = "_")
+this_ds_hclust$Cell_type <- factor(row.names(this_ds_hclust), levels = included_types)
+this_ds_hclust$Presence <- 1
+type_clusters <- reshape2::acast(this_ds_hclust, Cell_type ~ DS, value.var = "Presence", fill = 0, drop = F)
+type_clusters_add <- type_clusters %*% t(type_clusters)
+type_clusters_add <- type_clusters_add[included_types, included_types]
+cell_type_correspondence <- cell_type_correspondence + type_clusters_add
+}
+
+pheatmap(cell_type_correspondence)
+
+# How often do cell types go together in a cluster?
+sample_results <- ds_hclust[, -2]
+row.names(sample_results) <- sample_results$Cell_type
+sample_results <- sample_results[, -1]
+
+ds_hclust <- data.frame(cutree(cell_type_cor_clust, k = 5))
+colnames(ds_hclust)[1] <- "All"
+
+all_hclust <- ds_hclust
+ds_hclust <- all_hclust
+ds_hclust$Cell_type <- row.names(ds_hclust)
+
+require(clusteval)
+cluster_similarity(ds_hclust$All, ds_hclust$All)
+
+hclust_grouping <- data.frame(cutree(cell_type_cor_clust, k = 7))
+colnames(hclust_grouping)[1] <- "Hclust"
+sum(rownames(hclust_grouping) != rownames(cor_present)) # Just to check if the hclust ordering is correct
+hclust_grouping$Nodename <- 1:nrow(hclust_grouping)
+hclust_list <- list()
+for(hc in unique(hclust_grouping$Hclust)){
+  hclust_list[[length(hclust_list) + 1]] <- hclust_grouping$Nodename[hclust_grouping$Hclust == hc]
+  names(hclust_list)[[length(hclust_list)]] <- hc
+}
+nodenames <- 1:nrow(cor_present)
+longnames <- rownames(cor_present)
+
+graph1<-qgraph(cor_present, diag = F,
+               layout= "spring",
+               labels = nodenames, nodeNames = longnames,
+               sampleSize = nrow(cor_present),
+               groups=hclust_list, minimum = 0.2, 
+               vsize=5, esize = 4.5,
+               filename = "~/Documents/Projects/heart_Bo/Images/Cor_network_7dpi_forceinclude_min10_article_legendonly", filetype = "eps",
+               border.width = 2,#cut=0, maximum=.45, border.width=1.5,
+               width = 5.5, height = 5.5, legend = T,
+               legend.cex = 0.2, label.cex = 2)
+
 
 for(p in 1:ncol(comparison_list$Normalized_frequencies)){
   precursor <- names(comparison_list$Normalized_frequencies)[p]
