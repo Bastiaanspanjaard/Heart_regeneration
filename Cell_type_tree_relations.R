@@ -1,37 +1,3 @@
-# Refactoring notes ####
-# Modus: 
-#   1) All cell type (a)symmetric correlations in (subset of) trees, potentially together with bootstraps.
-#   2) Target-based (a)symmetric correlations in (subset of) trees, together with bootstraps.
-#   3) Simulation of conversion with (a)symmetric correlations in (subset of) trees, together with bootstraps.
-# Way of correlation: asymmetric/symmetric.
-# Trees to include. This should be a simple vector of tree lists that we can use to subset or loop over the
-# full tree list.
-# For 2: target cell type
-# For 3: source cell type, kind of conversion
-
-
-# Flow:
-#   Load data, compute edge lists and cell type abundancies, create visualizations if needed.
-#   For 3): create simulated data
-#   Calculate correlations
-#   Bootstrap correlations
-
-# Ideas
-# Append celltypes to tree list
-# Calculations like edge lists and abundancies should be done once. Implemented at loading: edge lists and node/type abundancies.
-# Simulation creates new trees that can also be visualized.
-# In general, visualization should be callable function.
-
-# Steps
-# Create input/output admin for segments
-#   Done for data simulation
-#   Done for correlation calculation
-#   Done for bootstrapping
-# Rewrite segments as functions
-#   Done for all-all correlation calculation; this does not yet include one-out correlations and the comparison_list
-#   needs to be calculated beforehand.
-# Identify refactoring opportunities for speed or readability efficiency
-
 # Dependencies ####
 source("./Scripts/HR_library.R")
 
@@ -69,30 +35,26 @@ zoom_types <- c("Fibroblast", "Fibroblast (cfd)", "Fibroblast (col11a1a)",
 # 'Fibroblast (cxcl12a)', 'Fibroblast (mpeg1.1)', 'Fibroblast (nppc)', 'Fibroblast (spock3)',
 # 'Fibroblast-like cells', 'Epicardium (Atrium)', 'Epicardium (Ventricle)',
 # 'Fibroblast (proliferating)', 'Perivascular cells'
+
 # Prepare colors and cell type data ####
-cell_types <- read.csv("./Data/final_metadata.csv", stringsAsFactors = F)
-colnames(cell_types)[1] <- "Cell"
 # Cell type decisions as follows: all T-cell types and all macrophage types become T-cells/macrophages. 
 # Merge endocardium frzb and do not split endocardium into 1 and 2.
 # Merge cardiomyocytes A and V but keep the regular, ttn.2 and proliferating subtypes.
-cell_types$Cell_type <- cell_types$lineage.ident
-cell_types$Cell_type[grepl("T-cell", cell_types$Cell_type)] <- "T-cells"
-cell_types$Cell_type[grepl("Macrophage", cell_types$Cell_type)] <- "Macrophages"
-# cell_types$Cell_type[grepl("Endocardium", cell_types$Cell_type)] <- 
-#   cell_types$final.zoom[grepl("Endocardium", cell_types$Cell_type)]
-cell_types$Cell_type[grepl("Endocardium frzb", cell_types$Cell_type)] <- "Endocardium (frzb)"
-cell_types$Cell_type[grepl("ttn", cell_types$Cell_type)] <- "Cardiomyocytes (ttn.2)"
-# cell_types$Cell_type[grepl("Cardiomyocytes A|V", cell_types$Cell_type)] <- "Cardiomyocytes"
-cell_types <- cell_types[cell_types$Cell_type != "Dead cells", ]
-cell_types$Cell_name <- paste("nd", cell_types$Cell, sep = "")
+cell_annotations <- read.csv("./Data/final_metadata.csv", stringsAsFactors = F)
+colnames(cell_annotations)[1] <- "Cell"
+cell_annotations$Cell_type <- cell_annotations$lineage.ident
+cell_annotations$Cell_type[grepl("T-cell", cell_annotations$Cell_type)] <- "T-cells"
+cell_annotations$Cell_type[grepl("Macrophage", cell_annotations$Cell_type)] <- "Macrophages"
+cell_annotations$Cell_type[grepl("Endocardium frzb", cell_annotations$Cell_type)] <- "Endocardium (frzb)"
+cell_annotations$Cell_type[grepl("ttn", cell_annotations$Cell_type)] <- "Cardiomyocytes (ttn.2)"
+cell_annotations <- cell_annotations[cell_annotations$Cell_type != "Dead cells", ]
+cell_annotations$Cell_name <- paste("nd", cell_annotations$Cell, sep = "")
+# write.csv(cell_annotations, "./Data/final_metadata_Tmacromerged_2.csv", row.names = F, quote = F)
 
-# write.csv(cell_types, "./Data/final_metadata_Tmacromerged_2.csv", row.names = F, quote = F)
-
-celltypes <- data.frame(table(cell_types$Cell_type), stringsAsFactors = F)
+celltypes <- data.frame(table(cell_annotations$Cell_type), stringsAsFactors = F)
 colnames(celltypes)[1] <- c("Cell_type")
 celltypes$Cell_type <- as.character(celltypes$Cell_type)
 
-# celltype_colors_1 <- readRDS("./Data/Cell_type_colors.rds")
 celltype_colors <- read.csv("./Data/Cell_type_colors_2.csv")
 ann_colors <- setNames(celltype_colors$color, celltype_colors$Cell.type)
 # write.csv(celltype_colors[!is.na(celltype_colors$Cell.type), c("Cell.type", "color")],
@@ -102,10 +64,10 @@ ann_colors <- setNames(celltype_colors$color, celltype_colors$Cell.type)
 # tree_list_in <- list()
 # lib <- unique(libraries$Sample)[1]
 # for(lib in unique(libraries$Sample)){
-#   tree.in <- ReadTree(lib, reference_set = cell_types[cell_types$orig.ident %in% libraries$Library_name[libraries$Sample == lib],
+#   tree.in <- ReadTree(lib, reference_set = cell_annotations[cell_annotations$orig.ident %in% libraries$Library_name[libraries$Sample == lib],
 #                                                       ], tree_path = tree_path)
 #   tree.in$Tree$Do(RemapCellTypes, 
-#           reference_set = cell_types)
+#           reference_set = cell_annotations)
 #   edge_list <- ToDataFrameNetwork(tree.in$Tree, "Cell.type")
 # 
 #   node_type_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
@@ -292,7 +254,6 @@ tree_zoom_plot <-
 # this to a list (dataframe for every progenitor) and also keep a condensed long list with only
 # the correlations, but between every two cell types.
 
-inclusion_limit <- 20
 trees_to_include <- 
   unlist(lapply(tree_list_in, 
                 function(x){x$metadata$Name[x$metadata$dpi == "7"]}))
@@ -638,7 +599,6 @@ norm_freq <- comparison_list$Normalized_frequencies
 norm_freq <- norm_freq[, colnames(norm_freq) %in% colnames(cor_present)]
 
 # START Making an example correlation plot
-# inclusion_limit <- 20
 inc_exc <- norm_freq # Same structure as norm_freq
 inc_exc[,] <- F # Set all entries to F
 for(t in 1:length(tree_list)){
