@@ -15,6 +15,7 @@ suppressPackageStartupMessages(require(RColorBrewer))
 suppressPackageStartupMessages(require(igraph))
 suppressPackageStartupMessages(require(weights))
 suppressPackageStartupMessages(require(data.table))
+suppressPackageStartupMessages(require(qgraph))
 
 # Parameters ####
 libraries <- data.frame(Library_name = c("H5", "H6", "H7", "H8a", "H8v",
@@ -136,7 +137,8 @@ CalculateCooccurrence <- function(tree_sample){
 }
 
 CalculateTypeCorrelations <- function(tree_list, comparison_list, 
-                                      inclusion_limit = 20, correlation_type = "Symmetric"){
+                                      inclusion_limit = 20, force_include = NULL,
+                                      correlation_type = "Symmetric"){
   # Calculate correlations between cell types over trees. Correlations are calculated between
   # cell type frequencies over all nodes, with nodes weighted by cell count.
   # For each cell type, trees that have at least [inclusion_limit] cells of that type are
@@ -152,15 +154,15 @@ CalculateTypeCorrelations <- function(tree_list, comparison_list,
   # structure as norm_freq, entries F mean do not include in correlation calculation.
   inc_exc <- norm_freq # Same structure as norm_freq
   inc_exc[,] <- F # Set all entries to F
-  # Loop over all trees. In [inc_exc], set all nodes per tree to true for each cell types that has more than
-  # or equal to [inclusion_limit] cells. In type_inc, set all nodes that have cells of a specific
-  # type to T.
+  # Loop over all trees. In [inc_exc], set all nodes per tree to true for each cell type that has more than
+  # or equal to [inclusion_limit] cells.
   for(t in 1:length(tree_list)){
     tree_name <- names(tree_list)[t]
     tree_type_include <- aggregate(tree_list[[t]]$Node_type_counts$Type_count,
                                    by = list(Cell_type = tree_list[[t]]$Node_type_counts$Cell_type),
                                    sum) # Count cell type numbers in tree
     tree_type_include$Include <- tree_type_include$x >= inclusion_limit # Set included celltypes to T in dataframe
+    tree_type_include$Include[tree_type_include$Cell_type %in% force_include] <- T # Allow for forced inclusion of cell types
     inc_exc[grepl(tree_name, rownames(inc_exc)), tree_type_include$Cell_type] <- # Nodes in tree, cell types in tree (cells not in tree remain F)
       matrix(rep(tree_type_include$Include, each = sum(grepl(tree_name, rownames(inc_exc)))), 
              nrow = sum(grepl(tree_name, rownames(inc_exc))), 
@@ -239,6 +241,44 @@ count_cumulative <- function(tree){
     )
   
   return(node_cocc)
+}
+
+InitializeTreesFromDisk <- function(tree_path, libraries, cell_annotations){
+  # Load all trees found in libraries from tree_path, filter cells with annotations
+  # and append cell types, calculate edge lists and node counts, put all in tree list.
+  tree_list_in <- list()
+  
+  for(this_sample in unique(libraries$Sample)){
+    # Load tree, filter cells and append cell types.
+    sample_libraries <- libraries$Library_name[libraries$Sample == this_sample]
+    tree.in <- 
+      ReadTree(this_sample, 
+               reference_set = cell_annotations[cell_annotations$orig.ident %in% sample_libraries, ],
+               tree_path = tree_path)
+    tree.in$Tree$Do(RemapCellTypes,
+                    reference_set = cell_annotations)
+    
+    # Calculate edge list
+    edge_list <- ToDataFrameNetwork(tree.in$Tree, "Cell.type")
+    
+    # Calculate cell type counts per node
+    node_type_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
+    colnames(node_type_counts) <- c("Node", "Cell_type", "Type_count")
+    node_type_counts$Node <- as.character(node_type_counts$Node)
+    node_type_counts$Cell_type <- as.character(node_type_counts$Cell_type)
+    node_type_counts <- node_type_counts[node_type_counts$Cell_type != "NA", ]
+    
+    # Put all tree data into the tree list.
+    tree.in <- list(metadata = list(dpi = libraries$Dpi[libraries$Sample == this_sample],
+                                    Name = this_sample),
+                    Tree = tree.in$Tree,
+                    Edge_list = edge_list,
+                    Node_type_counts = node_type_counts)
+    tree_list_in[[length(tree_list_in) + 1]] <- tree.in
+    names(tree_list_in)[[length(tree_list_in)]] <- this_sample
+  }
+  
+  return(tree_list_in)
 }
 
 Progenyl <- function(precursor, nodes){

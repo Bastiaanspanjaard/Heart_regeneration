@@ -61,31 +61,9 @@ celltype_colors_in <- read.csv("./Data/Cell_type_colors_2.csv")
 celltype_colors <- setNames(celltype_colors_in$color, celltype_colors_in$Cell.type)
 rm(celltype_colors_in)
 
-# Load tree objects, append cell types, create lineage trees ####
-# tree_list_in <- list()
-# lib <- unique(libraries$Sample)[1]
-# for(lib in unique(libraries$Sample)){
-#   tree.in <- ReadTree(lib, reference_set = cell_annotations[cell_annotations$orig.ident %in% libraries$Library_name[libraries$Sample == lib],
-#                                                       ], tree_path = tree_path)
-#   tree.in$Tree$Do(RemapCellTypes, 
-#           reference_set = cell_annotations)
-#   edge_list <- ToDataFrameNetwork(tree.in$Tree, "Cell.type")
-# 
-#   node_type_counts <- data.frame(table(edge_list$from, edge_list$Cell.type))
-#   colnames(node_type_counts) <- c("Node", "Cell_type", "Type_count")
-#   node_type_counts$Node <- as.character(node_type_counts$Node)
-#   node_type_counts$Cell_type <- as.character(node_type_counts$Cell_type)
-#   node_type_counts <- node_type_counts[node_type_counts$Cell_type != "NA", ]
-# 
-#   tree.in <- list(metadata = list(dpi = libraries$Dpi[libraries$Sample == lib],
-#                                   Name = lib),
-#                   Tree = tree.in$Tree,
-#                   Edge_list = edge_list,
-#                   Node_type_counts = node_type_counts)
-#   tree_list_in[[length(tree_list_in) + 1]] <- tree.in
-#   names(tree_list_in)[[length(tree_list_in)]] <- lib
-# }
-# # tree_list_real <- tree_list
+# Prepare trees ####
+# Load trees
+# tree_list_in <- InitializeTreesFromDisk(tree_path, libraries, cell_annotations)
 # saveRDS(tree_list_in, "./Data/Trees/Tree_list_oneEndo.rds")
 tree_list_in <- readRDS("./Data/Trees/Tree_list_oneEndo.rds")
 
