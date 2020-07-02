@@ -51,14 +51,15 @@ cell_annotations <- cell_annotations[cell_annotations$Cell_type != "Dead cells",
 cell_annotations$Cell_name <- paste("nd", cell_annotations$Cell, sep = "")
 # write.csv(cell_annotations, "./Data/final_metadata_Tmacromerged_2.csv", row.names = F, quote = F)
 
-celltypes <- data.frame(table(cell_annotations$Cell_type), stringsAsFactors = F)
-colnames(celltypes)[1] <- c("Cell_type")
-celltypes$Cell_type <- as.character(celltypes$Cell_type)
+# Make table of existing cell types and frequencies
+celltype_frequencies <- data.frame(table(cell_annotations$Cell_type), stringsAsFactors = F)
+colnames(celltype_frequencies)[1] <- c("Cell_type")
+celltype_frequencies$Cell_type <- as.character(celltype_frequencies$Cell_type)
 
-celltype_colors <- read.csv("./Data/Cell_type_colors_2.csv")
-ann_colors <- setNames(celltype_colors$color, celltype_colors$Cell.type)
-# write.csv(celltype_colors[!is.na(celltype_colors$Cell.type), c("Cell.type", "color")],
-          # "./Data/Cell_type_colors.csv", quote = F, row.names = F)
+# Read in cell type colors
+celltype_colors_in <- read.csv("./Data/Cell_type_colors_2.csv")
+celltype_colors <- setNames(celltype_colors_in$color, celltype_colors_in$Cell.type)
+rm(celltype_colors_in)
 
 # Load tree objects, append cell types, create lineage trees ####
 # tree_list_in <- list()
@@ -87,8 +88,6 @@ ann_colors <- setNames(celltype_colors$color, celltype_colors$Cell.type)
 # # tree_list_real <- tree_list
 # saveRDS(tree_list_in, "./Data/Trees/Tree_list_oneEndo.rds")
 tree_list_in <- readRDS("./Data/Trees/Tree_list_oneEndo.rds")
-# saveRDS(tree_list_in, "./Data/Trees/Tree_list.rds")
-# tree_list_in <- readRDS("./Data/Trees/Tree_list.rds")
 
 # Simulation of target/source process ####
 # Uses as input: tree_list_real, list of trees, fictional source and target, simulation seed.
@@ -107,8 +106,8 @@ tree_list <- list(Hr1 = list(Tree = Clone(tree_list_real$Hr1$Tree)),
 #           sum)
 fictional_source <- "Endocardium 1 (V)"
 fictional_target <- "Harpocytes"
-if(!(fictional_target %in% celltypes$Cell_type)){
-  celltypes <- rbind(celltypes, c(fictional_target, 0))
+if(!(fictional_target %in% celltype_frequencies$Cell_type)){
+  celltype_frequencies <- rbind(celltype_frequencies, c(fictional_target, 0))
 }
 
 # Extract all endocardium cells, randomly rename half of them, put cells "back in tree".
@@ -194,21 +193,29 @@ for(t in 1:length(tree_list)){
     collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
                     pieSummary = T, collapsed = F,
                     width = 1000, height = 500,
-                    ctypes = celltype_colors$Cell.type, linkLength=60,
-                    ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
+                    ctypes = names(celltype_colors), linkLength=60,
+                    ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
                     nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+test_visualization_t7 <-
+  collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
+                pieSummary = T, collapsed = F,
+                width = 1000, height = 500,
+                ctypes = names(celltype_colors), linkLength=60,
+                ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
+                nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+
 # tree_list[[t]]$Pie_zoom_tree <-
 #   collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
 #                   pieSummary = T, collapsed = F,
 #                   width = 1000, height = 500,
-#                   ctypes = celltype_colors$Cell.type, linkLength=60,
-#                   ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
+#                   ctypes = names(celltype_colors), linkLength=60,
+#                   ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
 #                   nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
 # tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types,
 #                                 ct_colors = type_colors$colo1)
 tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types,
-                              ct_colors = celltype_colors$color[celltype_colors$Cell.type %in% zoom_types], 
-                              ctypes = celltype_colors$Cell.type[celltype_colors$Cell.type %in% zoom_types])
+                              ct_colors = as.character(celltype_colors[names(celltype_colors) %in% zoom_types]), 
+                              ctypes = names(celltype_colors[names(celltype_colors) %in% zoom_types]))
 tree_to_plot <- Clone(tree_list[[t]]$Tree)
 tree_to_plot$Do(ZoomCellTypes, 
                 zoom_types = zoom_types)
@@ -217,8 +224,8 @@ tree_zoom_plot <-
   collapsibleTree(df = tree_to_plot, root =tree_to_plot$scar, pieNode = T,
                                   pieSummary = T, collapsed = F,
                                   width = 1000, height = 500,
-                                  ctypes = celltype_colors$Cell.type, linkLength=60,
-                                  ct_colors = celltype_colors$color, angle = pi/2,fontSize = 0,
+                                  ctypes = names(celltype_colors), linkLength=60,
+                                  ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
                                   nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
 # htmlwidgets::saveWidget(
 #   tree_list$Hr27$Pie_tree,
@@ -297,10 +304,10 @@ print(iter)
                                                 Precursor = character(),
                                                 Type_count = integer()),
                         Node_sizes = data.frame(Size = integer()),
-                        Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltypes))),
-                        Frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltypes))))
-  colnames(comparison_list$Frequencies) <- celltypes$Cell_type
-  colnames(comparison_list$Normalized_frequencies) <- celltypes$Cell_type
+                        Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltype_frequencies))),
+                        Frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltype_frequencies))))
+  colnames(comparison_list$Frequencies) <- celltype_frequencies$Cell_type
+  colnames(comparison_list$Normalized_frequencies) <- celltype_frequencies$Cell_type
 
 analysis_stats <-
   data.frame(Tree = character(),
@@ -741,7 +748,7 @@ precursor_ranking$Precursor <- factor(precursor_ranking$Precursor, precursor_ran
 #   ggplot(precursor_ranking[precursor_ranking$Precursor != target, ]) +
 #     geom_bar(aes(x = Precursor, y = Weighted_cor_progpos, fill = Precursor, 
 #                  alpha = ifelse(Mean_count < 10, 0.5, 1)), stat = "identity") +
-#     scale_fill_manual(values = ann_colors$Celltype) +
+#     scale_fill_manual(values = celltype_colors) +
 #     labs(title = paste(target, ""), y = "Fitness") +
 #     theme(legend.position = "none",
 #           axis.ticks.x = element_blank(),
@@ -990,7 +997,7 @@ print(
     #               position = position_dodge(width = 1), width = 0.5) +
     geom_errorbar(aes(x = Precursor, ymin = Eminus, ymax = Eplus, group = variable), 
                   position = position_dodge(width = 1), width = 0.5) +#, size = 2) +
-    scale_fill_manual(values = ann_colors) +
+    scale_fill_manual(values = celltype_colors) +
     scale_alpha(range = c(0.35, 1), guide = F) +
     labs(title = paste(target, ""), y = "Correlation", fill = "Source") +
     theme(#legend.position = "none",
