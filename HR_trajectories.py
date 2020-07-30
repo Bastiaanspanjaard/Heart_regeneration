@@ -3,7 +3,7 @@
 
 # # Dependencies and parameters
 
-# In[1]:
+# In[20]:
 
 
 from IPython.core.display import display, HTML
@@ -17,15 +17,23 @@ from matplotlib import rcParams
 import h5py
 results_file = './write/HR_trajectories.h5ad'
 sc.set_figure_params(dpi_save = 300)
+import scvelo as scv
+scv.settings.set_figure_params('scvelo')
 
 
-# In[2]:
+# In[21]:
 
 
-cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_unmerged.csv', index_col = 0)
+annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged_2.csv', index_col = 0) # Used to be Tmacromerged.csv
 
 
-# In[19]:
+# In[22]:
+
+
+cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_2.csv', index_col = 0) # Used to be Cell_type_colors_unmerged.csv.
+
+
+# In[4]:
 
 
 trajectory_subset = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
@@ -34,12 +42,59 @@ trajectory_subset = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 
                     'Fibroblast (proliferating)', 'Perivascular cells']
 
 
-# In[ ]:
+# In[5]:
 
 
 connected_3dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
                      'Fibroblast (mpeg1.1)','Epicardium (Atrium)', 'Epicardium (Ventricle)',
                     'Fibroblast (proliferating)', 'Perivascular cells']
+
+
+# In[6]:
+
+
+connected_7dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
+                     'Fibroblast (mpeg1.1)','Epicardium (Atrium)', 'Epicardium (Ventricle)',
+                    'Fibroblast (proliferating)', 'Perivascular cells', 'Fibroblast (cxcl12a)']
+
+
+# In[7]:
+
+
+fibro_colors = cell_type_colors[['color', 'setFibro']]
+fibro_colors = fibro_colors[fibro_colors.notna().setFibro]
+fibro_colors = fibro_colors.set_index('setFibro')
+
+
+# In[8]:
+
+
+HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 
+                                      '11', '12','13', '14', '15', '16', '17', '18', '19', '20',
+                                     '21', '22','23', '24', '25', '26', '27', '28', '29', '30',
+                                     '31', '32','33', '34', '35', '36', '37', '38', '39', '40',
+                                     '41', '42'],
+                            'heart': ['H5', 'H6', 'H7', 'H8a', 'H8v', 'Hr1', 'Hr2a', 'Hr2b', 'Hr3', 
+                                      'Hr4', 'Hr5', 'Hr6a', 'Hr6v', 'Hr7a', 'Hr7v', 'Hr8', 'Hr9', 'Hr10',
+                                     'Hr11', 'Hr12', 'Hr13', 'Hr14', 'Hr15',
+                                     'Hr16', 'Hr17', 'Hr18', 'Hr19', 'Hr20',
+                                     'Hr21', 'Hr22', 'Hr23', 'Hr24', 'Hr25',
+                                     'Hr26', 'Hr27', 'Hr28', 'Hr29', 'Hr30',
+                                     'Hr31', 'Hr32', 'Hr33', 'Hr34', 'Hr35'],
+                             'dpi': ['0', '0', '0', '0', '0', '7', '7', '7', '30', 
+                                    '30', '60', '7', '7', '7', '7', '7', '7', '3',
+                                   '3', '3', '7', '7', '7',
+                                   '15', '15', '15', '30', '30',
+                                   '30', '3', '3', '3', '3',
+                                   '3', '3', '3', '3', '7',
+                                   '7', '7', '7', '3', '3'],
+                           'inhib': ['no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 
+                                    'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no',
+                                   'no', 'no', 'no', 'no', 'no',
+                                   'no', 'no', 'no', 'no', 'no',
+                                   'no', 'no', 'no', 'no', 'no',
+                                   'no', 'no', 'DMSO', 'IWR1', 'DMSO',
+                                   'IWR1', 'IWR1', 'IWR1', 'IWR1', 'IWR1']})
 
 
 # # Load and annotate single-cell data
@@ -152,32 +207,6 @@ HR.shape
 # In[27]:
 
 
-HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 
-                                      '11', '12','13', '14', '15', '16', '17', '18', '19', '20',
-                                     '21', '22','23', '24', '25', '26', '27', '28', '29', '30',
-                                     '31', '32','33', '34', '35', '36', '37', '38', '39', '40',
-                                     '41', '42'],
-                            'heart': ['H5', 'H6', 'H7', 'H8a', 'H8v', 'Hr1', 'Hr2a', 'Hr2b', 'Hr3', 
-                                      'Hr4', 'Hr5', 'Hr6a', 'Hr6v', 'Hr7a', 'Hr7v', 'Hr8', 'Hr9', 'Hr10',
-                                     'Hr11', 'Hr12', 'Hr13', 'Hr14', 'Hr15',
-                                     'Hr16', 'Hr17', 'Hr18', 'Hr19', 'Hr20',
-                                     'Hr21', 'Hr22', 'Hr23', 'Hr24', 'Hr25',
-                                     'Hr26', 'Hr27', 'Hr28', 'Hr29', 'Hr30',
-                                     'Hr31', 'Hr32', 'Hr33', 'Hr34', 'Hr35'],
-                             'dpi': ['0', '0', '0', '0', '0', '7', '7', '7', '30', 
-                                    '30', '60', '7', '7', '7', '7', '7', '7', '3',
-                                   '3', '3', '7', '7', '7',
-                                   '15', '15', '15', '30', '30',
-                                   '30', '3', '3', '3', '3',
-                                   '3', '3', '3', '3', '7',
-                                   '7', '7', '7', '3', '3'],
-                           'inhib': ['no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 
-                                    'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no', 'no',
-                                   'no', 'no', 'no', 'no', 'no',
-                                   'no', 'no', 'no', 'no', 'no',
-                                   'no', 'no', 'no', 'no', 'no',
-                                   'no', 'no', 'DMSO', 'IWR1', 'DMSO',
-                                   'IWR1', 'IWR1', 'IWR1', 'IWR1', 'IWR1']})
 HR_obs = HR.obs
 HR.obs = HR.obs.reset_index().merge(HR_setnames, how="inner").set_index('index')
 
@@ -187,12 +216,6 @@ HR.obs = HR.obs.reset_index().merge(HR_setnames, how="inner").set_index('index')
 
 # Rename cells so the cell names correspond to the ones in the annotation file
 HR.obs_names = [str(HR.obs.loc[x,'heart'])+'_'+str(x.split('-', 1)[0]) for x in HR.obs_names]
-
-
-# In[29]:
-
-
-annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged.csv', index_col = 0)
 
 
 # In[30]:
@@ -491,13 +514,6 @@ sc.pl.draw_graph(HR_3d_conn, ncols = 3,
 
 # # Reproduce using RNA velocity
 
-# In[125]:
-
-
-import scvelo as scv
-scv.settings.set_figure_params('scvelo')
-
-
 # In[128]:
 
 
@@ -606,7 +622,569 @@ HR_Rv.shape
 # In[130]:
 
 
-HR_Rv.write('./write/HR_Rv.h5ad')
+#HR_Rv.write('./write/HR_Rv.h5ad')
+
+
+# In[8]:
+
+
+HR_Rv = sc.read('./write/HR_Rv.h5ad')
+
+
+# In[9]:
+
+
+HR_Rv.obs = HR_Rv.obs.reset_index().merge(HR_setnames, how="inner").set_index('index')
+
+
+# In[10]:
+
+
+# Rename cells to match cell names in annotation file
+HR_Rv.obs_names = [str(HR_Rv.obs.loc[x,'heart'])+'_'+str(x.split(':', 1)[1])[0:16] for x in HR_Rv.obs_names]
+# Drop annotations that are not in the single-cell object
+anno_drop_Rv = annotations.index.difference(HR_Rv.obs_names)
+annotations_Rv = annotations.drop(anno_drop_Rv)
+
+
+# In[11]:
+
+
+HR_Rv_filter = HR_Rv[annotations_Rv.index]
+HR_Rv_filter
+
+
+# In[12]:
+
+
+HR_Rv_filter.obs['Cell_type'] = annotations_Rv['Cell_type'].tolist()
+
+
+# In[9]:
+
+
+#HR_Rv_filter.write('./write/HR_Rv_filter.h5ad')
+HR_Rv_filter = sc.read('./write/HR_Rv_filter.h5ad')
+
+
+# # Can we get same trajectories from RNA-velo data?
+
+# In[13]:
+
+
+HR_Rv_3dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '3']
+all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
+HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
+HR_Rv_3dpi_conn = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(connected_3dpi)]
+
+
+# In[14]:
+
+
+sc.pp.filter_genes(HR_Rv_3dpi_conn, min_cells=3)
+sc.pp.normalize_per_cell(HR_Rv_3dpi_conn, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_3dpi_conn)
+
+
+# In[15]:
+
+
+sc.pp.highly_variable_genes(HR_Rv_3dpi_conn)
+sc.tl.pca(HR_Rv_3dpi_conn)
+sc.pp.neighbors(HR_Rv_3dpi_conn, n_neighbors=30)
+sc.external.pp.bbknn(HR_Rv_3dpi_conn, batch_key='batch')
+sc.tl.umap(HR_Rv_3dpi_conn)
+
+
+# In[16]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='batch',
+          title = '3dpi connected niche')
+
+
+# In[17]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type', palette = fibro_colors.loc[HR_Rv_3dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '3dpi connected niche')
+
+
+# In[18]:
+
+
+sc.tl.diffmap(HR_Rv_3dpi_conn)
+sc.pp.neighbors(HR_Rv_3dpi_conn, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_Rv_3dpi_conn)
+
+
+# In[19]:
+
+
+sc.tl.leiden(HR_Rv_3dpi_conn, resolution=0.4)
+
+
+# In[20]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[21]:
+
+
+sc.tl.paga(HR_Rv_3dpi_conn, groups='leiden')
+
+
+# In[22]:
+
+
+sc.pl.paga(HR_Rv_3dpi_conn, show=True, labels = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
+
+
+# In[23]:
+
+
+sc.tl.draw_graph(HR_Rv_3dpi_conn, init_pos='paga')
+
+
+# In[24]:
+
+
+sc.pl.draw_graph(HR_Rv_3dpi_conn, color = 'leiden', title = '3dpi connected niche', save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
+
+
+# In[25]:
+
+
+sc.pl.draw_graph(HR_Rv_3dpi_conn, color = ['Cell_type'], title = '3dpi connected niche', save = '_scvelo_connected_niche_3dpi_20n_cell_types_diffmap.png')
+
+
+# In[26]:
+
+
+sc.pl.draw_graph(HR_Rv_3dpi_conn, ncols = 4,
+                 color = ['col1a1a', 'tbx18',
+                          'notch3', 'pdgfrb', 'mpeg1.1', 'cfd', 
+                          'col11a1a', 'col12a1a', 
+                          'postnb', 'pcna', 'aldh1a2', 'stra6'],
+                save = '_scvelo_connected_niche_3dpi_20n_marker_genes_diffmap.png')
+
+
+# Slightly different but very similar. I like the scanpy colors better for the heatmap.
+
+# # RNA velocity on 3dpi connected
+
+# In[43]:
+
+
+#scv.pp.filter_and_normalize(HR_Rv_3dpi_conn)
+scv.pp.moments(HR_Rv_3dpi_conn)
+
+
+# In[44]:
+
+
+scv.tl.velocity(HR_Rv_3dpi_conn, mode='stochastic')
+
+
+# In[45]:
+
+
+scv.tl.velocity_graph(HR_Rv_3dpi_conn)
+
+
+# In[46]:
+
+
+scv.pl.velocity_embedding(HR_Rv_3dpi_conn, basis='draw_graph_fa')
+
+
+# In[47]:
+
+
+scv.pl.velocity_embedding_grid(HR_Rv_3dpi_conn, basis='draw_graph_fa', color = 'Cell_type')
+
+
+# In[62]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_3dpi_conn, basis='draw_graph_fa', title = '3dpi connected niche', 
+                                 color = 'Cell_type', legend_loc = 'right margin',
+                                save = '_scvelo_connected_niche_3dpi_20n_cell_types_diffmap.png')
+
+
+# Rename leiden clusters
+
+# In[52]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type')
+
+
+# In[50]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# 0: FB (col11a1a) 1
+# 1: EpiC A 1
+# 2: FB 1
+# 3: EpiC V
+# 4: FB (col12a1a)
+# 5: EpiC A 2
+# 6: FB 2
+# 7: FB 3
+# 8: FB 4
+# 9: FB (col11a1a) 2
+# 10: FB 5
+# 11: PC
+# 12: FB (mpeg1.1)
+# 13: FB (col11a1a) 3
+# 14: FB 6  
+# 
+# Used to be:
+# 0: EpiC V
+# 1: FB 1
+# 2: FB (col11a1a) 1
+# 3: FB 2
+# 4: FB (col11a1a) 2
+# 5: FB 3
+# 6: FB 4
+# 7: FB 5
+# 8: FB (col11a1a) 3
+# 9: EpiC A 1
+# 10: Epic A 2
+# 11: FB (col12a1a) 1
+# 12: FB 6
+# 13: PC
+# 14: FB (mpeg1.1)
+# 15: FB (col12a1a) 2
+# 16: FB 7
+
+# In[13]:
+
+
+HR_Rv_3dpi_conn.obs['leiden'].cat.categories
+
+
+# In[53]:
+
+
+HR_Rv_3dpi_conn.obs['leiden_anno'] = HR_Rv_3dpi_conn.obs['leiden']
+
+
+# In[54]:
+
+
+HR_Rv_3dpi_conn.obs['leiden_anno'].cat.categories = ['FB (col11a1a) 1', 'EpiC A 1', 'FB 1', 'EpiC V', 
+                                                     'FB (col12a1a)', 'EpiC A 2', 'FB 2', 'FB 3', 
+                                                     'FB 4', 'FB (col11a1a) 2', 'FB 5', 'PC', 
+                                                     'FB (mpeg1.1)', 'FB (col11a1a)', 'FB 6']
+
+
+# In[28]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_3dpi_conn, basis='draw_graph_fa', color = 'leiden_anno', legend_loc = 'on data', title = '3dpi connected niche')
+
+
+# Intron/exon proportions per cluster - this is very strange; why would it be 9% across the board? It's also 9% for each sample. I hope this is just the plotting calculation going wrong and not an outcome of, say, the batch integration.
+
+# In[29]:
+
+
+scv.pl.proportions(HR_Rv_3dpi_conn, groupby = 'leiden_anno')
+
+
+# How are the speed and coherence?
+
+# In[63]:
+
+
+scv.tl.velocity_confidence(HR_Rv_3dpi_conn)
+
+
+# In[64]:
+
+
+keys = 'velocity_length', 'velocity_confidence'
+scv.pl.scatter(HR_Rv_3dpi_conn, c=keys, cmap='coolwarm', basis='draw_graph_fa', perc=[5, 95],
+                                save = 'strength_coherence_scvelo_connected_niche_3dpi_20n_cell_types_diffmap.png')
+
+
+# In[58]:
+
+
+scv.pl.velocity_graph(HR_Rv_3dpi_conn, threshold=.2, color = 'leiden_anno', basis='draw_graph_fa')
+# This doesn't really show me a whole lot; maybe integrating this into PAGA works better?
+
+
+# Which genes drive the transitions?
+
+# In[68]:
+
+
+scv.pl.velocity(HR_Rv_3dpi_conn, ['col1a1a', 'postnb', 'col11a1a', 'col12a1a', 
+                          'aldh1a2', 'stra6', 'frzb', 'dkk3b'], basis='draw_graph_fa', ncols=2,
+                                save = 'marker_genes_scvelo_connected_niche_3dpi_20n_cell_types_diffmap.png')
+
+
+# In[27]:
+
+
+#HR_Rv_3dpi_conn.write('./write/HR_Rv_3dpi_conn.h5ad')
+HR_Rv_3dpi_conn = sc.read('./write/HR_Rv_3dpi_conn.h5ad')
+
+
+# In[24]:
+
+
+scv.tl.rank_velocity_genes(HR_Rv_3dpi_conn, groupby='leiden_anno', min_corr=.3)
+
+
+# In[27]:
+
+
+HR_3dpi_conn_velogenes = scv.DataFrame(HR_Rv_3dpi_conn.uns['rank_velocity_genes']['names'])
+HR_3dpi_conn_velogenes.head()
+
+
+# In[33]:
+
+
+scv.pl.scatter(HR_Rv_3dpi_conn, HR_3dpi_conn_velogenes['FB 1'][:5], ylabel='FB 1', color = 'leiden_anno', add_outline='FB 1, FB 3, FB 5, EpiC V')
+
+
+# # Same niche at 7dpi
+
+# In[31]:
+
+
+HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
+all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
+HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
+HR_Rv_7dpi_conn = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(connected_7dpi)]
+
+
+# In[32]:
+
+
+sc.pp.filter_genes(HR_Rv_7dpi_conn, min_cells=3)
+sc.pp.normalize_per_cell(HR_Rv_7dpi_conn, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_7dpi_conn)
+
+
+# In[33]:
+
+
+sc.pp.highly_variable_genes(HR_Rv_7dpi_conn)
+sc.tl.pca(HR_Rv_7dpi_conn)
+sc.pp.neighbors(HR_Rv_7dpi_conn, n_neighbors=30)
+sc.external.pp.bbknn(HR_Rv_7dpi_conn, batch_key='batch')
+sc.tl.umap(HR_Rv_7dpi_conn)
+
+
+# In[34]:
+
+
+sc.pl.umap(HR_Rv_7dpi_conn, color='batch',
+          title = '7dpi connected niche')
+
+
+# In[35]:
+
+
+sc.pl.umap(HR_Rv_7dpi_conn, color='Cell_type', palette = fibro_colors.loc[HR_Rv_7dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '7dpi connected niche')
+
+
+# In[36]:
+
+
+sc.tl.diffmap(HR_Rv_7dpi_conn)
+sc.pp.neighbors(HR_Rv_7dpi_conn, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_Rv_7dpi_conn)
+
+
+# In[37]:
+
+
+sc.tl.leiden(HR_Rv_7dpi_conn, resolution=0.4)
+
+
+# In[38]:
+
+
+sc.pl.umap(HR_Rv_7dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[40]:
+
+
+scv.pp.moments(HR_Rv_7dpi_conn)
+
+
+# In[41]:
+
+
+scv.tl.velocity(HR_Rv_7dpi_conn, mode='stochastic')
+
+
+# In[42]:
+
+
+scv.tl.velocity_graph(HR_Rv_7dpi_conn)
+
+
+# In[43]:
+
+
+scv.pl.velocity_embedding(HR_Rv_7dpi_conn, basis='draw_graph_fa')
+
+
+# In[44]:
+
+
+scv.pl.velocity_embedding_grid(HR_Rv_7dpi_conn, basis='draw_graph_fa', color = 'Cell_type')
+
+
+# In[45]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_7dpi_conn, basis='draw_graph_fa', title = '7dpi connected niche', 
+                                 color = 'Cell_type', legend_loc = 'right margin',
+                                save = '_scvelo_connected_niche_7dpi_20n_cell_types_diffmap.png')
+
+
+# In[46]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_7dpi_conn, basis='draw_graph_fa', title = '7dpi connected niche', 
+                                 color = 'leiden', legend_loc = 'right margin')
+
+
+# In[47]:
+
+
+HR_Rv_7dpi_conn.write('./write/HR_Rv_7dpi_conn.h5ad')
+
+
+# # Endocardial niche at 7dpi
+
+# In[15]:
+
+
+endo_7dpi = ['Endocardium (A)', 'Endocardium (frzb)', 'Endocardium (V)', 'Fibroblast', 'Fibroblast (nppc)', 'Fibroblast (spock3)', 'Fibroblast-like cells', 'Smooth muscle']
+
+
+# In[16]:
+
+
+HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
+all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
+HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
+HR_Rv_7dpi_endo = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(endo_7dpi)]
+
+
+# In[17]:
+
+
+HR_Rv_7dpi_endo.obs['Cell_type']
+
+
+# In[14]:
+
+
+sc.pp.filter_genes(HR_Rv_3dpi_conn, min_cells=3)
+sc.pp.normalize_per_cell(HR_Rv_3dpi_conn, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_3dpi_conn)
+
+
+# In[15]:
+
+
+sc.pp.highly_variable_genes(HR_Rv_3dpi_conn)
+sc.tl.pca(HR_Rv_3dpi_conn)
+sc.pp.neighbors(HR_Rv_3dpi_conn, n_neighbors=30)
+sc.external.pp.bbknn(HR_Rv_3dpi_conn, batch_key='batch')
+sc.tl.umap(HR_Rv_3dpi_conn)
+
+
+# In[16]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='batch',
+          title = '3dpi connected niche')
+
+
+# In[17]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type', palette = fibro_colors.loc[HR_Rv_3dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '3dpi connected niche')
+
+
+# In[18]:
+
+
+sc.tl.diffmap(HR_Rv_3dpi_conn)
+sc.pp.neighbors(HR_Rv_3dpi_conn, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_Rv_3dpi_conn)
+
+
+# In[19]:
+
+
+sc.tl.leiden(HR_Rv_3dpi_conn, resolution=0.4)
+
+
+# In[20]:
+
+
+sc.pl.umap(HR_Rv_3dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[21]:
+
+
+sc.tl.paga(HR_Rv_3dpi_conn, groups='leiden')
+
+
+# In[22]:
+
+
+sc.pl.paga(HR_Rv_3dpi_conn, show=True, labels = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
+
+
+# In[23]:
+
+
+sc.tl.draw_graph(HR_Rv_3dpi_conn, init_pos='paga')
+
+
+# In[24]:
+
+
+sc.pl.draw_graph(HR_Rv_3dpi_conn, color = 'leiden', title = '3dpi connected niche', save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
+
+
+# In[25]:
+
+
+sc.pl.draw_graph(HR_Rv_3dpi_conn, color = ['Cell_type'], title = '3dpi connected niche', save = '_scvelo_connected_niche_3dpi_20n_cell_types_diffmap.png')
+
+
+# In[26]:
+
+
+sc.pl.draw_graph(HR_Rv_3dpi_conn, ncols = 4,
+                 color = ['col1a1a', 'tbx18',
+                          'notch3', 'pdgfrb', 'mpeg1.1', 'cfd', 
+                          'col11a1a', 'col12a1a', 
+                          'postnb', 'pcna', 'aldh1a2', 'stra6'],
+                save = '_scvelo_connected_niche_3dpi_20n_marker_genes_diffmap.png')
 
 
 # # Full niche
