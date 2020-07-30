@@ -979,109 +979,112 @@ HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
 HR_Rv_7dpi_endo = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(endo_7dpi)]
 
 
-# In[48]:
+# In[50]:
 
 
-HR_Rv_7dpi_endo.obs['Cell_type']
+sc.pp.filter_genes(HR_Rv_7dpi_endo, min_cells=3)
+sc.pp.normalize_per_cell(HR_Rv_7dpi_endo, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_7dpi_endo)
 
 
-# In[49]:
+# In[51]:
 
 
-HR_Rv_7dpi_endo.obs['Cell_type'].unique()
+sc.pp.highly_variable_genes(HR_Rv_7dpi_endo)
+sc.tl.pca(HR_Rv_7dpi_endo)
+sc.pp.neighbors(HR_Rv_7dpi_endo, n_neighbors=30)
+sc.external.pp.bbknn(HR_Rv_7dpi_endo, batch_key='batch')
+sc.tl.umap(HR_Rv_7dpi_endo)
 
 
-# In[14]:
+# In[52]:
 
 
-sc.pp.filter_genes(HR_Rv_3dpi_conn, min_cells=3)
-sc.pp.normalize_per_cell(HR_Rv_3dpi_conn, counts_per_cell_after=1e4)
-sc.pp.log1p(HR_Rv_3dpi_conn)
+sc.pl.umap(HR_Rv_7dpi_endo, color='batch',
+          title = '7dpi endocardial niche')
 
 
-# In[15]:
+# In[54]:
 
 
-sc.pp.highly_variable_genes(HR_Rv_3dpi_conn)
-sc.tl.pca(HR_Rv_3dpi_conn)
-sc.pp.neighbors(HR_Rv_3dpi_conn, n_neighbors=30)
-sc.external.pp.bbknn(HR_Rv_3dpi_conn, batch_key='batch')
-sc.tl.umap(HR_Rv_3dpi_conn)
+fibro_colors
 
 
-# In[16]:
+# In[55]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='batch',
-          title = '3dpi connected niche')
+cell_type_colors
 
 
-# In[17]:
+# In[56]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type', palette = fibro_colors.loc[HR_Rv_3dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
-          title = '3dpi connected niche')
+sc.pl.umap(HR_Rv_7dpi_endo, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_endo.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '7dpi endocardial niche')
 
 
-# In[18]:
+# In[57]:
 
 
-sc.tl.diffmap(HR_Rv_3dpi_conn)
-sc.pp.neighbors(HR_Rv_3dpi_conn, n_neighbors=20, use_rep='X_diffmap')
-sc.tl.draw_graph(HR_Rv_3dpi_conn)
+sc.tl.diffmap(HR_Rv_7dpi_endo)
+sc.pp.neighbors(HR_Rv_7dpi_endo, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_Rv_7dpi_endo)
 
 
-# In[19]:
+# In[58]:
 
 
-sc.tl.leiden(HR_Rv_3dpi_conn, resolution=0.4)
+sc.tl.leiden(HR_Rv_7dpi_endo, resolution=0.4)
 
 
-# In[20]:
+# In[59]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+sc.pl.umap(HR_Rv_7dpi_endo, color='leiden', legend_loc='on data', legend_fontsize='x-large')
 
 
-# In[21]:
+# In[60]:
 
 
-sc.tl.paga(HR_Rv_3dpi_conn, groups='leiden')
+sc.tl.paga(HR_Rv_7dpi_endo, groups='leiden')
 
 
-# In[22]:
+# In[61]:
 
 
-sc.pl.paga(HR_Rv_3dpi_conn, show=True, labels = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
+sc.pl.paga(HR_Rv_7dpi_endo, show=True, 
+           labels = ['', '', '', '', '', 
+                     '', '', '', '', '', 
+                     '', '', '', '', '',
+                    '',''], 
+           node_size_scale = 2, save = 'scvelo_endo_niche_7dpi_20n_leiden_diffmap.png')
 
 
-# In[23]:
+# In[62]:
 
 
-sc.tl.draw_graph(HR_Rv_3dpi_conn, init_pos='paga')
+sc.tl.draw_graph(HR_Rv_7dpi_endo, init_pos='paga')
 
 
-# In[24]:
+# In[63]:
 
 
-sc.pl.draw_graph(HR_Rv_3dpi_conn, color = 'leiden', title = '3dpi connected niche', save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
+sc.pl.draw_graph(HR_Rv_7dpi_endo, color = 'leiden', title = '7dpi endocardial niche', save = 'scvelo_endocardial_niche_7dpi_20n_leiden_diffmap.png')
 
 
-# In[25]:
+# In[64]:
 
 
-sc.pl.draw_graph(HR_Rv_3dpi_conn, color = ['Cell_type'], title = '3dpi connected niche', save = '_scvelo_connected_niche_3dpi_20n_cell_types_diffmap.png')
+sc.pl.draw_graph(HR_Rv_7dpi_endo, color = ['Cell_type'], title = '7dpi endocardial niche', save = '_scvelo_endocardial_niche_7dpi_20n_cell_types_diffmap.png')
 
 
-# In[26]:
+# In[67]:
 
 
-sc.pl.draw_graph(HR_Rv_3dpi_conn, ncols = 4,
-                 color = ['col1a1a', 'tbx18',
-                          'notch3', 'pdgfrb', 'mpeg1.1', 'cfd', 
-                          'col11a1a', 'col12a1a', 
-                          'postnb', 'pcna', 'aldh1a2', 'stra6'],
-                save = '_scvelo_connected_niche_3dpi_20n_marker_genes_diffmap.png')
+sc.pl.draw_graph(HR_Rv_7dpi_endo, ncols = 3,
+                 color = ['col1a1a', 'fn1b', 'spock3',
+                          'nppc', 'cyp26b1', 'frzb', 'acta2'],
+                save = '_scvelo_endocardial_niche_7dpi_20n_marker_genes_diffmap.png')
 
 
 # # Full niche
