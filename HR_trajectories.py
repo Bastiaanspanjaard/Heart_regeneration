@@ -3,7 +3,7 @@
 
 # # Dependencies and parameters
 
-# In[20]:
+# In[23]:
 
 
 from IPython.core.display import display, HTML
@@ -21,19 +21,19 @@ import scvelo as scv
 scv.settings.set_figure_params('scvelo')
 
 
-# In[21]:
+# In[24]:
 
 
-annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged_2.csv', index_col = 0) # Used to be Tmacromerged.csv
+annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged_2.csv', index_col = 0)
 
 
-# In[22]:
+# In[25]:
 
 
-cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_2.csv', index_col = 0) # Used to be Cell_type_colors_unmerged.csv.
+cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_2.csv', index_col = 0)
 
 
-# In[4]:
+# In[26]:
 
 
 trajectory_subset = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
@@ -42,7 +42,7 @@ trajectory_subset = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 
                     'Fibroblast (proliferating)', 'Perivascular cells']
 
 
-# In[5]:
+# In[27]:
 
 
 connected_3dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
@@ -50,7 +50,7 @@ connected_3dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fi
                     'Fibroblast (proliferating)', 'Perivascular cells']
 
 
-# In[6]:
+# In[28]:
 
 
 connected_7dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
@@ -403,116 +403,7 @@ sc.pl.draw_graph(HR_3d_sub1_cbr, color='leiden', legend_loc='on data', legend_fo
 
 # After some fiddling with parameters, we manage to disconnect the fibroblast-like cells although they are still connected to another cluster of fibroblasts. However, the spock3 and nppc-fibroblasts remain connected, the perivascular cells are also disconnected, and a part of the atrial epicardium is now also disconnected.
 
-# # Pseudotime on connected cell types 3dpi
-
-# In[40]:
-
-
-HR_3d_conn = HR_ps_1[HR_ps_1.obs['Cell_type'].isin(connected_3dpi)]
-
-
-# In[41]:
-
-
-sc.pp.highly_variable_genes(HR_3d_conn)
-sc.tl.pca(HR_3d_conn)
-sc.pp.neighbors(HR_3d_conn, n_neighbors=30)
-sc.external.pp.bbknn(HR_3d_conn, batch_key='batch')
-sc.tl.umap(HR_3d_conn)
-
-
-# In[94]:
-
-
-sc.pl.umap(HR_3d_conn, color='batch',
-          title = '3dpi connected niche', save = 'connected_niche_3dpi_umap_batch.png')
-
-
-# In[95]:
-
-
-sc.pl.umap(HR_3d_conn, color='Cell_type', palette = fibro_colors.loc[HR_3d_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
-          title = '3dpi connected niche', save = 'connected_niche_3dpi_umap.png')
-
-
-# In[45]:
-
-
-sc.tl.diffmap(HR_3d_conn)
-sc.pp.neighbors(HR_3d_conn, n_neighbors=20, use_rep='X_diffmap')
-sc.tl.draw_graph(HR_3d_conn)
-
-
-# In[53]:
-
-
-sc.tl.leiden(HR_3d_conn, resolution=0.5)
-
-
-# In[79]:
-
-
-sc.pl.umap(HR_3d_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
-
-
-# 0: shared col12, col11, proliferating
-# 1: part of fibroblast
-# 2: part of col11
-# 3: part of fibroblast
-# 4: part of col11
-# 5: part of epi A
-# 6: part of epi A
-# 7: part of fibroblast
-# 8: part of fibroblast
-# 9: epi V
-# 10: part of fibroblast
-# 11: part of fibroblast
-# 12: part of col12
-# 13: perivascular
-# 14: mpeg1.1
-# 15: shared fibroblast/prolif
-
-# In[55]:
-
-
-sc.tl.paga(HR_3d_conn, groups='leiden')
-
-
-# In[89]:
-
-
-sc.pl.paga(HR_3d_conn, show=True, labels = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'connected_niche_3dpi_20n_leiden_diffmap.png')
-
-
-# In[83]:
-
-
-sc.tl.draw_graph(HR_3d_conn, init_pos='paga')
-
-
-# In[92]:
-
-
-sc.pl.draw_graph(HR_3d_conn, color = 'leiden', title = '3dpi connected niche', save = 'connected_niche_3dpi_20n_diffmap_leidenshow_pagainit.png')
-
-
-# In[90]:
-
-
-sc.pl.draw_graph(HR_3d_conn, color = ['Cell_type'], title = '3dpi connected niche', save = 'connected_niche_3dpi_20n_leiden_diffmap_pagainit.png')
-
-
-# In[124]:
-
-
-sc.pl.draw_graph(HR_3d_conn, ncols = 3,
-                 color = ['col1a1a', 'tcf21', 'tbx18',
-                          'notch3', 'pdgfrb', 'mpeg1.1', 'cfd', 
-                          'postnb', 'col11a1a', 'col12a1a', 
-                          'pcna', 'aldh1a2', 'stra6'])
-
-
-# # Reproduce using RNA velocity
+# # RNA velocity
 
 # In[128]:
 
@@ -625,19 +516,19 @@ HR_Rv.shape
 #HR_Rv.write('./write/HR_Rv.h5ad')
 
 
-# In[8]:
+# In[33]:
 
 
 HR_Rv = sc.read('./write/HR_Rv.h5ad')
 
 
-# In[9]:
+# In[34]:
 
 
 HR_Rv.obs = HR_Rv.obs.reset_index().merge(HR_setnames, how="inner").set_index('index')
 
 
-# In[10]:
+# In[35]:
 
 
 # Rename cells to match cell names in annotation file
@@ -647,27 +538,27 @@ anno_drop_Rv = annotations.index.difference(HR_Rv.obs_names)
 annotations_Rv = annotations.drop(anno_drop_Rv)
 
 
-# In[11]:
+# In[36]:
 
 
 HR_Rv_filter = HR_Rv[annotations_Rv.index]
 HR_Rv_filter
 
 
-# In[12]:
+# In[37]:
 
 
 HR_Rv_filter.obs['Cell_type'] = annotations_Rv['Cell_type'].tolist()
 
 
-# In[9]:
+# In[29]:
 
 
 #HR_Rv_filter.write('./write/HR_Rv_filter.h5ad')
 HR_Rv_filter = sc.read('./write/HR_Rv_filter.h5ad')
 
 
-# # Can we get same trajectories from RNA-velo data?
+# # Trajectories in 3dpi epicardial connected niche
 
 # In[13]:
 
@@ -1073,13 +964,13 @@ HR_Rv_7dpi_conn.write('./write/HR_Rv_7dpi_conn.h5ad')
 
 # # Endocardial niche at 7dpi
 
-# In[15]:
+# In[46]:
 
 
-endo_7dpi = ['Endocardium (A)', 'Endocardium (frzb)', 'Endocardium (V)', 'Fibroblast', 'Fibroblast (nppc)', 'Fibroblast (spock3)', 'Fibroblast-like cells', 'Smooth muscle']
+endo_7dpi = ['Endocardium (A)', 'Endocardium (frzb)', 'Endocardium (V)', 'Fibroblast', 'Fibroblast (nppc)', 'Fibroblast (spock3)', 'Fibroblast-like cells', 'Smooth muscle cells']
 
 
-# In[16]:
+# In[47]:
 
 
 HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
@@ -1088,10 +979,16 @@ HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
 HR_Rv_7dpi_endo = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(endo_7dpi)]
 
 
-# In[17]:
+# In[48]:
 
 
 HR_Rv_7dpi_endo.obs['Cell_type']
+
+
+# In[49]:
+
+
+HR_Rv_7dpi_endo.obs['Cell_type'].unique()
 
 
 # In[14]:
