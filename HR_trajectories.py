@@ -3,7 +3,7 @@
 
 # # Dependencies and parameters
 
-# In[23]:
+# In[1]:
 
 
 from IPython.core.display import display, HTML
@@ -21,19 +21,19 @@ import scvelo as scv
 scv.settings.set_figure_params('scvelo')
 
 
-# In[24]:
+# In[2]:
 
 
 annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged_2.csv', index_col = 0)
 
 
-# In[25]:
+# In[3]:
 
 
 cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_2.csv', index_col = 0)
 
 
-# In[26]:
+# In[4]:
 
 
 trajectory_subset = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
@@ -42,7 +42,7 @@ trajectory_subset = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 
                     'Fibroblast (proliferating)', 'Perivascular cells']
 
 
-# In[27]:
+# In[5]:
 
 
 connected_3dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
@@ -50,7 +50,7 @@ connected_3dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fi
                     'Fibroblast (proliferating)', 'Perivascular cells']
 
 
-# In[28]:
+# In[6]:
 
 
 connected_7dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fibroblast (col12a1a)', 
@@ -61,9 +61,9 @@ connected_7dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fi
 # In[7]:
 
 
-fibro_colors = cell_type_colors[['color', 'setFibro']]
-fibro_colors = fibro_colors[fibro_colors.notna().setFibro]
-fibro_colors = fibro_colors.set_index('setFibro')
+#fibro_colors = cell_type_colors[['color', 'setFibro']]
+#fibro_colors = fibro_colors[fibro_colors.notna().setFibro]
+#fibro_colors = fibro_colors.set_index('setFibro')
 
 
 # In[8]:
@@ -551,7 +551,7 @@ HR_Rv_filter
 HR_Rv_filter.obs['Cell_type'] = annotations_Rv['Cell_type'].tolist()
 
 
-# In[29]:
+# In[9]:
 
 
 #HR_Rv_filter.write('./write/HR_Rv_filter.h5ad')
@@ -964,13 +964,13 @@ HR_Rv_7dpi_conn.write('./write/HR_Rv_7dpi_conn.h5ad')
 
 # # Endocardial niche at 7dpi
 
-# In[46]:
+# In[10]:
 
 
 endo_7dpi = ['Endocardium (A)', 'Endocardium (frzb)', 'Endocardium (V)', 'Fibroblast', 'Fibroblast (nppc)', 'Fibroblast (spock3)', 'Fibroblast-like cells', 'Smooth muscle cells']
 
 
-# In[47]:
+# In[11]:
 
 
 HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
@@ -1004,23 +1004,17 @@ sc.pl.umap(HR_Rv_7dpi_endo, color='batch',
           title = '7dpi endocardial niche')
 
 
-# In[54]:
-
-
-fibro_colors
-
-
-# In[55]:
-
-
-cell_type_colors
-
-
 # In[56]:
 
 
 sc.pl.umap(HR_Rv_7dpi_endo, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_endo.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '7dpi endocardial niche')
+
+
+# In[74]:
+
+
+sc.pl.umap(HR_Rv_7dpi_endo, color = ['col1a1a'])
 
 
 # In[57]:
@@ -1078,6 +1072,13 @@ sc.pl.draw_graph(HR_Rv_7dpi_endo, color = 'leiden', title = '7dpi endocardial ni
 sc.pl.draw_graph(HR_Rv_7dpi_endo, color = ['Cell_type'], title = '7dpi endocardial niche', save = '_scvelo_endocardial_niche_7dpi_20n_cell_types_diffmap.png')
 
 
+# In[86]:
+
+
+HR_Rv_7dpi_endo.obs['cluster_dummy'] = HR_Rv_7dpi_endo.obs['Cell_type'] == 'Fibroblast (spock3)'
+sc.pl.umap(HR_Rv_7dpi_endo, color = 'cluster_dummy')
+
+
 # In[67]:
 
 
@@ -1085,6 +1086,393 @@ sc.pl.draw_graph(HR_Rv_7dpi_endo, ncols = 3,
                  color = ['col1a1a', 'fn1b', 'spock3',
                           'nppc', 'cyp26b1', 'frzb', 'acta2'],
                 save = '_scvelo_endocardial_niche_7dpi_20n_marker_genes_diffmap.png')
+
+
+# In[68]:
+
+
+scv.pp.moments(HR_Rv_7dpi_endo)
+
+
+# In[69]:
+
+
+scv.tl.velocity(HR_Rv_7dpi_endo, mode='stochastic')
+
+
+# In[70]:
+
+
+scv.tl.velocity_graph(HR_Rv_7dpi_endo)
+
+
+# In[71]:
+
+
+scv.pl.velocity_embedding(HR_Rv_7dpi_endo, basis='draw_graph_fa')
+
+
+# In[72]:
+
+
+scv.pl.velocity_embedding_grid(HR_Rv_7dpi_endo, basis='draw_graph_fa', color = 'Cell_type')
+
+
+# In[73]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_7dpi_endo, basis='draw_graph_fa', title = '7dpi endocardial niche', 
+                                 color = 'Cell_type', legend_loc = 'right margin',
+                                save = '_scvelo_endocardial_niche_7dpi_20n_cell_types_diffmap.png')
+
+
+# In[79]:
+
+
+scv.pl.proportions(HR_Rv_7dpi_endo, groupby = 'batch')
+
+
+# How are the speed and coherence?
+
+# In[76]:
+
+
+scv.tl.velocity_confidence(HR_Rv_7dpi_endo)
+
+
+# In[78]:
+
+
+keys = 'velocity_length', 'velocity_confidence'
+scv.pl.scatter(HR_Rv_7dpi_endo, c=keys, cmap='coolwarm', basis='draw_graph_fa', perc=[5, 95],
+                                save = 'strength_coherence_scvelo_endo_niche_7dpi_20n_cell_types_diffmap.png')
+
+
+# # Endocardial niche for deep injuries at 7dpi
+
+# In[12]:
+
+
+#HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
+#all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
+#HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
+#HR_Rv_7dpi_endo = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(endo_7dpi)]
+deep_injury_libraries = ['Hr1', 'Hr2a', 'Hr2b', 'Hr6a', 'Hr6v', 'Hr7a', 'Hr7v', 'Hr9']
+HR_Rv_7dpi_deep_endo = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(endo_7dpi)]
+HR_Rv_7dpi_deep_endo = HR_Rv_7dpi_deep_endo[HR_Rv_7dpi_deep_endo.obs['heart'].isin(deep_injury_libraries)]
+
+
+# In[13]:
+
+
+HR_Rv_7dpi_deep_endo.obs['Cell_type'].unique()
+
+
+# In[14]:
+
+
+sc.pp.filter_genes(HR_Rv_7dpi_deep_endo, min_cells=3)
+sc.pp.normalize_per_cell(HR_Rv_7dpi_deep_endo, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_7dpi_deep_endo)
+
+
+# In[15]:
+
+
+sc.pp.highly_variable_genes(HR_Rv_7dpi_deep_endo)
+sc.tl.pca(HR_Rv_7dpi_deep_endo)
+sc.pp.neighbors(HR_Rv_7dpi_deep_endo, n_neighbors=30)
+sc.external.pp.bbknn(HR_Rv_7dpi_deep_endo, batch_key='batch')
+sc.tl.umap(HR_Rv_7dpi_deep_endo)
+
+
+# In[16]:
+
+
+sc.pl.umap(HR_Rv_7dpi_deep_endo, color='batch',
+          title = '7dpi deep injury endocardial niche')
+
+
+# In[17]:
+
+
+sc.pl.umap(HR_Rv_7dpi_deep_endo, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_deep_endo.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '7dpi deep injury endocardial niche')
+
+
+# In[18]:
+
+
+sc.tl.diffmap(HR_Rv_7dpi_deep_endo)
+sc.pp.neighbors(HR_Rv_7dpi_deep_endo, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_Rv_7dpi_deep_endo)
+
+
+# In[19]:
+
+
+sc.tl.leiden(HR_Rv_7dpi_deep_endo, resolution=0.4)
+
+
+# In[20]:
+
+
+sc.pl.umap(HR_Rv_7dpi_deep_endo, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[21]:
+
+
+sc.tl.paga(HR_Rv_7dpi_deep_endo, groups='leiden')
+
+
+# In[22]:
+
+
+sc.pl.paga(HR_Rv_7dpi_deep_endo, show=True, 
+           labels = ['', '', '', '', '', 
+                     '', '', '', '', '', 
+                     '', '', '', '', '',
+                    '','', '', '', ''], 
+           node_size_scale = 2, save = 'scvelo_deep_endo_niche_7dpi_20n_leiden_diffmap.png')
+
+
+# In[23]:
+
+
+sc.tl.draw_graph(HR_Rv_7dpi_deep_endo, init_pos='paga')
+
+
+# In[24]:
+
+
+sc.pl.draw_graph(HR_Rv_7dpi_deep_endo, color = 'leiden', title = '7dpi deep endocardial niche', save = 'scvelo_deep_endocardial_niche_7dpi_20n_leiden_diffmap.png')
+
+
+# In[25]:
+
+
+sc.pl.draw_graph(HR_Rv_7dpi_deep_endo, color = ['Cell_type'], title = '7dpi deep endocardial niche', save = '_scvelo_deep_endocardial_niche_7dpi_20n_cell_types_diffmap.png')
+
+
+# In[27]:
+
+
+sc.pl.draw_graph(HR_Rv_7dpi_deep_endo, ncols = 3,
+                 color = ['col1a1a', 'fn1b', 'spock3',
+                          'nppc', 'cyp26b1', 'frzb', 'acta2'],
+                save = '_scvelo_deep_endocardial_niche_7dpi_20n_marker_genes_diffmap.png')
+
+
+# In[28]:
+
+
+scv.pp.moments(HR_Rv_7dpi_deep_endo)
+
+
+# In[29]:
+
+
+scv.tl.velocity(HR_Rv_7dpi_deep_endo, mode='stochastic')
+
+
+# In[30]:
+
+
+scv.tl.velocity_graph(HR_Rv_7dpi_deep_endo)
+
+
+# In[31]:
+
+
+scv.pl.velocity_embedding(HR_Rv_7dpi_deep_endo, basis='draw_graph_fa')
+
+
+# In[32]:
+
+
+scv.pl.velocity_embedding_grid(HR_Rv_7dpi_deep_endo, basis='draw_graph_fa', color = 'Cell_type')
+
+
+# In[33]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_7dpi_deep_endo, basis='draw_graph_fa', title = '7dpi deep endocardial niche', 
+                                 color = 'Cell_type', legend_loc = 'right margin',
+                                save = '_scvelo_deep_endocardial_niche_7dpi_20n_cell_types_diffmap.png')
+
+
+# # Endocardial niche at 3dpi
+
+# In[111]:
+
+
+HR_Rv_3dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '3']
+all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
+HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
+HR_Rv_3dpi_endo = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(['Endocardium (V)', 'Fibroblast (nppc)', 'Fibroblast (spock3)', 'Fibroblast-like cells'])]
+
+
+# In[112]:
+
+
+sc.pp.filter_genes(HR_Rv_3dpi_endo, min_cells=3)
+sc.pp.normalize_per_cell(HR_Rv_3dpi_endo, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_3dpi_endo)
+
+
+# In[113]:
+
+
+sc.pp.highly_variable_genes(HR_Rv_3dpi_endo)
+sc.tl.pca(HR_Rv_3dpi_endo)
+sc.pp.neighbors(HR_Rv_3dpi_endo, n_neighbors=30)
+sc.external.pp.bbknn(HR_Rv_3dpi_endo, batch_key='batch')
+sc.tl.umap(HR_Rv_3dpi_endo)
+
+
+# In[114]:
+
+
+sc.pl.umap(HR_Rv_3dpi_endo, color='batch',
+          title = '3dpi endocardial niche')
+
+
+# In[115]:
+
+
+sc.pl.umap(HR_Rv_3dpi_endo, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_endo.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '3dpi endocardial niche')
+
+
+# In[116]:
+
+
+HR_Rv_3dpi_endo.obs['Cell_type'].value_counts()
+
+
+# In[96]:
+
+
+sc.tl.diffmap(HR_Rv_3dpi_endo)
+sc.pp.neighbors(HR_Rv_3dpi_endo, n_neighbors=20, use_rep='X_diffmap')
+sc.tl.draw_graph(HR_Rv_3dpi_endo)
+
+
+# In[97]:
+
+
+sc.tl.leiden(HR_Rv_3dpi_endo, resolution=0.4)
+
+
+# In[98]:
+
+
+sc.pl.umap(HR_Rv_3dpi_endo, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[60]:
+
+
+sc.tl.paga(HR_Rv_7dpi_endo, groups='leiden')
+
+
+# In[61]:
+
+
+sc.pl.paga(HR_Rv_7dpi_endo, show=True, 
+           labels = ['', '', '', '', '', 
+                     '', '', '', '', '', 
+                     '', '', '', '', '',
+                    '',''], 
+           node_size_scale = 2, save = 'scvelo_endo_niche_7dpi_20n_leiden_diffmap.png')
+
+
+# In[62]:
+
+
+sc.tl.draw_graph(HR_Rv_7dpi_endo, init_pos='paga')
+
+
+# In[63]:
+
+
+sc.pl.draw_graph(HR_Rv_7dpi_endo, color = 'leiden', title = '7dpi endocardial niche', save = 'scvelo_endocardial_niche_7dpi_20n_leiden_diffmap.png')
+
+
+# In[64]:
+
+
+sc.pl.draw_graph(HR_Rv_7dpi_endo, color = ['Cell_type'], title = '7dpi endocardial niche', save = '_scvelo_endocardial_niche_7dpi_20n_cell_types_diffmap.png')
+
+
+# In[67]:
+
+
+sc.pl.draw_graph(HR_Rv_7dpi_endo, ncols = 3,
+                 color = ['col1a1a', 'fn1b', 'spock3',
+                          'nppc', 'cyp26b1', 'frzb', 'acta2'],
+                save = '_scvelo_endocardial_niche_7dpi_20n_marker_genes_diffmap.png')
+
+
+# In[68]:
+
+
+scv.pp.moments(HR_Rv_7dpi_endo)
+
+
+# In[69]:
+
+
+scv.tl.velocity(HR_Rv_7dpi_endo, mode='stochastic')
+
+
+# In[70]:
+
+
+scv.tl.velocity_graph(HR_Rv_7dpi_endo)
+
+
+# In[71]:
+
+
+scv.pl.velocity_embedding(HR_Rv_7dpi_endo, basis='draw_graph_fa')
+
+
+# In[72]:
+
+
+scv.pl.velocity_embedding_grid(HR_Rv_7dpi_endo, basis='draw_graph_fa', color = 'Cell_type')
+
+
+# In[73]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_7dpi_endo, basis='draw_graph_fa', title = '7dpi endocardial niche', 
+                                 color = 'Cell_type', legend_loc = 'right margin',
+                                save = '_scvelo_endocardial_niche_7dpi_20n_cell_types_diffmap.png')
+
+
+# In[79]:
+
+
+scv.pl.proportions(HR_Rv_7dpi_endo, groupby = 'batch')
+
+
+# How are the speed and coherence?
+
+# In[76]:
+
+
+scv.tl.velocity_confidence(HR_Rv_7dpi_endo)
+
+
+# In[78]:
+
+
+keys = 'velocity_length', 'velocity_confidence'
+scv.pl.scatter(HR_Rv_7dpi_endo, c=keys, cmap='coolwarm', basis='draw_graph_fa', perc=[5, 95],
+                                save = 'strength_coherence_scvelo_endo_niche_7dpi_20n_cell_types_diffmap.png')
 
 
 # # Full niche
