@@ -66,7 +66,7 @@ connected_7dpi = ['Fibroblast', 'Fibroblast (cfd)', 'Fibroblast (col11a1a)', 'Fi
 #fibro_colors = fibro_colors.set_index('setFibro')
 
 
-# In[8]:
+# In[7]:
 
 
 HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 
@@ -558,7 +558,7 @@ HR_Rv_filter.obs['Cell_type'].value_counts()
 #HR_Rv_7dpi_deep_endo.obs['Cell_type'].unique()
 
 
-# In[64]:
+# In[8]:
 
 
 #HR_Rv_filter.write('./write/HR_Rv_filter.h5ad')
@@ -567,7 +567,7 @@ HR_Rv_filter = sc.read('./write/HR_Rv_filter.h5ad')
 
 # # Trajectories in 3dpi epicardial connected niche
 
-# In[13]:
+# In[9]:
 
 
 HR_Rv_3dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '3']
@@ -576,7 +576,7 @@ HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
 HR_Rv_3dpi_conn = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(connected_3dpi)]
 
 
-# In[14]:
+# In[10]:
 
 
 sc.pp.filter_genes(HR_Rv_3dpi_conn, min_cells=3)
@@ -584,7 +584,7 @@ sc.pp.normalize_per_cell(HR_Rv_3dpi_conn, counts_per_cell_after=1e4)
 sc.pp.log1p(HR_Rv_3dpi_conn)
 
 
-# In[15]:
+# In[11]:
 
 
 sc.pp.highly_variable_genes(HR_Rv_3dpi_conn)
@@ -594,21 +594,22 @@ sc.external.pp.bbknn(HR_Rv_3dpi_conn, batch_key='batch')
 sc.tl.umap(HR_Rv_3dpi_conn)
 
 
-# In[16]:
+# In[12]:
 
 
 sc.pl.umap(HR_Rv_3dpi_conn, color='batch',
           title = '3dpi connected niche')
 
 
-# In[17]:
+# In[14]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type', palette = fibro_colors.loc[HR_Rv_3dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '3dpi connected niche')
+#cell_type_colors.loc[HR_Rv_7dpi_endo.obs.Cell_type.cat.categories.tolist()].color.tolist()
 
 
-# In[18]:
+# In[15]:
 
 
 sc.tl.diffmap(HR_Rv_3dpi_conn)
@@ -616,53 +617,53 @@ sc.pp.neighbors(HR_Rv_3dpi_conn, n_neighbors=20, use_rep='X_diffmap')
 sc.tl.draw_graph(HR_Rv_3dpi_conn)
 
 
-# In[19]:
+# In[16]:
 
 
 sc.tl.leiden(HR_Rv_3dpi_conn, resolution=0.4)
 
 
-# In[20]:
+# In[17]:
 
 
 sc.pl.umap(HR_Rv_3dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
 
 
-# In[21]:
+# In[18]:
 
 
 sc.tl.paga(HR_Rv_3dpi_conn, groups='leiden')
 
 
-# In[22]:
+# In[19]:
 
 
 sc.pl.paga(HR_Rv_3dpi_conn, show=True, labels = ['', '', '', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
 
 
-# In[23]:
+# In[20]:
 
 
 sc.tl.draw_graph(HR_Rv_3dpi_conn, init_pos='paga')
 
 
-# In[24]:
+# In[21]:
 
 
 sc.pl.draw_graph(HR_Rv_3dpi_conn, color = 'leiden', title = '3dpi connected niche', save = 'scvelo_connected_niche_3dpi_20n_leiden_diffmap.png')
 
 
-# In[25]:
+# In[22]:
 
 
 sc.pl.draw_graph(HR_Rv_3dpi_conn, color = ['Cell_type'], title = '3dpi connected niche', save = '_scvelo_connected_niche_3dpi_20n_cell_types_diffmap.png')
 
 
-# In[26]:
+# In[23]:
 
 
 sc.pl.draw_graph(HR_Rv_3dpi_conn, ncols = 4,
-                 color = ['col1a1a', 'tbx18',
+                 color = ['col1a1a', 'tbx18', 'tcf21',
                           'notch3', 'pdgfrb', 'mpeg1.1', 'cfd', 
                           'col11a1a', 'col12a1a', 
                           'postnb', 'pcna', 'aldh1a2', 'stra6'],
