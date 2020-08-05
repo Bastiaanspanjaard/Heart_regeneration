@@ -1,7 +1,7 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[11]:
 
 
 import scanpy as sc
@@ -18,13 +18,13 @@ import pickle
 from autogenes import AutoGenes
 
 
-# In[2]:
+# In[12]:
 
 
 import random
 
 
-# In[3]:
+# In[13]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -32,13 +32,13 @@ get_ipython().run_line_magic('autoreload', '1')
 get_ipython().run_line_magic('aimport', 'autogenes')
 
 
-# In[4]:
+# In[14]:
 
 
 importlib.reload(autogenes)
 
 
-# In[5]:
+# In[15]:
 
 
 #select replicate indices and save their mean
@@ -68,16 +68,16 @@ def removeReplicas(adata):
 
 # # Read Tomo Data
 
-# In[6]:
+# In[9]:
 
 
 #tomoData = pd.read_csv('../Data/Tomo1_DR11_count_table.csv',index_col=0) #Tomo1_count_table.csv
-tomoData = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Tomo2_DR11_count_table.csv',index_col=0)
+tomoData = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Tomo1_DR11_count_table.csv',index_col=0)
 print(tomoData.shape)
 tomoData.head()
 
 
-# In[7]:
+# In[10]:
 
 
 tomoaData_normalized = sc.AnnData(tomoData.T)
@@ -86,27 +86,33 @@ tomoaData_normalized = removeReplicas(tomoaData_normalized)
 print(tomoaData_normalized)
 
 
-# In[8]:
+# In[16]:
 
 
 tomoaData_dataframe = pd.DataFrame(data=tomoaData_normalized.X.T,index=tomoaData_normalized.var_names,columns=tomoaData_normalized.obs_names)
 #tomoaData_dataframe.to_csv(r'../write/cleaned_ids.csv')
 
 
-# In[9]:
+# In[17]:
 
 
 tomoaData_dataframe.shape
 
 
-# In[10]:
+# In[18]:
 
 
 sc.pp.normalize_per_cell(tomoaData_normalized, counts_per_cell_after=1e4)
 tomoData_norm = pd.DataFrame(data=tomoaData_normalized.X.T,columns = tomoaData_normalized.obs_names, index=tomoaData_normalized.var_names)
 
 
-# In[11]:
+# In[267]:
+
+
+tomo_test
+
+
+# In[19]:
 
 
 import seaborn as sb
@@ -121,26 +127,26 @@ plt.hist(counts, color='blue')
 plt.show()
 
 
-# In[12]:
+# In[20]:
 
 
 counts_proc = counts.drop(['74'], axis=0)
 counts_proc.shape
 
 
-# In[13]:
+# In[21]:
 
 
 sc.set_figure_params(dpi=200, dpi_save=300, vector_friendly=True, frameon=False)
 
 
-# In[14]:
+# In[22]:
 
 
 plt.rcParams['figure.figsize'] = (6, 4)
 
 
-# In[16]:
+# In[23]:
 
 
 #print(counts_proc.shape)
@@ -152,7 +158,7 @@ plt.ylabel('# of counts')
 ax.plot(x_pos,counts_proc)
 
 
-# In[17]:
+# In[24]:
 
 
 import os
@@ -161,7 +167,7 @@ print(os.getcwd())
 
 # # Read single-cell data
 
-# In[18]:
+# In[90]:
 
 
 file_1 = '../../Data/all_h5_transfer/H5_Dr11_cr31_ffbm.h5'
@@ -177,7 +183,7 @@ adata_4 = sc.read_10x_h5(file_4)
 adata_5 = sc.read_10x_h5(file_5)
 
 
-# In[19]:
+# In[91]:
 
 
 adata_1.var_names_make_unique()
@@ -187,7 +193,7 @@ adata_4.var_names_make_unique()
 adata_5.var_names_make_unique()
 
 
-# In[94]:
+# In[191]:
 
 
 adata=adata_1.concatenate([adata_2,adata_3,adata_4,adata_5],
@@ -196,14 +202,20 @@ adata=adata_1.concatenate([adata_2,adata_3,adata_4,adata_5],
 adata.X = adata.X.todense()
 
 
-# In[20]:
+# In[261]:
+
+
+adata
+
+
+# In[192]:
 
 
 #test = adata[:,adata.var_names.str.startswith('NC_002333.')].X
 #np.mean(test,axis=0)
 
 
-# In[21]:
+# In[193]:
 
 
 #tomoData.index.intersection(adata.var_names)
@@ -211,7 +223,7 @@ adata.X = adata.X.todense()
 
 # ## AutoGeneS
 
-# In[88]:
+# In[194]:
 
 
 #read annotations
@@ -219,18 +231,19 @@ adata.X = adata.X.todense()
 #annotations = pd.read_csv('../../Data/all.hearts.all.cells.all.sub.sept03.csv',index_col=0)
 #annotations = pd.read_csv('../../Data/celltypes_zoom_allcells.csv',index_col=0)
 #annotations = pd.read_csv('../data/all.hearts.all.cells.all.sub.sept03.csv',index_col=0)
-annotations_nonery = pd.read_csv('../../Data/final_metadata_Tmacromerged.csv', index_col = 0)
+#annotations_nonery = pd.read_csv('../../Data/final_metadata_Tmacromerged.csv', index_col = 0)
+annotations_nonery = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged_2.csv', index_col = 0)
 annotations_ery = pd.read_csv('../../Data/final_erythrocytes.csv', index_col=0)
 
 
-# In[89]:
+# In[195]:
 
 
 print(annotations_nonery.shape)
 annotations_nonery.head()
 
 
-# In[90]:
+# In[196]:
 
 
 annotations_ery.columns = ['orig.ident', 'Cell_type']
@@ -238,26 +251,41 @@ annotations_ery.columns = ['orig.ident', 'Cell_type']
 #annotations_ery.head()
 
 
-# In[91]:
+# In[197]:
 
 
 annotations = pd.concat([annotations_nonery[['orig.ident', 'Cell_type']], annotations_ery])
 
 
-# In[92]:
+# In[198]:
 
 
 indices = [x for x in annotations.index if not x.startswith('Hr')]
 annotations = annotations.loc[indices,:]
+annotations = annotations[~annotations.index.duplicated()]
+#non_dupe_indices = annotations.index[~annotations.index.duplicated()]
+#annotations = annotations.loc[non_dupe_indices, :]
 
 
-# In[95]:
+# In[199]:
+
+
+highcount_celltypes = annotations.Cell_type.value_counts()[annotations.Cell_type.value_counts() > 1000]
+
+
+# In[200]:
+
+
+annotations = annotations[annotations.Cell_type.isin(highcount_celltypes.index)]
+
+
+# In[201]:
 
 
 adata.obs_names = [str(adata.obs.loc[x,'sample'])+'_'+str(x.split('-', 1)[0]) for x in adata.obs_names]
 
 
-# In[98]:
+# In[202]:
 
 
 anno_drop = annotations.index.difference(adata.obs_names)
@@ -265,7 +293,15 @@ annotations = annotations.drop(anno_drop)
 adata_proc = adata[annotations.index]
 
 
-# In[99]:
+# In[203]:
+
+
+adata_proc
+#annotations
+#annotations.index[~annotations.index.duplicated()]
+
+
+# In[204]:
 
 
 for s in annotations.columns.values:
@@ -273,13 +309,13 @@ for s in annotations.columns.values:
     adata_proc.obs[s] = annotations[s].tolist()
 
 
-# In[100]:
+# In[242]:
 
 
-adata_proc = removeReplicas(adata_proc)
+#adata_proc = removeReplicas(adata_proc)
 
 
-# In[101]:
+# In[205]:
 
 
 #select shared genes between sc and tomo data
@@ -287,14 +323,48 @@ adata_proc = adata_proc[:,adata_proc.var_names.intersection(tomoData_norm.index)
 tomoData_norm = tomoData_norm.loc[adata_proc.var_names.intersection(tomoData_norm.index),:]
 
 
-# In[102]:
+# In[294]:
+
+
+#adata_proc.var_names.intersection(tomoData_norm.index)
+#HR_ps_1 = HR_ps_1[:, all_genes_but_RFP]
+tomo_test = tomoaData_normalized[:, adata_proc.var_names.intersection(tomoData_norm.index)]
+
+
+# In[295]:
+
+
+sc.pp.log1p(tomo_test)
+sc.pp.highly_variable_genes(tomo_test, flavor='seurat', n_top_genes=4000)
+
+
+# In[296]:
+
+
+tomo_test
+
+
+# In[243]:
 
 
 print(adata_proc)
 tomoData_norm.shape
 
 
-# In[103]:
+# In[247]:
+
+
+tomo_test = tomoData_norm
+tomo_test
+
+
+# In[246]:
+
+
+sc.pp.log1p(tomo_test)
+
+
+# In[207]:
 
 
 adata_norm = sc.pp.normalize_per_cell(adata_proc, counts_per_cell_after=1e4,copy=True)
@@ -303,7 +373,7 @@ sc.pp.highly_variable_genes(adata_proc, flavor='seurat', n_top_genes=4000)
 #sc.pp.scale(adata_proc)
 
 
-# In[104]:
+# In[208]:
 
 
 sc.tl.pca(adata_proc)
@@ -311,20 +381,20 @@ adata_proc.obsm['X_pca'] *= -1  # multiply by -1 to match Seurat
 sc.pl.pca_scatter(adata_proc, save="_PCA.png" )
 
 
-# In[105]:
+# In[209]:
 
 
 sc.pp.neighbors(adata_proc, n_neighbors=30)
 sc.tl.umap(adata_proc)
 
 
-# In[106]:
+# In[210]:
 
 
 adata_proc
 
 
-# In[107]:
+# In[211]:
 
 
 #sc.pl.tsne(adata_proc, color='big.Cell.type')
@@ -336,13 +406,13 @@ sc.pl.umap(adata_proc, color='Cell_type')
 
 # # Deconvolution
 
-# In[108]:
+# In[212]:
 
 
 adata_norm.obs = adata_proc.obs
 
 
-# In[109]:
+# In[213]:
 
 
 clusters = list(set(adata_norm.obs['Cell_type']))
@@ -354,20 +424,37 @@ centroids_sc = sc_mean
 print(centroids_sc.shape)
 
 
-# In[113]:
+# In[214]:
+
+
+#cluster = "Cardiomyocytes A"
+#adata_norm.obs_names[adata_norm.obs['Cell_type']==cluster]
+#adata_norm[adata_norm.obs_names[adata_norm.obs['Cell_type']==cluster]] #.X #.T
+#adata_norm.obs.index[adata_norm.obs.index.duplicated()]
+
+
+# In[215]:
 
 
 centroids_sc_hv = centroids_sc.loc[adata_proc[:,adata_proc.var['highly_variable']==True].var_names,:]
 
 
-# In[115]:
+# In[298]:
 
 
-centroids_sc_hv = centroids_sc_hv.drop(['Dead cells', 'Neuronal cells'], axis=1)
+centroids_tomo_hv = centroids_sc.loc[tomo_test.var[tomo_test.var['highly_variable']==True].index.array]
+
+
+# In[217]:
+
+
+#centroids_sc_hv = centroids_sc_hv.drop(['Dead cells', 'Neuronal cells'], axis=1)
+#centroids_sc_hv = centroids_sc_hv.drop(['Neuronal cells'], axis=1)
+
 centroids_sc_hv.shape
 
 
-# In[116]:
+# In[ ]:
 
 
 centroids_sc_hv.columns
@@ -375,14 +462,21 @@ centroids_sc_hv.columns
 
 # ## AutoGeneS
 
-# In[ ]:
+# In[219]:
 
 
 ag = AutoGenes(centroids_sc_hv.T)
-ag.run(ngen=2000,seed=0,nfeatures=300,mode='fixed')
+ag.run(ngen=2000,seed=0,nfeatures=500,mode='fixed')
 
 
-# In[99]:
+# In[299]:
+
+
+ag_tomo = AutoGenes(centroids_tomo_hv.T)
+ag_tomo.run(ngen=2000,seed=0,nfeatures=500,mode='fixed')
+
+
+# In[44]:
 
 
 #import pickle
@@ -395,43 +489,73 @@ ag.run(ngen=2000,seed=0,nfeatures=300,mode='fixed')
 #print(ag == b)
 
 
-# In[87]:
+# In[220]:
 
 
 ag.plot(size='large',weights=(1,-1))
 
 
-# In[54]:
+# In[300]:
 
 
-pareto = ag.pareto
+ag_tomo.plot(size='large',weights=(1,-1))
 
 
-# In[55]:
+# In[301]:
+
+
+#pareto = ag.pareto
+pareto = ag_tomo.pareto
+
+
+# In[222]:
+
+
+#dir(ag)
+
+
+# In[223]:
+
+
+ag._AutoGenes__fitness_matrix()
+
+
+# In[224]:
+
+
+#import inspect
+#inspect.getsourcelines(ag.plot)
+
+
+# In[302]:
 
 
 len(pareto)
 
 
-# In[57]:
+# In[304]:
 
 
-centroids_sc_pareto = centroids_sc_hv[pareto[240]]#ag.select(weights=(1,-1)) -->422
+#centroids_sc_pareto = centroids_sc_hv[pareto[200]] # Also used 291. #ag.select(weights=(1,-1)) -->422
+centroids_sc_pareto = centroids_tomo_hv[pareto[345]]
 centroids_sc_pareto.shape
 
 
-# In[59]:
+# In[305]:
 
 
 import seaborn as sns
-corr = pd.DataFrame(data = np.corrcoef(centroids_sc_pareto.T), columns = centroids_sc_pareto.columns, index = centroids_sc_pareto.columns)
+corr = pd.DataFrame(data = np.corrcoef(centroids_sc_pareto.T), 
+                    columns = centroids_sc_pareto.columns, 
+                    index = centroids_sc_pareto.columns)
 mask = np.zeros_like(corr)
 mask[np.triu_indices_from(mask)] = True
 with sns.axes_style("white"):
     sns_plot =sns.clustermap(np.abs(corr),cmap=sns.color_palette("GnBu", 1000), robust=True, yticklabels=1)
+    sns_plot.savefig("tomodiffgenes_over1000counts_paretomax_type_type_heatmap_GA.png",dpi=300)
 
 
-# In[61]:
+# In[306]:
 
 
 import seaborn as sns
@@ -446,14 +570,15 @@ sns_plot = sns.clustermap(centroids_sc_pareto.T, cmap="mako", robust=True) #, cm
 
 # ## Regression
 
-# In[62]:
+# In[307]:
 
 
-tomoData_hv = tomoData_norm.loc[centroids_sc_hv.index,:] # Tomo-expression of highly-variable genes
+#tomoData_hv = tomoData_norm.loc[centroids_sc_hv.index,:] # Tomo-expression of highly-variable sc genes
+tomoData_hv = tomoData_norm.loc[centroids_tomo_hv.index,:] # Tomo-expression of highly-variable tomo genes
 tomoData_pareto = tomoData_norm.loc[centroids_sc_pareto.index,:] # Tomo-expression of pareto genes
 
 
-# In[63]:
+# In[252]:
 
 
 def normalize_proportions(data,copy):
@@ -471,7 +596,7 @@ def normalize_proportions(data,copy):
     return data_copy
 
 
-# In[80]:
+# In[308]:
 
 
 from sklearn.svm import NuSVR
@@ -488,7 +613,7 @@ for s in tomoData_hv.columns:
 proportions_NuSVR_norm = normalize_proportions(proportions_NuSVR, copy = True)
 
 
-# In[81]:
+# In[253]:
 
 
 # Fit each tomo-section in terms of its pareto genes to the cell types, using non-negative least squares.
@@ -499,48 +624,40 @@ for s in tomoData_hv.columns:
 proportions_nnls_norm = normalize_proportions(proportions_nnls, copy = True)
 
 
-# In[84]:
-
-
-proportions_NuSVR_norm.columns
-
-
-# In[92]:
+# In[309]:
 
 
 x_pos = [i for i, _ in enumerate(proportions_NuSVR_norm.index)]
-for cell in ['Cardiomyocytes A', 'Cardiomyocytes V', 
-             'Cardiomyocytes (ttn.2) A', 'Cardiomyocytes (ttn.2) V', 
-             'Endocardium 1 (A)', 'Endocardium 1 (V)',
-             'Endocardium 2 (A)', 'Endocardium 2 (V)',
-             'Epicardium (Atrium)','Epicardium (Ventricle)']: #proportions_NuSVR_norm.columns:             
+for cell in ['Cardiomyocytes A', 'Cardiomyocytes V',
+             'Endocardium (A)', 'Endocardium (V)',
+             'Fibroblast', 'Macrophages',
+            'Erythrocytes', 'Smooth muscle cells']: #proportions_NuSVR_norm.columns:             
     plt.plot(x_pos,proportions_NuSVR_norm.loc[:,cell])
     plt.xlabel('section')
     plt.ylabel('proportion')
     plt.title(cell)
-    plt.savefig(cell + '_2000gen_pareto240_NuSVR_AVonly_final_celltypes_tomo.png')
+    plt.savefig(cell + 'tomodiffgenes_over1000counts_paretomax_NuSVR_AVonly_final_celltypes_tomo.png')
     plt.show()
 # Atrial expression is very spiky; ventricular epicardium is in the atrium. Cardiomyocytes A are very 
 # small proportion in atrium, cardiomyocytes V are large proportion in ventricle (but also very abundant in atrium).
 # ttn2 atrial cardiomyocytes are mostly ubiquitous, apart from one section. 
 
 
-# In[91]:
+# In[254]:
 
 
 #x_pos = [i for i, _ in enumerate(proportions_nnls_norm.drop(['25'],axis=0).index)] # Why drop section 25?
 x_pos = [i for i, _ in enumerate(proportions_nnls_norm.index)]
-for cell in ['Cardiomyocytes A', 'Cardiomyocytes V', 
-             'Cardiomyocytes (ttn.2) A', 'Cardiomyocytes (ttn.2) V', 
-             'Endocardium 1 (A)', 'Endocardium 1 (V)',
-             'Endocardium 2 (A)', 'Endocardium 2 (V)',
-             'Epicardium (Atrium)','Epicardium (Ventricle)']: #proportions_nnls_norm.columns:
+for cell in ['Cardiomyocytes A', 'Cardiomyocytes V',
+             'Endocardium (A)', 'Endocardium (V)',
+             'Fibroblast', 'Macrophages',
+            'Erythrocytes', 'Smooth muscle cells']: #proportions_nnls_norm.columns:
     #plt.plot(x_pos,proportions_nnls_norm.drop(['25'],axis=0).loc[:,cell])
     plt.plot(x_pos,proportions_nnls_norm.loc[:,cell])
     plt.xlabel('section')
     plt.ylabel('proportion')
     plt.title(cell)
-    plt.savefig(cell + '_2000gen_pareto240_nnls_AVonly_final_celltypes_tomo.png')
+    plt.savefig(cell + 'celltype_counts_over_1000_2000ngen__500feature_pareto200_nnls_AVonly_final_celltypes_tomo.png')
     plt.show()
 # Cardiomyocytes A is in atrium but quite sparse, CM V mostly ventricular but also quite present in atrium.
 # CM ttn2 A is in atrium (spiky but clearly), CM ttn2 V is mostly in ventricle but also spikes in atrium.
@@ -561,7 +678,7 @@ for cell in ['Cardiomyocytes A', 'Cardiomyocytes V',
 #proportions_nnls_norm['Cardiomyocytes V']
 
 
-# In[105]:
+# In[173]:
 
 
 cell = 'Erythrocytes'
@@ -749,4 +866,10 @@ for patch, color in zip(bplot['boxes'], colors):
     patch.set_facecolor(color)
 ax.set_xticklabels(['MOO-based genes', 'HV genes','marker genes'])
 plt.show()
+
+
+# In[ ]:
+
+
+
 
