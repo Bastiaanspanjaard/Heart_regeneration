@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[11]:
+# In[1]:
 
 
 import scanpy as sc
@@ -18,13 +18,13 @@ import pickle
 from autogenes import AutoGenes
 
 
-# In[12]:
+# In[2]:
 
 
 import random
 
 
-# In[13]:
+# In[3]:
 
 
 get_ipython().run_line_magic('load_ext', 'autoreload')
@@ -32,13 +32,13 @@ get_ipython().run_line_magic('autoreload', '1')
 get_ipython().run_line_magic('aimport', 'autogenes')
 
 
-# In[14]:
+# In[4]:
 
 
 importlib.reload(autogenes)
 
 
-# In[15]:
+# In[5]:
 
 
 #select replicate indices and save their mean
@@ -68,7 +68,7 @@ def removeReplicas(adata):
 
 # # Read Tomo Data
 
-# In[9]:
+# In[6]:
 
 
 #tomoData = pd.read_csv('../Data/Tomo1_DR11_count_table.csv',index_col=0) #Tomo1_count_table.csv
@@ -77,7 +77,7 @@ print(tomoData.shape)
 tomoData.head()
 
 
-# In[10]:
+# In[7]:
 
 
 tomoaData_normalized = sc.AnnData(tomoData.T)
@@ -86,33 +86,27 @@ tomoaData_normalized = removeReplicas(tomoaData_normalized)
 print(tomoaData_normalized)
 
 
-# In[16]:
+# In[8]:
 
 
 tomoaData_dataframe = pd.DataFrame(data=tomoaData_normalized.X.T,index=tomoaData_normalized.var_names,columns=tomoaData_normalized.obs_names)
 #tomoaData_dataframe.to_csv(r'../write/cleaned_ids.csv')
 
 
-# In[17]:
+# In[9]:
 
 
 tomoaData_dataframe.shape
 
 
-# In[18]:
+# In[10]:
 
 
 sc.pp.normalize_per_cell(tomoaData_normalized, counts_per_cell_after=1e4)
 tomoData_norm = pd.DataFrame(data=tomoaData_normalized.X.T,columns = tomoaData_normalized.obs_names, index=tomoaData_normalized.var_names)
 
 
-# In[267]:
-
-
-tomo_test
-
-
-# In[19]:
+# In[11]:
 
 
 import seaborn as sb
@@ -127,26 +121,26 @@ plt.hist(counts, color='blue')
 plt.show()
 
 
-# In[20]:
+# In[12]:
 
 
 counts_proc = counts.drop(['74'], axis=0)
 counts_proc.shape
 
 
-# In[21]:
+# In[13]:
 
 
 sc.set_figure_params(dpi=200, dpi_save=300, vector_friendly=True, frameon=False)
 
 
-# In[22]:
+# In[14]:
 
 
 plt.rcParams['figure.figsize'] = (6, 4)
 
 
-# In[23]:
+# In[15]:
 
 
 #print(counts_proc.shape)
@@ -161,13 +155,13 @@ ax.plot(x_pos,counts_proc)
 # In[24]:
 
 
-import os
-print(os.getcwd())
+#import os
+#print(os.getcwd())
 
 
 # # Read single-cell data
 
-# In[90]:
+# In[29]:
 
 
 file_1 = '../../Data/all_h5_transfer/H5_Dr11_cr31_ffbm.h5'
@@ -183,7 +177,7 @@ adata_4 = sc.read_10x_h5(file_4)
 adata_5 = sc.read_10x_h5(file_5)
 
 
-# In[91]:
+# In[30]:
 
 
 adata_1.var_names_make_unique()
@@ -193,7 +187,7 @@ adata_4.var_names_make_unique()
 adata_5.var_names_make_unique()
 
 
-# In[191]:
+# In[31]:
 
 
 adata=adata_1.concatenate([adata_2,adata_3,adata_4,adata_5],
@@ -202,10 +196,16 @@ adata=adata_1.concatenate([adata_2,adata_3,adata_4,adata_5],
 adata.X = adata.X.todense()
 
 
-# In[261]:
+# In[32]:
 
 
 adata
+
+
+# In[54]:
+
+
+cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_2.csv', index_col = 0)
 
 
 # In[192]:
@@ -223,7 +223,7 @@ adata
 
 # ## AutoGeneS
 
-# In[194]:
+# In[33]:
 
 
 #read annotations
@@ -236,14 +236,7 @@ annotations_nonery = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metad
 annotations_ery = pd.read_csv('../../Data/final_erythrocytes.csv', index_col=0)
 
 
-# In[195]:
-
-
-print(annotations_nonery.shape)
-annotations_nonery.head()
-
-
-# In[196]:
+# In[34]:
 
 
 annotations_ery.columns = ['orig.ident', 'Cell_type']
@@ -251,13 +244,13 @@ annotations_ery.columns = ['orig.ident', 'Cell_type']
 #annotations_ery.head()
 
 
-# In[197]:
+# In[35]:
 
 
 annotations = pd.concat([annotations_nonery[['orig.ident', 'Cell_type']], annotations_ery])
 
 
-# In[198]:
+# In[36]:
 
 
 indices = [x for x in annotations.index if not x.startswith('Hr')]
@@ -267,25 +260,25 @@ annotations = annotations[~annotations.index.duplicated()]
 #annotations = annotations.loc[non_dupe_indices, :]
 
 
-# In[199]:
+# In[37]:
 
 
 highcount_celltypes = annotations.Cell_type.value_counts()[annotations.Cell_type.value_counts() > 1000]
 
 
-# In[200]:
+# In[38]:
 
 
 annotations = annotations[annotations.Cell_type.isin(highcount_celltypes.index)]
 
 
-# In[201]:
+# In[39]:
 
 
 adata.obs_names = [str(adata.obs.loc[x,'sample'])+'_'+str(x.split('-', 1)[0]) for x in adata.obs_names]
 
 
-# In[202]:
+# In[40]:
 
 
 anno_drop = annotations.index.difference(adata.obs_names)
@@ -293,7 +286,7 @@ annotations = annotations.drop(anno_drop)
 adata_proc = adata[annotations.index]
 
 
-# In[203]:
+# In[41]:
 
 
 adata_proc
@@ -301,7 +294,7 @@ adata_proc
 #annotations.index[~annotations.index.duplicated()]
 
 
-# In[204]:
+# In[42]:
 
 
 for s in annotations.columns.values:
@@ -309,13 +302,13 @@ for s in annotations.columns.values:
     adata_proc.obs[s] = annotations[s].tolist()
 
 
-# In[242]:
+# In[43]:
 
 
 #adata_proc = removeReplicas(adata_proc)
 
 
-# In[205]:
+# In[44]:
 
 
 #select shared genes between sc and tomo data
@@ -323,7 +316,7 @@ adata_proc = adata_proc[:,adata_proc.var_names.intersection(tomoData_norm.index)
 tomoData_norm = tomoData_norm.loc[adata_proc.var_names.intersection(tomoData_norm.index),:]
 
 
-# In[294]:
+# In[45]:
 
 
 #adata_proc.var_names.intersection(tomoData_norm.index)
@@ -331,40 +324,21 @@ tomoData_norm = tomoData_norm.loc[adata_proc.var_names.intersection(tomoData_nor
 tomo_test = tomoaData_normalized[:, adata_proc.var_names.intersection(tomoData_norm.index)]
 
 
-# In[295]:
+# In[46]:
 
 
 sc.pp.log1p(tomo_test)
 sc.pp.highly_variable_genes(tomo_test, flavor='seurat', n_top_genes=4000)
 
 
-# In[296]:
-
-
-tomo_test
-
-
-# In[243]:
-
-
-print(adata_proc)
-tomoData_norm.shape
-
-
-# In[247]:
+# In[47]:
 
 
 tomo_test = tomoData_norm
 tomo_test
 
 
-# In[246]:
-
-
-sc.pp.log1p(tomo_test)
-
-
-# In[207]:
+# In[49]:
 
 
 adata_norm = sc.pp.normalize_per_cell(adata_proc, counts_per_cell_after=1e4,copy=True)
@@ -373,7 +347,7 @@ sc.pp.highly_variable_genes(adata_proc, flavor='seurat', n_top_genes=4000)
 #sc.pp.scale(adata_proc)
 
 
-# In[208]:
+# In[50]:
 
 
 sc.tl.pca(adata_proc)
@@ -381,27 +355,57 @@ adata_proc.obsm['X_pca'] *= -1  # multiply by -1 to match Seurat
 sc.pl.pca_scatter(adata_proc, save="_PCA.png" )
 
 
-# In[209]:
+# In[51]:
 
 
 sc.pp.neighbors(adata_proc, n_neighbors=30)
 sc.tl.umap(adata_proc)
 
 
-# In[210]:
+# In[60]:
 
 
-adata_proc
-
-
-# In[211]:
-
-
-#sc.pl.tsne(adata_proc, color='big.Cell.type')
-#sc.pl.umap(adata_proc, color='big.Cell.type')
-#sc.pl.tsne(adata_proc, color='orig.ident')
-#sc.pl.umap(adata_proc, color='orig.ident')
 sc.pl.umap(adata_proc, color='Cell_type')
+
+
+# In[62]:
+
+
+sc.tl.rank_genes_groups(adata_proc, groupby = 'Cell_type')
+
+
+# In[98]:
+
+
+sc.pl.rank_genes_groups_heatmap(adata_proc, n_genes = 5, save = 'marker_genes_over1000.png')
+
+
+# In[118]:
+
+
+# Plot gene expression
+gene = 'myh11a'
+expression_plot = tomoData_norm.loc[gene]
+x_pos = [i for i, _ in enumerate(expression_plot.index)]
+#print(x_pos)
+fig, ax = plt.subplots()
+plt.xlabel('section')
+plt.ylabel('Normalized expression')
+ax.plot(x_pos,expression_plot)
+plt.title(gene)
+plt.savefig('tomo1_normalized_expression_' + gene + '.png')
+
+
+# In[101]:
+
+
+'tomo_normalized_expression_' + gene + '.png'
+
+
+# In[ ]:
+
+
+
 
 
 # # Deconvolution
