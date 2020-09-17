@@ -36,7 +36,7 @@ cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/hear
 # In[4]:
 
 
-trajectory_subset = ['Fibroblasts (const.)', 'Fibroblasts (cfd)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
+epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (cfd)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
                      'Fibroblasts (cxcl12a)', 'Fibroblasts (mpeg1.1)', 'Fibroblasts (nppc)', 'Fibroblasts (spock3)',
                     'Valve fibroblasts', 'Epicardium (Atrium)', 'Epicardium (Ventricle)',
                     'Fibroblasts (proliferating)', 'Perivascular cells']
@@ -45,7 +45,7 @@ trajectory_subset = ['Fibroblasts (const.)', 'Fibroblasts (cfd)', 'Fibroblasts (
 # In[5]:
 
 
-connected_3dpi = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
+connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
                      'Fibroblasts (mpeg1.1)','Epicardium (Atrium)', 'Epicardium (Ventricle)','Fibroblasts (cxcl12a)',
                     'Fibroblasts (proliferating)', 'Perivascular cells']
 
@@ -53,7 +53,7 @@ connected_3dpi = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts
 # In[6]:
 
 
-connected_7dpi = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
+connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
                      'Fibroblasts (mpeg1.1)','Epicardium (Atrium)', 'Epicardium (Ventricle)',
                     'Fibroblasts (proliferating)', 'Perivascular cells', 'Fibroblasts (cxcl12a)']
 
@@ -61,7 +61,8 @@ connected_7dpi = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts
 # In[7]:
 
 
-endo_7dpi = ['Endocardium (Atrium)', 'Endocardium (frzb)', 'Endocardium (Ventricle)', 'Fibroblasts (const.)', 'Fibroblasts (nppc)', 'Fibroblasts (spock3)', 'Valve fibroblasts']
+connected_endofibro_types = ['Endocardium (frzb)', 'Endocardium (Ventricle)', 
+                            'Fibroblasts (nppc)', 'Fibroblasts (spock3)']
 
 
 # In[8]:
@@ -111,7 +112,7 @@ HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4',
                                       'IWR1', 'IWR1', 'IWR1']})
 
 
-# # RNA velocity
+# # Load and merge RNA velocity datasets
 
 # In[ ]:
 
@@ -259,84 +260,97 @@ HR_Rv_filter.obs['Cell_type'] = annotations_Rv['Cell_type'].tolist()
 HR_Rv_filter = sc.read('./write/HR_Rv_filter.h5ad')
 
 
+# In[ ]:
+
+
+HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
+HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
+
+
+# In[ ]:
+
+
+HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
+all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
+HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
+
+
 # # Naive trajectory analysis at 3dpi
 
 # In[196]:
 
 
-HR_ps_1 = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
-all_genes_but_RFP = [name for name in HR_ps_1.var_names if not name == 'RFP']
-HR_ps_1 = HR_ps_1[:, all_genes_but_RFP]
-HR_ps_1 = HR_ps_1[HR_ps_1.obs['Cell_type'].isin(trajectory_subset)]
-sc.pp.filter_genes(HR_ps_1, min_cells=3)
+HR_Rv_3dpi_epifibro = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(epifibro_types)]
+sc.pp.filter_genes(HR_Rv_3dpi_epifibro, min_cells=3)
 
 
 # In[197]:
 
 
 # Find mito_genes in dataset.
-mito_in_index = list(set(HR_ps_1.var.index.values) & set(mito_genes))
+mito_in_index = list(set(HR_Rv_3dpi_epifibro.var.index.values) & set(mito_genes))
 # Get mitochondrial percentages and read counts; plot violin plots
-HR_ps_1.obs['percent_mito'] = np.sum(
-    HR_ps_1[:, mito_in_index].X, axis=1) / np.sum(HR_ps_1.X, axis=1)
-sc.pp.calculate_qc_metrics(HR_ps_1, percent_top=None, log1p=True, inplace=True)
-sc.pl.violin(HR_ps_1, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
+HR_Rv_3dpi_epifibro.obs['percent_mito'] = np.sum(
+    HR_Rv_3dpi_epifibro[:, mito_in_index].X, axis=1) / np.sum(HR_Rv_3dpi_epifibro.X, axis=1)
+sc.pp.calculate_qc_metrics(HR_Rv_3dpi_epifibro, percent_top=None, log1p=True, inplace=True)
+sc.pl.violin(HR_Rv_3dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
 # In[198]:
 
 
-sc.pp.normalize_total(HR_ps_1, target_sum=1e4)
-sc.pp.log1p(HR_ps_1)
+sc.pp.normalize_total(HR_Rv_3dpi_epifibro, target_sum=1e4)
+sc.pp.log1p(HR_Rv_3dpi_epifibro)
 
 
 # In[199]:
 
 
-sc.pp.regress_out(HR_ps_1, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
+sc.pp.regress_out(HR_Rv_3dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
 # In[200]:
 
 
-sc.pp.highly_variable_genes(HR_ps_1)
-sc.tl.pca(HR_ps_1)
-sc.external.pp.bbknn(HR_ps_1, batch_key='batch')
-sc.tl.umap(HR_ps_1)
+sc.pp.highly_variable_genes(HR_Rv_3dpi_epifibro)
+sc.tl.pca(HR_Rv_3dpi_epifibro)
+sc.external.pp.bbknn(HR_Rv_3dpi_epifibro, batch_key='batch')
+sc.tl.umap(HR_Rv_3dpi_epifibro)
 
 
 # In[201]:
 
 
-sc.pl.umap(HR_ps_1, color='batch',
+sc.pl.umap(HR_Rv_3dpi_epifibro, color='batch',
           title = '3dpi epicardium and fibroblasts')
 
 
 # In[202]:
 
 
-sc.pl.umap(HR_ps_1, color='Cell_type', palette = cell_type_colors.loc[HR_ps_1.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+sc.pl.umap(HR_Rv_3dpi_epifibro, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_epifibro.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '', save = 'subset1_3dpi_umap.png', legend_loc = 'none', frameon=False)
 
 
 # In[203]:
 
 
-sc.pl.umap(HR_ps_1, color=['total_counts', 'n_genes_by_counts', 'percent_mito'], 
+sc.pl.umap(HR_Rv_3dpi_epifibro, color=['total_counts', 'n_genes_by_counts', 'percent_mito'], 
           title = '3dpi epicardium and fibroblasts')
 
 
 # In[204]:
 
 
-sc.tl.paga(HR_ps_1, groups='Cell_type')
+sc.tl.paga(HR_Rv_3dpi_epifibro, groups='Cell_type')
 
 
 # In[205]:
 
 
-sc.pl.paga(HR_ps_1, threshold=0.3, show=True, frameon=False,
+sc.pl.paga(HR_Rv_3dpi_epifibro, threshold=0.3, show=True, frameon=False,
            labels = ['', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'subset1_3dpi_paga.png')
 
 
@@ -345,79 +359,76 @@ sc.pl.paga(HR_ps_1, threshold=0.3, show=True, frameon=False,
 # In[186]:
 
 
-HR_ps_7dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '7') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
-all_genes_but_RFP = [name for name in HR_ps_7dpi.var_names if not name == 'RFP']
-HR_ps_7dpi = HR_ps_7dpi[:, all_genes_but_RFP]
-HR_ps_7dpi = HR_ps_7dpi[HR_ps_7dpi.obs['Cell_type'].isin(trajectory_subset)]
-sc.pp.filter_genes(HR_ps_7dpi, min_cells=3)
+HR_Rv_7dpi_epifibro = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(epifibro_types)]
+sc.pp.filter_genes(HR_Rv_7dpi_epifibro, min_cells=3)
 
 
 # In[187]:
 
 
 # Find mito_genes in dataset.
-mito_in_index = list(set(HR_ps_7dpi.var.index.values) & set(mito_genes))
+mito_in_index = list(set(HR_Rv_7dpi_epifibro.var.index.values) & set(mito_genes))
 # Get mitochondrial percentages and read counts; plot violin plots
-HR_ps_7dpi.obs['percent_mito'] = np.sum(
-    HR_ps_7dpi[:, mito_in_index].X, axis=1) / np.sum(HR_ps_7dpi.X, axis=1)
-sc.pp.calculate_qc_metrics(HR_ps_7dpi, percent_top=None, log1p=True, inplace=True)
-sc.pl.violin(HR_ps_7dpi, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
+HR_Rv_7dpi_epifibro.obs['percent_mito'] = np.sum(
+    HR_Rv_7dpi_epifibro[:, mito_in_index].X, axis=1) / np.sum(HR_Rv_7dpi_epifibro.X, axis=1)
+sc.pp.calculate_qc_metrics(HR_Rv_7dpi_epifibro, percent_top=None, log1p=True, inplace=True)
+sc.pl.violin(HR_Rv_7dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
 # In[188]:
 
 
-sc.pp.normalize_total(HR_ps_7dpi, target_sum=1e4)
-sc.pp.log1p(HR_ps_7dpi)
+sc.pp.normalize_total(HR_Rv_7dpi_epifibro, target_sum=1e4)
+sc.pp.log1p(HR_Rv_7dpi_epifibro)
 
 
 # In[189]:
 
 
-sc.pp.regress_out(HR_ps_7dpi, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
+sc.pp.regress_out(HR_Rv_7dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
 # In[190]:
 
 
-sc.pp.highly_variable_genes(HR_ps_7dpi)
-sc.tl.pca(HR_ps_7dpi)
-sc.external.pp.bbknn(HR_ps_7dpi, batch_key='batch')
-sc.tl.umap(HR_ps_7dpi)
+sc.pp.highly_variable_genes(HR_Rv_7dpi_epifibro)
+sc.tl.pca(HR_Rv_7dpi_epifibro)
+sc.external.pp.bbknn(HR_Rv_7dpi_epifibro, batch_key='batch')
+sc.tl.umap(HR_Rv_7dpi_epifibro)
 
 
 # In[191]:
 
 
-sc.pl.umap(HR_ps_7dpi, color='batch',
+sc.pl.umap(HR_Rv_7dpi_epifibro, color='batch',
           title = '7dpi epicardium and fibroblasts')
 
 
 # In[192]:
 
 
-sc.pl.umap(HR_ps_7dpi, color='Cell_type', palette = cell_type_colors.loc[HR_ps_7dpi.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+sc.pl.umap(HR_Rv_7dpi_epifibro, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_epifibro.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '', save = 'subset1_7dpi_umap.png', legend_loc = 'none', frameon=False)
 
 
 # In[193]:
 
 
-sc.pl.umap(HR_ps_7dpi, color=['total_counts', 'n_genes_by_counts', 'percent_mito'], 
+sc.pl.umap(HR_Rv_7dpi_epifibro, color=['total_counts', 'n_genes_by_counts', 'percent_mito'], 
           title = '7dpi epicardium and fibroblasts')
 
 
 # In[194]:
 
 
-sc.tl.paga(HR_ps_7dpi, groups='Cell_type')
+sc.tl.paga(HR_Rv_7dpi_epifibro, groups='Cell_type')
 
 
 # In[195]:
 
 
-sc.pl.paga(HR_ps_7dpi, threshold=0.3, show=True, frameon=False,
+sc.pl.paga(HR_Rv_7dpi_epifibro, threshold=0.3, show=True, frameon=False,
            labels = ['', '', '', '', '', '', '', '', '', '', '', '', ''], node_size_scale = 2, save = 'subset1_7dpi_paga.png')
 
 
@@ -426,80 +437,77 @@ sc.pl.paga(HR_ps_7dpi, threshold=0.3, show=True, frameon=False,
 # In[12]:
 
 
-HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
-all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
-HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
-HR_Rv_3dpi_conn = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(connected_3dpi)]
-sc.pp.filter_genes(HR_Rv_3dpi_conn, min_cells=3)
+HR_Rv_3dpi_epiconn = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(connected_epifibro_types)]
+sc.pp.filter_genes(HR_Rv_3dpi_epiconn, min_cells=3)
 
 
 # In[13]:
 
 
 # Find mito_genes in dataset.
-mito_in_index = list(set(HR_Rv_3dpi_conn.var.index.values) & set(mito_genes))
+mito_in_index = list(set(HR_Rv_3dpi_epiconn.var.index.values) & set(mito_genes))
 # Get mitochondrial percentages and read counts; plot violin plots
-HR_Rv_3dpi_conn.obs['percent_mito'] = np.sum(
-    HR_Rv_3dpi_conn[:, mito_in_index].X, axis=1) / np.sum(HR_Rv_3dpi_conn.X, axis=1)
-sc.pp.calculate_qc_metrics(HR_Rv_3dpi_conn, percent_top=None, log1p=True, inplace=True)
-#HR_Rv_3dpi_conn.obs['n_counts'] = HR_Rv_3dpi_conn.X.sum(axis=1)
-sc.pl.violin(HR_Rv_3dpi_conn, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
+HR_Rv_3dpi_epiconn.obs['percent_mito'] = np.sum(
+    HR_Rv_3dpi_epiconn[:, mito_in_index].X, axis=1) / np.sum(HR_Rv_3dpi_epiconn.X, axis=1)
+sc.pp.calculate_qc_metrics(HR_Rv_3dpi_epiconn, percent_top=None, log1p=True, inplace=True)
+#HR_Rv_3dpi_epiconn.obs['n_counts'] = HR_Rv_3dpi_epiconn.X.sum(axis=1)
+sc.pl.violin(HR_Rv_3dpi_epiconn, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
 # In[15]:
 
 
-sc.pp.normalize_total(HR_Rv_3dpi_conn, target_sum=1e4)
-sc.pp.log1p(HR_Rv_3dpi_conn)
+sc.pp.normalize_total(HR_Rv_3dpi_epiconn, target_sum=1e4)
+sc.pp.log1p(HR_Rv_3dpi_epiconn)
 
 
 # In[16]:
 
 
-sc.pp.regress_out(HR_Rv_3dpi_conn, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
+sc.pp.regress_out(HR_Rv_3dpi_epiconn, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
 # In[17]:
 
 
-sc.pp.highly_variable_genes(HR_Rv_3dpi_conn)
-sc.tl.pca(HR_Rv_3dpi_conn)
-sc.external.pp.bbknn(HR_Rv_3dpi_conn, batch_key='batch')
-sc.tl.umap(HR_Rv_3dpi_conn)
+sc.pp.highly_variable_genes(HR_Rv_3dpi_epiconn)
+sc.tl.pca(HR_Rv_3dpi_epiconn)
+sc.external.pp.bbknn(HR_Rv_3dpi_epiconn, batch_key='batch')
+sc.tl.umap(HR_Rv_3dpi_epiconn)
 
 
 # In[21]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='batch',
+sc.pl.umap(HR_Rv_3dpi_epiconn, color='batch',
           title = '3dpi epicardial niche')
 
 
 # In[23]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+sc.pl.umap(HR_Rv_3dpi_epiconn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_epiconn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '3dpi epicardial niche')
 
 
 # In[24]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color=['n_genes_by_counts'], 
+sc.pl.umap(HR_Rv_3dpi_epiconn, color=['n_genes_by_counts'], 
           title = '3dpi epicardial niche')
 
 
 # In[25]:
 
 
-sc.tl.leiden(HR_Rv_3dpi_conn, resolution=2)
+sc.tl.leiden(HR_Rv_3dpi_epiconn, resolution=2)
 
 
 # In[26]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')#,
+sc.pl.umap(HR_Rv_3dpi_epiconn, color='leiden', legend_loc='on data', legend_fontsize='x-large')#,
 #          palette = ['#92aad4', '#E9D723',  '#7b7f51', '#92aad4',
 #                    '#E9D723', '#E9D723', '#E9D723', '#c6ba83',
 #                    '#E9D723', '#c6ba83', '#525566', '#CE3A39',
@@ -509,13 +517,13 @@ sc.pl.umap(HR_Rv_3dpi_conn, color='leiden', legend_loc='on data', legend_fontsiz
 # In[27]:
 
 
-sc.tl.paga(HR_Rv_3dpi_conn, groups='leiden')
+sc.tl.paga(HR_Rv_3dpi_epiconn, groups='leiden')
 
 
 # In[28]:
 
 
-sc.pl.paga(HR_Rv_3dpi_conn, show=True, node_size_scale = 2)#,
+sc.pl.paga(HR_Rv_3dpi_epiconn, show=True, node_size_scale = 2)#,
 #           labels = ['', '', '', '', '', 
 #                     '', '', '', '', '', 
 #                     '', '', '', '', '',
@@ -526,45 +534,45 @@ sc.pl.paga(HR_Rv_3dpi_conn, show=True, node_size_scale = 2)#,
 # In[29]:
 
 
-sc.tl.umap(HR_Rv_3dpi_conn, init_pos = 'paga')
+sc.tl.umap(HR_Rv_3dpi_epiconn, init_pos = 'paga')
 
 
 # In[30]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='batch',
+sc.pl.umap(HR_Rv_3dpi_epiconn, color='batch',
           title = '3dpi epicardial niche')
 
 
 # In[31]:
 
 
-sc.pl.umap(HR_Rv_3dpi_conn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+sc.pl.umap(HR_Rv_3dpi_epiconn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_epiconn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '3dpi epicardial niche')
 
 
 # In[32]:
 
 
-scv.pp.moments(HR_Rv_3dpi_conn)
+scv.pp.moments(HR_Rv_3dpi_epiconn)
 
 
 # In[33]:
 
 
-scv.tl.velocity(HR_Rv_3dpi_conn, mode='stochastic')
+scv.tl.velocity(HR_Rv_3dpi_epiconn, mode='stochastic')
 
 
 # In[38]:
 
 
-scv.tl.velocity_graph(HR_Rv_3dpi_conn)
+scv.tl.velocity_graph(HR_Rv_3dpi_epiconn)
 
 
 # In[49]:
 
 
-scv.pl.velocity_embedding_stream(HR_Rv_3dpi_conn, title = '', 
+scv.pl.velocity_embedding_stream(HR_Rv_3dpi_epiconn, title = '', 
                                  color = 'Cell_type', legend_loc = 'none',
                                  save = '_scvelo_epicardial_niche_3dpi_20n_cell_types_umap.png')
 
@@ -572,21 +580,21 @@ scv.pl.velocity_embedding_stream(HR_Rv_3dpi_conn, title = '',
 # In[45]:
 
 
-scv.pl.velocity_embedding_stream(HR_Rv_3dpi_conn, title = '', 
+scv.pl.velocity_embedding_stream(HR_Rv_3dpi_epiconn, title = '', 
                                  color = 'Cell_type')
 
 
 # In[47]:
 
 
-scv.tl.velocity_confidence(HR_Rv_3dpi_conn)
+scv.tl.velocity_confidence(HR_Rv_3dpi_epiconn)
 
 
 # In[48]:
 
 
 keys = 'velocity_length', 'velocity_confidence'
-scv.pl.scatter(HR_Rv_3dpi_conn, c=keys, cmap='coolwarm', perc=[5, 95],
+scv.pl.scatter(HR_Rv_3dpi_epiconn, c=keys, cmap='coolwarm', perc=[5, 95],
                                 save = 'strength_coherence_scvelo_epicardial_niche_3dpi_20n_cell_types_umap.png')
 
 
@@ -594,100 +602,97 @@ scv.pl.scatter(HR_Rv_3dpi_conn, c=keys, cmap='coolwarm', perc=[5, 95],
 
 
 epi_velo_genes = ['col11a1a', 'col12a1a', 'fn1a', 'postnb', 'stra6', 'nrg1']
-scv.pl.velocity(HR_Rv_3dpi_conn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300,
+scv.pl.velocity(HR_Rv_3dpi_epiconn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300,
                 save = 'gene_velocity_epicardial_niche_3dpi_umap.png')
 
 
-# # Same niche at 7dpi
+# # Trajectories in 7dpi epicardial connected niche
 
 # In[143]:
 
 
-HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
-all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
-HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
-HR_Rv_7dpi_conn = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(connected_7dpi)]
-sc.pp.filter_genes(HR_Rv_7dpi_conn, min_cells=3)
+HR_Rv_7dpi_epiconn = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(connected_epifibro_types)]
+sc.pp.filter_genes(HR_Rv_7dpi_epiconn, min_cells=3)
 
 
 # In[144]:
 
 
 # Find mito_genes in dataset.
-mito_in_index = list(set(HR_Rv_7dpi_conn.var.index.values) & set(mito_genes))
+mito_in_index = list(set(HR_Rv_7dpi_epiconn.var.index.values) & set(mito_genes))
 # Get mitochondrial percentages and read counts; plot violin plots
-HR_Rv_7dpi_conn.obs['percent_mito'] = np.sum(
-    HR_Rv_7dpi_conn[:, mito_in_index].X, axis=1) / np.sum(HR_Rv_7dpi_conn.X, axis=1)
-sc.pp.calculate_qc_metrics(HR_Rv_7dpi_conn, percent_top=None, log1p=True, inplace=True)
-sc.pl.violin(HR_Rv_7dpi_conn, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
+HR_Rv_7dpi_epiconn.obs['percent_mito'] = np.sum(
+    HR_Rv_7dpi_epiconn[:, mito_in_index].X, axis=1) / np.sum(HR_Rv_7dpi_epiconn.X, axis=1)
+sc.pp.calculate_qc_metrics(HR_Rv_7dpi_epiconn, percent_top=None, log1p=True, inplace=True)
+sc.pl.violin(HR_Rv_7dpi_epiconn, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
 # In[145]:
 
 
-sc.pp.normalize_per_cell(HR_Rv_7dpi_conn, counts_per_cell_after=1e4)
-sc.pp.log1p(HR_Rv_7dpi_conn)
+sc.pp.normalize_per_cell(HR_Rv_7dpi_epiconn, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_7dpi_epiconn)
 
 
 # In[146]:
 
 
-sc.pp.regress_out(HR_Rv_7dpi_conn, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
+sc.pp.regress_out(HR_Rv_7dpi_epiconn, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
 # In[147]:
 
 
-sc.pp.highly_variable_genes(HR_Rv_7dpi_conn)
-sc.tl.pca(HR_Rv_7dpi_conn)
-sc.external.pp.bbknn(HR_Rv_7dpi_conn, batch_key='batch')
-sc.tl.umap(HR_Rv_7dpi_conn)
+sc.pp.highly_variable_genes(HR_Rv_7dpi_epiconn)
+sc.tl.pca(HR_Rv_7dpi_epiconn)
+sc.external.pp.bbknn(HR_Rv_7dpi_epiconn, batch_key='batch')
+sc.tl.umap(HR_Rv_7dpi_epiconn)
 
 
 # In[148]:
 
 
-sc.pl.umap(HR_Rv_7dpi_conn, color='batch',
+sc.pl.umap(HR_Rv_7dpi_epiconn, color='batch',
           title = '7dpi epicardial niche')
 
 
 # In[150]:
 
 
-sc.pl.umap(HR_Rv_7dpi_conn, color=['total_counts', 'n_genes_by_counts', 'percent_mito'],
+sc.pl.umap(HR_Rv_7dpi_epiconn, color=['total_counts', 'n_genes_by_counts', 'percent_mito'],
           title = '7dpi epicardial niche')
 
 
 # In[149]:
 
 
-sc.pl.umap(HR_Rv_7dpi_conn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_conn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+sc.pl.umap(HR_Rv_7dpi_epiconn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_epiconn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '7dpi epicardial niche')
 
 
 # In[151]:
 
 
-sc.tl.leiden(HR_Rv_7dpi_conn, resolution=2)
+sc.tl.leiden(HR_Rv_7dpi_epiconn, resolution=2)
 
 
 # In[152]:
 
 
-sc.pl.umap(HR_Rv_7dpi_conn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+sc.pl.umap(HR_Rv_7dpi_epiconn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
 
 
 # In[153]:
 
 
-sc.tl.paga(HR_Rv_7dpi_conn, groups='leiden')
+sc.tl.paga(HR_Rv_7dpi_epiconn, groups='leiden')
 
 
 # In[154]:
 
 
-sc.pl.paga(HR_Rv_7dpi_conn, show=True, node_size_scale = 2)#,
+sc.pl.paga(HR_Rv_7dpi_epiconn, show=True, node_size_scale = 2)#,
 #           labels = ['', '', '', '', '', 
 #                     '', '', '', '', '', 
 #                     '', '', '', '', '',
@@ -698,31 +703,31 @@ sc.pl.paga(HR_Rv_7dpi_conn, show=True, node_size_scale = 2)#,
 # In[155]:
 
 
-sc.tl.umap(HR_Rv_7dpi_conn, init_pos = 'paga')
+sc.tl.umap(HR_Rv_7dpi_epiconn, init_pos = 'paga')
 
 
 # In[156]:
 
 
-scv.pp.moments(HR_Rv_7dpi_conn)
+scv.pp.moments(HR_Rv_7dpi_epiconn)
 
 
 # In[157]:
 
 
-scv.tl.velocity(HR_Rv_7dpi_conn, mode='stochastic')
+scv.tl.velocity(HR_Rv_7dpi_epiconn, mode='stochastic')
 
 
 # In[158]:
 
 
-scv.tl.velocity_graph(HR_Rv_7dpi_conn)
+scv.tl.velocity_graph(HR_Rv_7dpi_epiconn)
 
 
 # In[159]:
 
 
-scv.pl.velocity_embedding_stream(HR_Rv_7dpi_conn, title = '', 
+scv.pl.velocity_embedding_stream(HR_Rv_7dpi_epiconn, title = '', 
                                  color = 'Cell_type', legend_loc = 'none',
                                  save = '_scvelo_epicardial_niche_7dpi_20n_cell_types_umap.png')
 
@@ -731,11 +736,11 @@ scv.pl.velocity_embedding_stream(HR_Rv_7dpi_conn, title = '',
 
 
 epi_velo_genes = ['col11a1a', 'col12a1a', 'fn1a', 'postnb', 'stra6','nrg1']
-scv.pl.velocity(HR_Rv_7dpi_conn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300,
+scv.pl.velocity(HR_Rv_7dpi_epiconn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300,
                 save = 'gene_velocity_epicardial_niche_7dpi_umap.png')
 
 
-# # Epi niche at control
+# # Trajectories in control epicardial connected niche
 
 # In[ ]:
 
@@ -743,7 +748,12 @@ scv.pl.velocity(HR_Rv_7dpi_conn, epi_velo_genes, basis='umap', ncols=1, fontsize
 HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'].isin(['0', '3'])) & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
 all_genes_but_RFP = [name for name in HR_Rv_ctrl.var_names if not name == 'RFP']
 HR_Rv_ctrl = HR_Rv_ctrl[:, all_genes_but_RFP]
-HR_Rv_ctrl_epi = HR_Rv_ctrl[HR_Rv_ctrl.obs['Cell_type'].isin(connected_3dpi)]
+
+
+# In[ ]:
+
+
+HR_Rv_ctrl_epiconn = HR_Rv_ctrl[HR_Rv_ctrl.obs['Cell_type'].isin(connected_epifibro_types)]
 sc.pp.filter_genes(HR_Rv_ctrl, min_cells=3)
 
 
@@ -785,45 +795,45 @@ sc.tl.umap(HR_Rv_ctrl)
 # In[ ]:
 
 
-sc.pp.filter_genes(HR_Rv_ctrl_epi, min_cells=3)
-sc.pp.normalize_per_cell(HR_Rv_ctrl_epi, counts_per_cell_after=1e4)
-sc.pp.log1p(HR_Rv_ctrl_epi)
-sc.pp.highly_variable_genes(HR_Rv_ctrl_epi)
-sc.tl.pca(HR_Rv_ctrl_epi)
-sc.external.pp.bbknn(HR_Rv_ctrl_epi, batch_key='batch')#, neighbors_within_batch = 3, n_pcs = 20)
-sc.tl.umap(HR_Rv_ctrl_epi)
+sc.pp.filter_genes(HR_Rv_ctrl_epiconn, min_cells=3)
+sc.pp.normalize_per_cell(HR_Rv_ctrl_epiconn, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_ctrl_epiconn)
+sc.pp.highly_variable_genes(HR_Rv_ctrl_epiconn)
+sc.tl.pca(HR_Rv_ctrl_epiconn)
+sc.external.pp.bbknn(HR_Rv_ctrl_epiconn, batch_key='batch')#, neighbors_within_batch = 3, n_pcs = 20)
+sc.tl.umap(HR_Rv_ctrl_epiconn)
 
 
 # In[ ]:
 
 
-sc.pl.umap(HR_Rv_ctrl_epi, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_ctrl_epi.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+sc.pl.umap(HR_Rv_ctrl_epiconn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_ctrl_epiconn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           )#save = 'Epicardial_niche_control_3dpi_Celltypes.png')
 
 
 # In[ ]:
 
 
-sc.pl.umap(HR_Rv_ctrl_epi, color='dpi',
+sc.pl.umap(HR_Rv_ctrl_epiconn, color='dpi',
           )#save = 'Epicardial_niche_control_3dpi_timepoints.png')
 
 
 # In[ ]:
 
 
-sc.tl.leiden(HR_Rv_ctrl_epi, resolution=2)
+sc.tl.leiden(HR_Rv_ctrl_epiconn, resolution=2)
 
 
 # In[ ]:
 
 
-sc.tl.paga(HR_Rv_ctrl_epi, groups='leiden')
+sc.tl.paga(HR_Rv_ctrl_epiconn, groups='leiden')
 
 
 # In[ ]:
 
 
-sc.pl.paga(HR_Rv_ctrl_epi, show=True, color ='Cell_type')
+sc.pl.paga(HR_Rv_ctrl_epiconn, show=True, color ='Cell_type')
 #           labels = ['', '', '', '', '', 
 #                     '', '', '', '', '', 
 #                     '', '', '', '', ''], node_size_scale = 2, 
@@ -833,41 +843,41 @@ sc.pl.paga(HR_Rv_ctrl_epi, show=True, color ='Cell_type')
 # In[ ]:
 
 
-sc.pl.paga(HR_Rv_ctrl_epi, show=True, color ='dpi')
+sc.pl.paga(HR_Rv_ctrl_epiconn, show=True, color ='dpi')
 
 
 # In[ ]:
 
 
-sc.tl.umap(HR_Rv_ctrl_epi, init_pos = 'paga')
+sc.tl.umap(HR_Rv_ctrl_epiconn, init_pos = 'paga')
 
 
 # In[ ]:
 
 
-sc.pl.umap(HR_Rv_ctrl_epi, color='Cell_type',
+sc.pl.umap(HR_Rv_ctrl_epiconn, color='Cell_type',
           save = 'Epicardial_niche_control_3dpi_Celltypes.png')
 
 
 # In[ ]:
 
 
-sc.pl.umap(HR_Rv_ctrl_epi, color='dpi',
+sc.pl.umap(HR_Rv_ctrl_epiconn, color='dpi',
           save = 'Epicardial_niche_control_3dpi_timepoints.png')
 
 
 # In[ ]:
 
 
-scv.pp.moments(HR_Rv_ctrl_epi)
-scv.tl.velocity(HR_Rv_ctrl_epi, mode='stochastic')
-scv.tl.velocity_graph(HR_Rv_ctrl_epi)
+scv.pp.moments(HR_Rv_ctrl_epiconn)
+scv.tl.velocity(HR_Rv_ctrl_epiconn, mode='stochastic')
+scv.tl.velocity_graph(HR_Rv_ctrl_epiconn)
 
 
 # In[ ]:
 
 
-scv.pl.velocity_embedding_stream(HR_Rv_ctrl_epi, title = '', 
+scv.pl.velocity_embedding_stream(HR_Rv_ctrl_epiconn, title = '', 
                                  color = 'Cell_type', legend_loc = 'none',
                                 save = 'Epicardial_niche_control_3dpi_Celltypes_velo.png')
 
@@ -875,14 +885,14 @@ scv.pl.velocity_embedding_stream(HR_Rv_ctrl_epi, title = '',
 # In[ ]:
 
 
-scv.pl.velocity_embedding(HR_Rv_ctrl_epi, title = '', scale = 0.2,
+scv.pl.velocity_embedding(HR_Rv_ctrl_epiconn, title = '', scale = 0.2,
                                  color = 'Cell_type', legend_loc = 'none')
 
 
 # In[ ]:
 
 
-scv.pl.velocity_embedding(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '0'], title = '', scale = 0.2,
+scv.pl.velocity_embedding(HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '0'], title = '', scale = 0.2,
                                 color = 'dpi', legend_loc = 'none',
                          save = 'Epicardial_niche_control_3dpi_control_velo.png')
 
@@ -890,7 +900,7 @@ scv.pl.velocity_embedding(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '0'], titl
 # In[ ]:
 
 
-scv.pl.velocity_embedding(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '3'], title = '', scale = 0.2,
+scv.pl.velocity_embedding(HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '3'], title = '', scale = 0.2,
                                 color = 'dpi', legend_loc = 'none',
                          save = 'Epicardial_niche_control_3dpi_3dpi_velo.png')
 
@@ -898,26 +908,26 @@ scv.pl.velocity_embedding(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '3'], titl
 # In[ ]:
 
 
-sc.pl.umap(HR_Rv_ctrl_epi, color='leiden',
+sc.pl.umap(HR_Rv_ctrl_epiconn, color='leiden',
           save = 'Epicardial_niche_control_3dpi_leidenclusters.png')
 
 
 # In[ ]:
 
 
-HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '3'].obs.leiden.value_counts()/sum(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '3'].obs.leiden.value_counts())
+HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '3'].obs.leiden.value_counts()/sum(HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '3'].obs.leiden.value_counts())
 
 
 # In[ ]:
 
 
-HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '0'].obs.leiden.value_counts()/sum(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '0'].obs.leiden.value_counts())
+HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '0'].obs.leiden.value_counts()/sum(HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '0'].obs.leiden.value_counts())
 
 
 # In[ ]:
 
 
-sc.pl.umap(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '0'], color = 'Cell_type',
+sc.pl.umap(HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '0'], color = 'Cell_type',
           save = 'Epicardial_niche_control_3dpi_Celltypes_control_only.png')
 
 
@@ -926,12 +936,8 @@ sc.pl.umap(HR_Rv_ctrl_epi[HR_Rv_ctrl_epi.obs['dpi'] == '0'], color = 'Cell_type'
 # In[209]:
 
 
-endo_7dpi = ['Endocardium (frzb)', 'Endocardium (Ventricle)', 'Fibroblasts (nppc)', 'Fibroblasts (spock3)']
-HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
-all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
-HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
 deep_injury_libraries = ['Hr1', 'Hr2a', 'Hr2b', 'Hr6v', 'Hr9'] # All samples with > 50 nppc fibroblasts.
-HR_Rv_7dpi_deep_endo = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(endo_7dpi)]
+HR_Rv_7dpi_deep_endo = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(connected_endofibro_types)]
 HR_Rv_7dpi_deep_endo = HR_Rv_7dpi_deep_endo[HR_Rv_7dpi_deep_endo.obs['heart'].isin(deep_injury_libraries)]
 scv.pp.remove_duplicate_cells(HR_Rv_7dpi_deep_endo)
 sc.pp.filter_genes(HR_Rv_7dpi_deep_endo, min_cells=3)
