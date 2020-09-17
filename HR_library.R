@@ -1,7 +1,7 @@
 # Description ####
 # Functions for analysing and constructing single-cell trees
 
-# Written by B. Spanjaard, 2018
+# Written by B. Spanjaard, 2020
 
 # Dependencies ####
 suppressPackageStartupMessages(require(ggplot2))
@@ -241,6 +241,98 @@ count_cumulative <- function(tree){
     )
   
   return(node_cocc)
+}
+
+ExtractTreeFrequencies <- function(tree_list, sample_fraction = 1, sampling_seed = 42){
+  # Calculate cell type frequencies per node (comparison_list) 
+  comparison_list <- list(Comparison = data.frame(Tree = character(),
+                                                  Precursor = character(),
+                                                  Type_count = integer()),
+                          Node_sizes = data.frame(Size = integer()),
+                          Normalized_frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltype_frequencies))),
+                          Frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltype_frequencies))))
+  colnames(comparison_list$Frequencies) <- celltype_frequencies$Cell_type
+  colnames(comparison_list$Normalized_frequencies) <- celltype_frequencies$Cell_type
+  
+  # Extract cell type frequencies
+  set.seed(sampling_seed)
+  for(t in 1:length(tree_list)){
+    edge_list_full <- tree_list[[t]]$Edge_list
+    # Cell.type == "NA" are nodes; leave those in, sample over the others.
+    cell_list <- edge_list_full[edge_list_full$Cell.type != "NA", ]
+    cell_list_s <- cell_list[sample.int(nrow(cell_list), round(size = sample_fraction * nrow(cell_list))), ]
+    edge_list <- rbind(edge_list_full[edge_list_full$Cell.type == "NA", ], cell_list_s)
+    
+    sample_type_count <- 
+      reshape2::dcast(data.frame(table(edge_list$from, edge_list$Cell.type)), Var1 ~ Var2, value.var = "Freq")
+    rownames(sample_type_count) <- paste(names(tree_list)[t], sample_type_count$Var1, sep = ":")
+    sample_type_count <- sample_type_count[, !(colnames(sample_type_count) %in% c("NA", "Var1"))]
+    
+    sample_type_cumulative <- sample_type_count
+    sample_type_cumulative[,] <- NA
+    for(i in 1:nrow(sample_type_cumulative)){
+      node <- rownames(sample_type_cumulative)[i]
+      sample_type_cumulative[i, ] <-
+        colSums(sample_type_count[grep(node, rownames(sample_type_count)), ])
+    }
+    sample_type_nf <- sample_type_cumulative/rowSums(sample_type_cumulative)
+    
+    comparison_list$Node_sizes <- rbind(comparison_list$Node_sizes,
+                                        data.frame(Size = rowSums(sample_type_cumulative)))
+    comparison_tree <-
+      data.frame(Tree = rep(names(tree_list)[t], ncol(sample_type_count)),
+                 Precursor = names(sample_type_count),
+                 Type_count = colSums(sample_type_count))
+    
+    comparison_list$Comparison <- rbind(comparison_list$Comparison, comparison_tree)
+    
+    # Add cumulative counts and normalized frequencies
+    sample_type_cumulative[setdiff(names(comparison_list$Frequencies), 
+                                   names(sample_type_cumulative))] <- NA
+    comparison_list$Frequencies[setdiff(names(sample_type_cumulative), 
+                                        names(comparison_list$Frequencies))] <- NA
+    comparison_list$Frequencies <- 
+      rbind(comparison_list$Frequencies, sample_type_cumulative)
+    sample_type_nf[setdiff(names(comparison_list$Normalized_frequencies), names(sample_type_nf))] <- NA
+    comparison_list$Normalized_frequencies[setdiff(names(sample_type_nf), 
+                                                   names(comparison_list$Normalized_frequencies))] <- NA
+    comparison_list$Normalized_frequencies <- 
+      rbind(comparison_list$Normalized_frequencies, sample_type_nf)
+  }
+  comparison_list$Frequencies[is.na(comparison_list$Frequencies)] <- 0
+  comparison_list$Frequencies <- 
+    comparison_list$Frequencies[, colSums(comparison_list$Frequencies) > 0]
+  comparison_list$Normalized_frequencies[is.na(comparison_list$Normalized_frequencies)] <- 0
+  comparison_list$Normalized_frequencies <- 
+    comparison_list$Normalized_frequencies[, colSums(comparison_list$Normalized_frequencies) > 0]
+  comparison_list$Node_sizes$Weight <- comparison_list$Node_sizes$Size/sum(comparison_list$Node_sizes$Size)
+  
+  # Collapse non-splitting branches:
+  # 1) To find a non-splitting branch, identify nodes with exactly one child. Those are the parent nodes in
+  # a non-splitting branch. We can recognize those nodes by counting the nodes whose name contains their name;
+  # the nodes we are looking for have exactly two (themselves and their only child).
+  # 2) Remove the child (note that weights and correlations are using the cumulative counts).
+  # 3) Search for non-splitting branches again.
+  repeat{
+    nodes_list <- data.frame(Node = rownames(comparison_list$Normalized_frequencies))
+    nodes_list$One_child <- 
+      sapply(nodes_list$Node, function(x) sum(grepl(x, nodes_list$Node))) == 2
+    if(sum(nodes_list$One_child) == 0){break}
+    nodes_list$In_one_child_parent <- 
+      sapply(nodes_list$Node, function(x){
+        sum(sapply(nodes_list$Node[nodes_list$One_child], function(y){grepl(y, x)}))
+      })
+    nodes_list$Last_only_child <-
+      !nodes_list$One_child & nodes_list$In_one_child_parent
+    comparison_list$Frequencies <- 
+      comparison_list$Frequencies[!(rownames(comparison_list$Frequencies) %in% nodes_list$Node[nodes_list$Last_only_child]), ]
+    comparison_list$Normalized_frequencies <- 
+      comparison_list$Normalized_frequencies[!(rownames(comparison_list$Normalized_frequencies) %in% nodes_list$Node[nodes_list$Last_only_child]), ]
+    comparison_list$Node_sizes <- 
+      comparison_list$Node_sizes[!(rownames(comparison_list$Node_sizes) %in% nodes_list$Node[nodes_list$Last_only_child]), ]
+  }
+  
+  return(comparison_list)
 }
 
 InitializeTreesFromDisk <- function(tree_path, libraries, cell_annotations){
