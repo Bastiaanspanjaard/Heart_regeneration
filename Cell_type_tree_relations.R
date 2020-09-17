@@ -43,10 +43,30 @@ zoom_types <- c("Fibroblast", "Fibroblast (cfd)", "Fibroblast (col11a1a)",
 cell_annotations <- read.csv("./Data/final_metadata.csv", stringsAsFactors = F)
 colnames(cell_annotations)[1] <- "Cell"
 cell_annotations$Cell_type <- cell_annotations$lineage.ident
-cell_annotations$Cell_type[grepl("T-cell", cell_annotations$Cell_type)] <- "T-cells"
-cell_annotations$Cell_type[grepl("Macrophage", cell_annotations$Cell_type)] <- "Macrophages"
-cell_annotations$Cell_type[grepl("Endocardium frzb", cell_annotations$Cell_type)] <- "Endocardium (frzb)"
-cell_annotations$Cell_type[grepl("ttn", cell_annotations$Cell_type)] <- "Cardiomyocytes (ttn.2)"
+cell_type_renaming <-
+  data.frame(Original_cell_type = sort(as.character(unique(cell_annotations$Cell_type))), stringsAsFactors = F)
+cell_type_renaming$New_type_name <-
+  c("B-cells", "Bl.ves.EC (apnln)", "Bl.ves.EC (lyve1)", 
+    "Bl.ves.EC (plvapb)", "Cardiomyocytes (proliferating)", "Cardiomyocytes (ttn.2)",
+    "Cardiomyocytes (ttn.2)", "Cardiomyocytes (Atrium)", "Cardiomyocytes (Ventricle)",
+    "Dead cells", "Endocardium (Atrium)", "Endocardium (Ventricle)", "Endocardium (frzb)",
+    "Endocardium (frzb)", "Epicardium (Atrium)", "Epicardium (Ventricle)", "Fibroblasts (const.)",
+    "Fibroblasts (cfd)", "Fibroblasts (col11a1a)", "Fibroblasts (col12a1a)", "Fibroblasts (cxcl12a)",
+    "Fibroblasts (mpeg1.1)", "Fibroblasts (nppc)", "Fibroblasts (proliferating)", "Fibroblasts (spock3)",
+    "Valve fibroblasts", "Macrophages", "Macrophages", "Macrophages",
+    "Macrophages", "Macrophages", "Macrophages", 
+    "Macrophages", "Macrophages", "Macrophages",
+    "Macrophages", "Monocytes", "Myelin cells", "Neuronal cells", "Neutrophils",
+    "Perivascular cells", "Proliferating cells", "Smooth muscle cells", "T-cells",
+    "T-cells", "T-cells")
+cell_annotations$Cell_type <-
+  cell_type_renaming$New_type_name[match(cell_annotations$Cell_type, cell_type_renaming$Original_cell_type)]
+# cell_annotations$Cell_type[cell_annotations$Cell_type == "Fibroblast-like cells"] <-
+#   "Valve fibroblasts"
+# cell_annotations$Cell_type[grepl("T-cell", cell_annotations$Cell_type)] <- "T-cells"
+# cell_annotations$Cell_type[grepl("Macrophage", cell_annotations$Cell_type)] <- "Macrophages"
+# cell_annotations$Cell_type[grepl("Endocardium frzb", cell_annotations$Cell_type)] <- "Endocardium (frzb)"
+# cell_annotations$Cell_type[grepl("ttn", cell_annotations$Cell_type)] <- "Cardiomyocytes (ttn.2)"
 cell_annotations <- cell_annotations[cell_annotations$Cell_type != "Dead cells", ]
 cell_annotations$Cell_name <- paste("nd", cell_annotations$Cell, sep = "")
 # write.csv(cell_annotations, "./Data/final_metadata_Tmacromerged_2.csv", row.names = F, quote = F)
@@ -165,60 +185,19 @@ for(t in 1:length(tree_list)){
 
 # Create tree visualization and zoom visualization ####
 #- only run if needed because this takes quite some time.
-# for(t in 1:length(tree_list)){
-  tree_list[[t]]$Pie_tree <-
-    collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
-                    pieSummary = T, collapsed = F,
-                    width = 1000, height = 500,
-                    ctypes = names(celltype_colors), linkLength=60,
-                    ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
-                    nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
-test_visualization_t7 <-
-  collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
-                pieSummary = T, collapsed = F,
-                width = 1000, height = 500,
-                ctypes = names(celltype_colors), linkLength=60,
-                ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
-                nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
-
-# tree_list[[t]]$Pie_zoom_tree <-
-#   collapsibleTree(df = tree_list[[t]]$Tree, root =tree_list[[t]]$Tree$scar, pieNode = T,
-#                   pieSummary = T, collapsed = F,
-#                   width = 1000, height = 500,
-#                   ctypes = names(celltype_colors), linkLength=60,
-#                   ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
-#                   nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
-# tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types,
-#                                 ct_colors = type_colors$colo1)
-tree_list[[t]] <- MakePieTree(tree_list[[t]], "Fibrozoom_tree", types = zoom_types,
-                              ct_colors = as.character(celltype_colors[names(celltype_colors) %in% zoom_types]), 
-                              ctypes = names(celltype_colors[names(celltype_colors) %in% zoom_types]))
-tree_to_plot <- Clone(tree_list[[t]]$Tree)
-tree_to_plot$Do(ZoomCellTypes, 
-                zoom_types = zoom_types)
-# Still have fibroblast-like cells here.
-tree_zoom_plot <- 
-  collapsibleTree(df = tree_to_plot, root =tree_to_plot$scar, pieNode = T,
-                                  pieSummary = T, collapsed = F,
-                                  width = 1000, height = 500,
-                                  ctypes = names(celltype_colors), linkLength=60,
-                                  ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
-                                  nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
+# t <- 1
+# for(t in 1:length(tree_list_in)){
+#   tree_list_in[[t]]$Pie_tree <-
+#     collapsibleTree(df = tree_list_in[[t]]$Tree, root =tree_list_in[[t]]$Tree$scar, pieNode = T,
+#                     pieSummary = T, collapsed = F,
+#                     width = 1000, height = 500,
+#                     ctypes = names(celltype_colors), linkLength=60,
+#                     ct_colors = as.character(celltype_colors), angle = pi/2,fontSize = 0,
+#                     nodeSize_class = c(20, 30, 50), nodeSize_breaks = c(0, 50, 1000, 1e6))
 # htmlwidgets::saveWidget(
-#   tree_list$Hr27$Pie_tree,
-#   file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie.html")
-# htmlwidgets::saveWidget(
-#     tree_zoom_plot,
-#     file = "~/Documents/Projects/heart_Bo/Images/tree_Hr27_LINNAEUS_pie_fibrozoom.html")
-
-#   # htmlwidgets::saveWidget(
-#   #   tree_list[[t]]$Full_tree,
-#   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
-#   #                names(tree_list)[t], "_LINNAEUS_pie.html", sep = ""))
-#   # htmlwidgets::saveWidget(
-#   #   tree_list[[t]]$Fibrozoom_tree,
-#   #   file = paste("~/Documents/Projects/heart_Bo/Images/tree_",
-#   #                names(tree_list)[t], "_LINNAEUS_pie_fibrozoom.html", sep = ""))
+#   tree_list_in[[t]]$Pie_tree,
+#   file = paste("~/Documents/Projects/heart_Bo/Images/Trees/tree_", 
+#                names(tree_list_in)[t], "_LINNAEUS_pie.html", sep = ""))
 # }
 
 # Finding precursor candidates ####
@@ -273,12 +252,15 @@ included_types <-
 # Run this over all trees, keep distances top-level, create a new tree-level in the list
 set.seed <- 1
 cluster_number <- 7
-sample_fraction <- 0.5
+sample_fraction <- 1
 cell_type_correspondence <- matrix(0, nrow = length(included_types), ncol = length(included_types),
                                    dimnames = list(included_types, included_types))
 
-for(iter in 1:50){
+for(iter in 1:1000){
   print(iter)
+  
+  # Calculate cell type frequencies per node (comparison_list) 
+  # and record cell type frequencies per tree (analysis_stats)
   comparison_list <- list(Comparison = data.frame(Tree = character(),
                                                   Precursor = character(),
                                                   Type_count = integer()),
@@ -287,22 +269,17 @@ for(iter in 1:50){
                           Frequencies = data.frame(matrix(nrow = 0, ncol = nrow(celltype_frequencies))))
   colnames(comparison_list$Frequencies) <- celltype_frequencies$Cell_type
   colnames(comparison_list$Normalized_frequencies) <- celltype_frequencies$Cell_type
-  
   analysis_stats <-
     data.frame(Tree = character(),
                Included = logical(),
                Cell_type = character(),
                Count = integer())
   for(t in 1:length(tree_list)){
-    # tree <- tree_list[[t]]$Tree
-    
-    # edge_list <- ToDataFrameNetwork(tree, "Cell.type")
     edge_list_full <- tree_list[[t]]$Edge_list
     # Cell.type == "NA" are nodes; leave those in, sample over the others.
     cell_list <- edge_list_full[edge_list_full$Cell.type != "NA", ]
     cell_list_s <- cell_list[sample.int(nrow(cell_list), round(size = sample_fraction * nrow(cell_list))), ]
     edge_list <- rbind(edge_list_full[edge_list_full$Cell.type == "NA", ], cell_list_s)
-    # edge_list <- edge_list_full
     analysis_stats_add <-
       data.frame(table(edge_list$Cell.type[edge_list$Cell.type != "NA"]))
     colnames(analysis_stats_add) <- c("Cell_type", "Count")
@@ -386,19 +363,23 @@ for(iter in 1:50){
   }
 
   # Optional plot of correlations
-  # cor_type_1 <- "Fibroblast (nppc)"
-  # cor_type_2 <- "Endocardium (V)"
-  # df_ct <- merge(comparison_list$Normalized_frequencies, comparison_list$Node_sizes, by = 0)
-  # df_ct <- df_ct[, c("Row.names", cor_type_1, cor_type_2, "Size")]
-  # colnames(df_ct) <- c("Node", "CT1", "CT2", "Node_size")
-  # df_ct$Tree <- sapply(df_ct$Node,
-  #                      function(x) unlist(strsplit(x, ":"))[1])
-  # pdf("./Images/Fibnppc_endoV_3dpi_corplot_trees.pdf",
+  cor_type_1 <- "Fibroblasts (nppc)"
+  cor_type_2 <- "Endocardium (Ventricle)"
+  df_ct <- merge(comparison_list$Normalized_frequencies, comparison_list$Node_sizes, by = 0)
+  df_ct <- df_ct[, c("Row.names", cor_type_1, cor_type_2, "Size")]
+  colnames(df_ct) <- c("Node", "CT1", "CT2", "Node_size")
+  df_ct$Tree <- sapply(df_ct$Node,
+                       function(x) unlist(strsplit(x, ":"))[1])
+  df_ct$Tree <- factor(df_ct$Tree, 
+                       levels = c("Hr1", "Hr2", "Hr6", "Hr7",
+                                  "Hr13", "Hr14", "Hr15"))
+  # pdf("./Images/Fibnppc_endoV_7dpi_corplot_trees.pdf",
   #     width = 5, height = 4, useDingbats = F)
-  # ggplot(df_ct) +
-  #   geom_point(aes(x = CT1, y = CT2, color = Tree), size = 4) +#, size = Node_size)) +
-  #   labs(x = cor_type_1, y = cor_type_2) +
-  #   theme(panel.grid.minor = element_blank())#,
+  ggplot(df_ct) +
+    geom_point(aes(x = CT1, y = CT2, color = Tree), size = 4) +#, size = Node_size)) +
+    labs(x = cor_type_1, y = cor_type_2) +
+    scale_color_brewer(palette = 'Set1') +
+    theme(panel.grid.minor = element_blank())#,
   # title = paste("7dpi node frequencies all trees, cor ", round(cor(df_ct$CT1, df_ct$CT2), 2), sep = ""))
   # dev.off()
   # ggplot(df_ct[df_ct$Tree %in% c("Hr1", "Hr2", "Hr6"), ]) +
@@ -424,7 +405,7 @@ for(iter in 1:50){
   #   sapply(row.names(nf_leaf),
   #          function(x) sum(grepl(x, row.names(nf_leaf))) == 1)
   # nf_leaf <- nf_leaf[nf_leaf$Leaf, c(ncol(nf_leaf), 1:(ncol(nf_leaf) - 1))]
-  # 
+  #
   # # Calculate asymmetric coincidences for source(row) - target(column)
   # nf_ac_st <- matrix(NA, nrow = ncol(nf_leaf) - 1, ncol = ncol(nf_leaf) - 1,
   #                    dimnames = list(colnames(nf_leaf)[-1], colnames(nf_leaf)[-1]))
@@ -436,79 +417,47 @@ for(iter in 1:50){
   # Number of occupied leaves:
   # colSums(nf_leaf[, -1] > 0)
   
-  # start_targets <- c("Fibroblast (nppc)")
+  # start_targets <- c("Fibroblast (spock3)","Fibroblast (nppc)", "Valve fibroblasts")
   # current_targets <- start_targets
   # nf_ac_current <- nf_ac_st[, current_targets, drop = F]
+  # current_targets <- names(which(rowSums(nf_ac_current >= 0.8) > 0))
+  # OLD METHOD
   # new_targets <- names(which(rowSums(nf_ac_current >= 0.8) > 0))
   # while(!setequal(new_targets, current_targets)){
   #   current_targets <- new_targets
   #   nf_ac_current <- nf_ac_st[, current_targets, drop = F]
   #   new_targets <- names(which(rowSums(nf_ac_current >= 0.8) > 0))
   # }
-  # 
+  # END OLD METHOD
   # ac_tograph <- nf_ac_st[current_targets, current_targets]
   # nodenames <- 1:nrow(ac_tograph)
   # longnames <- rownames(ac_tograph)
-  # 
+
   # graph1<-qgraph(ac_tograph, diag = F,
-  #                layout= "spring",
-  #                labels = nodenames, nodeNames = longnames, cut = 0.75, threshold = 0.75,
-  #                filename = "~/Documents/Projects/heart_Bo/Images/Asymmetric_coinc_network_7dpi_to_Fibnppc", 
+  #                layout= "spring", edge.color = "black",
+  #                labels = F, #nodenames, nodeNames = longnames, 
+  #                minimum = 0.79999, cut = 0.8, legend = F,
+  #                color = as.character(celltype_colors[rownames(ac_tograph)]),
+  #                borders = F, 
+  #                filename = "~/Documents/Projects/heart_Bo/Images/Asymmetric_coinc_network_7dpi_to_Fibnppcspock3fiblike",
   #                filetype = "eps",
-  #                vsize=5, esize = 4.5,
-  #                border.width = 2,#cut=0, maximum=.45, border.width=1.5,
-  #                width = 2, height = 1)
-  # 
-  # graph1<-qgraph(cor_present, diag = F,
-  #                layout= "spring",
-  #                labels = nodenames, nodeNames = longnames,
-  #                sampleSize = nrow(cor_present),
-  #                groups=hclust_list, minimum = 0.2, 
-  #                vsize=5, esize = 4.5,
-  #                filename = "~/Documents/Projects/heart_Bo/Images/Cor_network_7dpi_forceinclude_min10_article_legendonly", filetype = "eps",
-  #                border.width = 2,#cut=0, maximum=.45, border.width=1.5,
-  #                width = 5.5, height = 5.5, legend = T,
-  #                legend.cex = 0.2, label.cex = 2)
-  
-  
-  # 
-  # nf_avc_st <- nf_ac_st
-  # nf_avc_st[, ] <- NA
-  # for(i in 1:nrow(nf_ac_st)){
-  #   for(j in 1:ncol(nf_ac_st)){
-  #     nf_avc_st[i,j] <- 0.5 * (nf_ac_st[i, j] + nf_ac_st[j, i])
-  #   }
-  # }
-  # pheatmap(nf_avc_st[rownames(nf_avc_st) != "Neuronal cells", colnames(nf_avc_st) != "Neuronal cells"])
-  # 
-  # nf_maxc_st <- nf_ac_st
-  # nf_maxc_st[, ] <- NA
-  # for(i in 1:nrow(nf_ac_st)){
-  #   for(j in 1:ncol(nf_ac_st)){
-  #     nf_maxc_st[i,j] <- max(nf_ac_st[i, j], nf_ac_st[j, i])
-  #   }
-  # }
-  # pheatmap(nf_maxc_st[rownames(nf_maxc_st) != "Neuronal cells", colnames(nf_maxc_st) != "Neuronal cells"])
-  # max_dist <- 1 - nf_maxc_st[rownames(nf_maxc_st) != "Neuronal cells", colnames(nf_maxc_st) != "Neuronal cells"]
-  # 
-  # pheatmap(max_dist)
-  # 
-  # max_hclust <- 
-  #   hclust(as.dist(1 - nf_maxc_st[rownames(nf_maxc_st) != "Neuronal cells", 
-  #                                 colnames(nf_maxc_st) != "Neuronal cells"]))
-  # plot(max_hclust)
-  # 
-  # nf_leafd <- nf_leaf[, -1]
-  # nf_leafd <- 1 * (nf_leafd > 0)
-  # 
-  # pheatmap(nf_leafd, cluster_rows = F)
-  # library(NMF)
-  # 
-  # nmf_nf <- t(nf_leafd[, colnames(nf_leafd) != "Neuronal cells"])
-  # 
-  # nf_NMF <- nmf(nmf_nf, r = 5)
-  # nf_w <- basis(nf_NMF)
-  # basismap(nf_NMF)
+  #                vsize=15, esize = 20, asize = 9, width = 1.5, height = 1.5)
+  # Plot for arrow thickness legends
+  # qgraph_arrow_legend <- ac_tograph
+  # qgraph_arrow_legend[,] <- 0
+  # diag(qgraph_arrow_legend) <- 1
+  # qgraph_arrow_legend[2, 1] <- 0.8
+  # qgraph_arrow_legend[3, 1] <- 0.9
+  # qgraph_arrow_legend[4, 1] <- 1
+  # graph1<-qgraph(qgraph_arrow_legend, diag = F,
+  #                layout= "spring", edge.color = "black",
+  #                labels = F, #nodenames, nodeNames = longnames, 
+  #                minimum = 0.79999, cut = 0.8, legend = F,
+  #                # color = as.character(celltype_colors[rownames(ac_tograph)]),
+  #                borders = F, 
+  #                filename = "~/Documents/Projects/heart_Bo/Images/coinc_network_legend",
+  #                filetype = "eps",
+  #                vsize=15, esize = 20, asize = 9, width = 1.5, height = 1.5)
   
   # Can the number of nodes be explained by the number of cells?
   # Test against random distribution model, distributing cells evenly
@@ -560,13 +509,10 @@ for(iter in 1:50){
     data.frame(Precursor = names(comparison_list$Normalized_frequencies),
                Weighted_cor_progpos = numeric(ncol(comparison_list$Normalized_frequencies)),
                Weighted_cor_se = numeric(ncol(comparison_list$Normalized_frequencies)))#,
-  # Add included trees
   comparison_list$All_trees_distances[, unique(analysis_stats$Tree[analysis_stats$Included])] <- 0
-  
   type_tree_cor <- CalculateTypeCorrelations(tree_list, comparison_list, 
                                              force_include = types_force_include, inclusion_limit = inclusion_limit)
   cor_present <- type_tree_cor[rownames(type_tree_cor) != "Dead cells", colnames(type_tree_cor) != "Dead cells"]
-  
   # Remove cell types with largest amount of NaNs consecutively; in case of ties, remove the cell
   # type with the lowest number of cells.
   while(T){
@@ -581,8 +527,43 @@ for(iter in 1:50){
     cor_present <- cor_present[types_keep, types_keep]
   }
   
+  # Cluster on correlations
   norm_freq <- comparison_list$Normalized_frequencies
   norm_freq <- norm_freq[, colnames(cor_present)] #colnames(norm_freq) %in% colnames(cor_present)]
+  cor_dist <- as.dist(1 - (cor_present + 1)/2)
+  cell_type_cor_clust <- hclust(cor_dist)
+  gaps_determinant <- data.frame(Node = rownames(norm_freq))
+  gaps_determinant$Tree <-
+    sapply(gaps_determinant$Node, function(x) unlist(strsplit(as.character(x), ":"))[1])
+  gaps_row <- cumsum(table(gaps_determinant$Tree))
+  # pdf("./Images/Cell_type_relations_pheatmap_3dpi_min10_oneEndo.pdf")
+  # pheatmap::pheatmap(t(norm_freq), cluster_cols = F, cluster_rows = cell_type_cor_clust,
+  #                    cutree_rows = cluster_number, gaps_col = gaps_row,
+  #                    border_color = NA, breaks = 0:100/100,
+  #                    show_colnames = F)
+  # dev.off()
+  
+  # pheatmap((cor_present + 1)/2, cutree_cols = cluster_number,
+  #          cluster_cols = cell_type_cor_clust)
+  # pdf("./Images/Cell_type_cell_type_relations_pheatmap_7dpi_min10_oneEndo.pdf",
+  #     width = 10)
+  # pheatmap(cor_present,
+  #          cluster_cols = cell_type_cor_clust,
+  #          cluster_rows = cell_type_cor_clust,
+  #          cutree_cols = cluster_number, cutree_rows = cluster_number,
+  #          treeheight_col = 0, show_colnames = F, fontsize = 16)
+  # dev.off()
+  # plot(cell_type_cor_clust)
+  
+  # For resampling: record which cell types are together in a cluster and 
+  this_ds_hclust <- data.frame(cutree(cell_type_cor_clust, k = cluster_number))
+  colnames(this_ds_hclust)[1] <- "DS" #paste("DS", sample_fraction, iter, sep = "_")
+  this_ds_hclust$Cell_type <- factor(row.names(this_ds_hclust), levels = included_types)
+  this_ds_hclust$Presence <- 1
+  type_clusters <- reshape2::acast(this_ds_hclust, Cell_type ~ DS, value.var = "Presence", fill = 0, drop = F)
+  type_clusters_add <- type_clusters %*% t(type_clusters)
+  type_clusters_add <- type_clusters_add[included_types, included_types]
+  cell_type_correspondence <- cell_type_correspondence + type_clusters_add
   
   # START Making an example correlation plot
   # inc_exc <- norm_freq # Same structure as norm_freq
@@ -616,50 +597,17 @@ for(iter in 1:50){
   #         panel.grid.minor = element_blank())
   # # dev.off()
   # END making example correlation plot
-  
-  cor_dist <- as.dist(1 - (cor_present + 1)/2)
-  cell_type_cor_clust <- hclust(cor_dist)
-  gaps_determinant <- data.frame(Node = rownames(norm_freq))
-  gaps_determinant$Tree <-
-    sapply(gaps_determinant$Node, function(x) unlist(strsplit(as.character(x), ":"))[1])
-  gaps_row <- cumsum(table(gaps_determinant$Tree))
-  # pdf("./Images/Cell_type_relations_pheatmap_7dpi_min10_oneEndo.pdf")
-  pheatmap::pheatmap(norm_freq, cluster_rows = F, cluster_cols = cell_type_cor_clust,
-                     cutree_cols = cluster_number, gaps_row = gaps_row,
-                     show_rownames = F,
-                     main = paste("Cell type relations at ", timepoint, "dpi", sep = ""))
-  # dev.off()
-  this_ds_hclust <- data.frame(cutree(cell_type_cor_clust, k = cluster_number))
-  colnames(this_ds_hclust)[1] <- "DS" #paste("DS", sample_fraction, iter, sep = "_")
-  this_ds_hclust$Cell_type <- factor(row.names(this_ds_hclust), levels = included_types)
-  this_ds_hclust$Presence <- 1
-  type_clusters <- reshape2::acast(this_ds_hclust, Cell_type ~ DS, value.var = "Presence", fill = 0, drop = F)
-  type_clusters_add <- type_clusters %*% t(type_clusters)
-  type_clusters_add <- type_clusters_add[included_types, included_types]
-  cell_type_correspondence <- cell_type_correspondence + type_clusters_add
 }
 
+# Summarize resampling results in plot
 cell_type_correspondence <- cell_type_correspondence[rowSums(cell_type_correspondence) > 0, colSums(cell_type_correspondence) > 0]
-# pdf("./Images/Cell_type_relations_pheatmap_7dpi_min10_oneEndo_50resample_05rate.pdf")
-pheatmap(cell_type_correspondence, cutree_cols = cluster_number)
+# pdf(paste("./Images/Cell_type_relations_pheatmap_", timepoint, "dpi_", cluster_number, "cluster_", sample_fraction, "subsample", sep = ""))
+# pdf("./Images/Cell_type_relations_pheatmap_3dpi_min10_oneEndo_1000resample_05rate.pdf")
+pheatmap(cell_type_correspondence, cutree_rows = cluster_number, cutree_cols = cluster_number,
+         treeheight_col = 0, show_colnames = F)
 # dev.off()
 
-# How often do cell types go together in a cluster?
-sample_results <- ds_hclust[, -2]
-row.names(sample_results) <- sample_results$Cell_type
-sample_results <- sample_results[, -1]
-
-ds_hclust <- data.frame(cutree(cell_type_cor_clust, k = 5))
-colnames(ds_hclust)[1] <- "All"
-
-all_hclust <- ds_hclust
-ds_hclust <- all_hclust
-ds_hclust$Cell_type <- row.names(ds_hclust)
-
-require(clusteval)
-cluster_similarity(ds_hclust$All, ds_hclust$All)
-
-hclust_grouping <- data.frame(cutree(cell_type_cor_clust, k = 7))
+hclust_grouping <- data.frame(cutree(cell_type_cor_clust, k = cluster_number))
 colnames(hclust_grouping)[1] <- "Hclust"
 sum(rownames(hclust_grouping) != rownames(cor_present)) # Just to check if the hclust ordering is correct
 hclust_grouping$Nodename <- 1:nrow(hclust_grouping)
