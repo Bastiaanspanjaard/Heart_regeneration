@@ -1,5 +1,5 @@
 # Heart regeneration
-Data analysis scripts for single cell heart regeneration in zebrafish. Includes cell type determination using Seurat [link], bulk RNA deconvolution using AutoGeneS [https://www.biorxiv.org/content/10.1101/2020.02.21.940650v1], lineage tree building using LINNAEUS [link], lineage tree analysis and trajectory analysis using PAGA [link] and RNA velocity through scvelo [link].
+Data analysis scripts for single cell heart regeneration in zebrafish. Includes cell type determination using Seurat [Seurat](http://satijalab.org/seurat/), bulk RNA deconvolution using [AutoGeneS](https://autogenes.readthedocs.io/en/latest/), lineage tree building using [LINNAEUS](https://github.com/Bastiaanspanjaard/LINNAEUS), lineage tree analysis using scripts in this repository and trajectory analysis using [scanpy/PAGA](https://scanpy.readthedocs.io/en/stable/) and RNA velocity using [scvelo](https://scvelo.readthedocs.io).
 
 # Tree-building workflow
 A description of the full tree-building workflow, starting from sequenced scars and sequenced and (Cell Ranger) mapped mRNA data.
