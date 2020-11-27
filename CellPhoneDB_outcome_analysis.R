@@ -274,6 +274,30 @@ nppc_fib_3dpi <- merge(nppc_fib_p1_3dpi, nppc_fib_p2_3dpi, all = T)
 nppc_fib_3dpi[is.na(nppc_fib_3dpi)] <- 0
 nppc_fib_3dpi$Partners_3dpi <- nppc_fib_3dpi$P1_count + nppc_fib_3dpi$P2_count
 
+# Count interactions between cell types ####
+# Count number of significant interactions between two cell types (ctrl, inj_3pi, inj_7dpi)
+count_interactions <- function(sig_means){
+  # Returns matrix of source (row) - target (column) interaction counts.
+  interaction_freq <- data.table(Cell_types = colnames(sig_means)[-(1:12)],
+                         Frequency = apply(sig_means[, -(1:12)], 2, function(x) {sum(!is.na(x))}))
+  interaction_freq$Partner_1 <-
+    sapply(interaction_freq$Cell_types,
+           function(x){unlist(strsplit(x, "\\|"))[1]})
+  interaction_freq$Partner_2 <-
+    sapply(interaction_freq$Cell_types,
+           function(x){unlist(strsplit(x, "\\|"))[2]})
+  interaction_freq_matrix <- acast(interaction_freq, Partner_1 ~ Partner_2, value.var = "Frequency")
+  # interaction_freq_matrix <- interaction_freq_matrix + t(interaction_freq_matrix)
+  # diag(interaction_freq_matrix) <- diag(interaction_freq_matrix)/2
+  return(interaction_freq_matrix)
+}
+
+interaction_counts_ctrl <- count_interactions(ctrl)
+pheatmap::pheatmap(interaction_counts_ctrl, clustering_method = "ward.D2")
+interaction_counts_3dpi <- count_interactions(inj_3dpi)
+pheatmap::pheatmap(interaction_counts_3dpi, clustering_method = "ward.D2")
+interaction_counts_7dpi <- count_interactions(inj_7dpi)
+pheatmap::pheatmap(interaction_counts_7dpi, clustering_method = "ward.D2")
 
 # Interactions of interesting cell types ####
 cell_type <- "Fibroblast-like cells" # "CM Ventricle (ttn.2)" #"Perivascular cells"
