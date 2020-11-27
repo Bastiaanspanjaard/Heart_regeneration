@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as pl
 from matplotlib import rcParams
+from sklearn import preprocessing
+import seaborn as sns
 import h5py
 results_file = './write/HR_trajectories.h5ad'
 sc.set_figure_params(dpi_save = 300)
@@ -21,19 +23,19 @@ import scvelo as scv
 scv.settings.set_figure_params('scvelo', dpi_save = 300)
 
 
-# In[2]:
+# In[14]:
 
 
 annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged_2.csv', index_col = 0)
 
 
-# In[3]:
+# In[15]:
 
 
 cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_2.csv', index_col = 0)
 
 
-# In[4]:
+# In[16]:
 
 
 epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (cfd)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
@@ -42,7 +44,7 @@ epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (cfd)', 'Fibroblasts (col
                     'Fibroblasts (proliferating)', 'Perivascular cells']
 
 
-# In[5]:
+# In[17]:
 
 
 connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
@@ -50,7 +52,7 @@ connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'F
                     'Fibroblasts (proliferating)', 'Perivascular cells']
 
 
-# In[6]:
+# In[18]:
 
 
 connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
@@ -58,20 +60,20 @@ connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'F
                     'Fibroblasts (proliferating)', 'Perivascular cells', 'Fibroblasts (cxcl12a)']
 
 
-# In[7]:
+# In[19]:
 
 
 connected_endofibro_types = ['Endocardium (frzb)', 'Endocardium (Ventricle)', 
                             'Fibroblasts (nppc)', 'Fibroblasts (spock3)']
 
 
-# In[8]:
+# In[20]:
 
 
 mito_genes = [line.rstrip('\n').rsplit(',')[2] for line in open('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/mito.genes.vs.txt')]
 
 
-# In[10]:
+# In[21]:
 
 
 HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4', 
@@ -110,6 +112,7 @@ HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4',
                                       'no', 'no', 'no', 'no', 'no', 
                                       'DMSO', 'IWR1', 'DMSO', 'IWR1', 'IWR1', 
                                       'IWR1', 'IWR1', 'IWR1']})
+HR_setnames.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/HR_setnames.csv')
 
 
 # # Load and merge RNA velocity datasets
@@ -253,14 +256,14 @@ HR_Rv_filter = HR_Rv[annotations_Rv.index]
 HR_Rv_filter.obs['Cell_type'] = annotations_Rv['Cell_type'].tolist()
 
 
-# In[11]:
+# In[2]:
 
 
 #HR_Rv_filter.write('./write/HR_Rv_filter.h5ad')
 HR_Rv_filter = sc.read('./write/HR_Rv_filter.h5ad')
 
 
-# In[ ]:
+# In[11]:
 
 
 HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -268,7 +271,7 @@ all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
 HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
 
 
-# In[ ]:
+# In[12]:
 
 
 HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
@@ -278,14 +281,14 @@ HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
 
 # # Naive trajectory analysis at 3dpi
 
-# In[196]:
+# In[ ]:
 
 
 HR_Rv_3dpi_epifibro = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(epifibro_types)]
 sc.pp.filter_genes(HR_Rv_3dpi_epifibro, min_cells=3)
 
 
-# In[197]:
+# In[ ]:
 
 
 # Find mito_genes in dataset.
@@ -298,20 +301,20 @@ sc.pl.violin(HR_Rv_3dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
-# In[198]:
+# In[ ]:
 
 
 sc.pp.normalize_total(HR_Rv_3dpi_epifibro, target_sum=1e4)
 sc.pp.log1p(HR_Rv_3dpi_epifibro)
 
 
-# In[199]:
+# In[ ]:
 
 
 sc.pp.regress_out(HR_Rv_3dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
-# In[200]:
+# In[ ]:
 
 
 sc.pp.highly_variable_genes(HR_Rv_3dpi_epifibro)
@@ -320,34 +323,34 @@ sc.external.pp.bbknn(HR_Rv_3dpi_epifibro, batch_key='batch')
 sc.tl.umap(HR_Rv_3dpi_epifibro)
 
 
-# In[201]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epifibro, color='batch',
           title = '3dpi epicardium and fibroblasts')
 
 
-# In[202]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epifibro, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_epifibro.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '', save = 'subset1_3dpi_umap.png', legend_loc = 'none', frameon=False)
 
 
-# In[203]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epifibro, color=['total_counts', 'n_genes_by_counts', 'percent_mito'], 
           title = '3dpi epicardium and fibroblasts')
 
 
-# In[204]:
+# In[ ]:
 
 
 sc.tl.paga(HR_Rv_3dpi_epifibro, groups='Cell_type')
 
 
-# In[205]:
+# In[ ]:
 
 
 sc.pl.paga(HR_Rv_3dpi_epifibro, threshold=0.3, show=True, frameon=False,
@@ -356,14 +359,14 @@ sc.pl.paga(HR_Rv_3dpi_epifibro, threshold=0.3, show=True, frameon=False,
 
 # # Naive trajectory analysis at 7dpi
 
-# In[186]:
+# In[ ]:
 
 
 HR_Rv_7dpi_epifibro = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(epifibro_types)]
 sc.pp.filter_genes(HR_Rv_7dpi_epifibro, min_cells=3)
 
 
-# In[187]:
+# In[ ]:
 
 
 # Find mito_genes in dataset.
@@ -376,20 +379,20 @@ sc.pl.violin(HR_Rv_7dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
-# In[188]:
+# In[ ]:
 
 
 sc.pp.normalize_total(HR_Rv_7dpi_epifibro, target_sum=1e4)
 sc.pp.log1p(HR_Rv_7dpi_epifibro)
 
 
-# In[189]:
+# In[ ]:
 
 
 sc.pp.regress_out(HR_Rv_7dpi_epifibro, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
-# In[190]:
+# In[ ]:
 
 
 sc.pp.highly_variable_genes(HR_Rv_7dpi_epifibro)
@@ -398,34 +401,34 @@ sc.external.pp.bbknn(HR_Rv_7dpi_epifibro, batch_key='batch')
 sc.tl.umap(HR_Rv_7dpi_epifibro)
 
 
-# In[191]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_7dpi_epifibro, color='batch',
           title = '7dpi epicardium and fibroblasts')
 
 
-# In[192]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_7dpi_epifibro, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_epifibro.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '', save = 'subset1_7dpi_umap.png', legend_loc = 'none', frameon=False)
 
 
-# In[193]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_7dpi_epifibro, color=['total_counts', 'n_genes_by_counts', 'percent_mito'], 
           title = '7dpi epicardium and fibroblasts')
 
 
-# In[194]:
+# In[ ]:
 
 
 sc.tl.paga(HR_Rv_7dpi_epifibro, groups='Cell_type')
 
 
-# In[195]:
+# In[ ]:
 
 
 sc.pl.paga(HR_Rv_7dpi_epifibro, threshold=0.3, show=True, frameon=False,
@@ -434,14 +437,14 @@ sc.pl.paga(HR_Rv_7dpi_epifibro, threshold=0.3, show=True, frameon=False,
 
 # # Trajectories in 3dpi epicardial connected niche
 
-# In[12]:
+# In[13]:
 
 
 HR_Rv_3dpi_epiconn = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(connected_epifibro_types)]
 sc.pp.filter_genes(HR_Rv_3dpi_epiconn, min_cells=3)
 
 
-# In[13]:
+# In[14]:
 
 
 # Find mito_genes in dataset.
@@ -477,34 +480,40 @@ sc.external.pp.bbknn(HR_Rv_3dpi_epiconn, batch_key='batch')
 sc.tl.umap(HR_Rv_3dpi_epiconn)
 
 
-# In[21]:
+# In[18]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epiconn, color='batch',
           title = '3dpi epicardial niche')
 
 
-# In[23]:
+# In[19]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epiconn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_epiconn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '3dpi epicardial niche')
 
 
-# In[24]:
+# In[20]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epiconn, color=['n_genes_by_counts'], 
           title = '3dpi epicardial niche')
 
 
-# In[25]:
+# In[21]:
+
+
+sc.pl.umap(HR_Rv_3dpi_epiconn, color=['npr3'])
+
+
+# In[21]:
 
 
 sc.tl.leiden(HR_Rv_3dpi_epiconn, resolution=2)
 
 
-# In[26]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epiconn, color='leiden', legend_loc='on data', legend_fontsize='x-large')#,
@@ -514,13 +523,13 @@ sc.pl.umap(HR_Rv_3dpi_epiconn, color='leiden', legend_loc='on data', legend_font
 #                    '#E9D723', '#CE3A39', '#e1e3d9', '#E9D723'])
 
 
-# In[27]:
+# In[ ]:
 
 
 sc.tl.paga(HR_Rv_3dpi_epiconn, groups='leiden')
 
 
-# In[28]:
+# In[ ]:
 
 
 sc.pl.paga(HR_Rv_3dpi_epiconn, show=True, node_size_scale = 2)#,
@@ -531,91 +540,356 @@ sc.pl.paga(HR_Rv_3dpi_epiconn, show=True, node_size_scale = 2)#,
 #           save = 'scvelo_epicardial_niche_3dpi_20n_leiden_diffmap_recolor.png')
 
 
-# In[29]:
+# In[ ]:
 
 
 sc.tl.umap(HR_Rv_3dpi_epiconn, init_pos = 'paga')
 
 
-# In[30]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epiconn, color='batch',
           title = '3dpi epicardial niche')
 
 
-# In[31]:
+# In[ ]:
 
 
 sc.pl.umap(HR_Rv_3dpi_epiconn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_epiconn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '3dpi epicardial niche')
 
 
-# In[32]:
+# In[ ]:
+
+
+sc.pl.umap(HR_Rv_3dpi_epiconn, color='tcf21')
+
+
+# In[ ]:
+
+
+sc.pl.violin(HR_Rv_3dpi_epiconn, keys = 'tcf21', groupby = 'Cell_type')
+
+
+# In[ ]:
 
 
 scv.pp.moments(HR_Rv_3dpi_epiconn)
 
 
-# In[33]:
+# In[ ]:
 
 
 scv.tl.velocity(HR_Rv_3dpi_epiconn, mode='stochastic')
 
 
-# In[38]:
+# In[ ]:
 
 
 scv.tl.velocity_graph(HR_Rv_3dpi_epiconn)
 
 
-# In[49]:
+# In[ ]:
 
 
 scv.pl.velocity_embedding_stream(HR_Rv_3dpi_epiconn, title = '', 
-                                 color = 'Cell_type', legend_loc = 'none',
-                                 save = '_scvelo_epicardial_niche_3dpi_20n_cell_types_umap.png')
+                                 color = 'Cell_type', legend_loc = 'none')#,
+                                 #save = '_scvelo_epicardial_niche_3dpi_20n_cell_types_umap.png')
 
 
-# In[45]:
+# In[ ]:
 
 
 scv.pl.velocity_embedding_stream(HR_Rv_3dpi_epiconn, title = '', 
                                  color = 'Cell_type')
 
 
-# In[47]:
+# In[ ]:
 
 
 scv.tl.velocity_confidence(HR_Rv_3dpi_epiconn)
 
 
-# In[48]:
+# In[ ]:
 
 
 keys = 'velocity_length', 'velocity_confidence'
-scv.pl.scatter(HR_Rv_3dpi_epiconn, c=keys, cmap='coolwarm', perc=[5, 95],
-                                save = 'strength_coherence_scvelo_epicardial_niche_3dpi_20n_cell_types_umap.png')
+scv.pl.scatter(HR_Rv_3dpi_epiconn, c=keys, cmap='coolwarm', perc=[5, 95])#,
+#                                save = 'strength_coherence_scvelo_epicardial_niche_3dpi_20n_cell_types_umap.png')
 
 
-# In[206]:
+# In[ ]:
 
 
 epi_velo_genes = ['col11a1a', 'col12a1a', 'fn1a', 'postnb', 'stra6', 'nrg1']
-scv.pl.velocity(HR_Rv_3dpi_epiconn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300,
-                save = 'gene_velocity_epicardial_niche_3dpi_umap.png')
+scv.pl.velocity(HR_Rv_3dpi_epiconn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300)#,
+#                save = 'gene_velocity_epicardial_niche_3dpi_umap.png')
+
+
+# ## Which genes drive the transitions?
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+sc.pl.paga(HR_Rv_3dpi_epiconn, show=True, color = 'Cell_type', node_size_scale = 2)
+
+
+# In[ ]:
+
+
+sc.pl.umap(HR_Rv_3dpi_epiconn, color=['leiden', 'Cell_type'], legend_loc='on data', legend_fontsize='x-large')
+
+
+# For each cell of type 1, extract the maximum transition probability to type 2. The mean and distribution of these probabilities tell us how likely a source type 1 is for type 2. We compare these maximum transition probabilities to transition probabilities of type 1 to 'anything but type 1+2' to estimate whether the transition probabilities from type 1 to type 2 are significantly higher than a null hypothesis.
+# The questions we want to answer with this are:  
+# 1) Is there a difference between transitions from Epi V to col11/col12 at 3dpi and at 7dpi?  
+# 2) Is the seeming transition from constitutional fibroblasts to epicardium as meaningful as that from constitutional fibroblasts to col11/col12 at 3dpi and 7dpi? At 3dpi, the constitutional fibroblast clusters involved are 2 and 7; col11/col12 are 4,5,11,13; epicardium is 0,3,10
+
+# In[ ]:
+
+
+print(HR_Rv_3dpi_epiconn.uns['velocity_graph'].max(axis=1).max(axis=0))
+
+
+# In[50]:
+
+
+# Epicardium to col11/col12
+leiden_1 = ['0', '3', '10']
+leiden_2 = ['4', '5', '11', '13']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if not HR_Rv_3dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2, sharex=True)
+fig.suptitle('3dpi', y = 1.05)
+ax1.set_title('Epicardium to col11/col12')
+ax2.set_title('Epicardium to rest')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+pl.savefig('figures/Epi_col1112_transitions_3dpi.png')
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[100]:
+
+
+# Col11/col12 to epicardium
+leiden_1 = ['4', '5', '11', '13']
+leiden_2 = ['0', '3', '10']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if not HR_Rv_3dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[101]:
+
+
+# Const. fibroblasts to col11/col12 fibroblasts
+leiden_1 = ['2', '7']
+leiden_2 = ['4', '5', '11', '13']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if not HR_Rv_3dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[102]:
+
+
+# Col11/col12 to cfibro
+leiden_1 = ['4', '5', '11', '13']
+leiden_2 = ['2', '7']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if not HR_Rv_3dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[51]:
+
+
+# Const. fibroblasts to epicardium
+leiden_1 = ['2', '7']
+leiden_2 = ['0', '3', '10']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if not HR_Rv_3dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2, sharex=True)
+#fig.suptitle('Horizontally stacked subplots')
+ax1.set_title('Fibroblasts to epicardium')
+ax2.set_title('Fibroblasts to rest')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+pl.savefig('figures/Fibroc_to_epi_transitions_3dpi.png')
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[104]:
+
+
+# Epicardium to const. fibroblasts
+leiden_1 = ['0', '3', '10']
+leiden_2 = ['2', '7']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if HR_Rv_3dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_3dpi_epiconn.obs.leiden)) if not HR_Rv_3dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_3dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[44]:
+
+
+from scipy import stats
+print(stats.ttest_ind(max_transitions_1to2, max_transitions_1tonot2, equal_var=False))
+test_2 = stats.ttest_ind(max_transitions_1to2[max_transitions_1to2 != 0], max_transitions_1tonot2, equal_var=False)
+print(test_2[1])
+
+
+# In[86]:
+
+
+# Determine frequency of preferred transitions
+from scipy import sparse
+vgraph = HR_Rv_3dpi_epiconn.uns['velocity_graph'] > 0.1
+# For each cell, determine its favorite transition cell
+#sparse.csr_argmax(HR_Rv_3dpi_epiconn.uns['velocity_graph'])
+favorite_cell = HR_Rv_3dpi_epiconn.uns['velocity_graph'].argmax(axis = 0) # Why am I seeing cell 0 overrepresented here? Is this maybe the favorite for cells that have very low
+# likelihoods? Maybe if transition probability is 0 to everything, this is the cell selected?
+# Aggregate favorite transitions over cell types (from and to) to give a matrix of #transitions from cell type A (row) to cell type B (column)
+#HR_Rv_3dpi_epiconn.obs.Cell_type.iloc(favorite_cell) # HERE! This does not work
+# Normalize by number of from and to cells 
+# (normalize how exactly? what is the background model here? Random connections, feels like it should be divided by both number of to and from cells)
+# Note we can also downsample.
+
+
+# In[107]:
+
+
+vgraph = HR_Rv_3dpi_epiconn.uns['velocity_graph']
+print(vgraph[1])
+vgraph[1].argmax()
+
+
+# In[102]:
+
+
+vgraph[vgraph < 0.1] = 0
+vgraph.eliminate_zeros()
+favorite_cell = vgraph.argmax(axis = 0)
+unique, counts = np.unique(favorite_cell, return_counts=True, axis = 1)
+dict(zip(unique[0], counts))
+# Lol that doesn't help - now we have 460 instead of 305.
+
+
+# In[85]:
+
+
+#favorite_cell
+unique, counts = np.unique(favorite_cell, return_counts=True, axis = 1)
+#counts.argmin()
+dict(zip(unique[0], counts))
 
 
 # # Trajectories in 7dpi epicardial connected niche
 
-# In[143]:
+# In[68]:
 
 
 HR_Rv_7dpi_epiconn = HR_Rv_7dpi[HR_Rv_7dpi.obs['Cell_type'].isin(connected_epifibro_types)]
 sc.pp.filter_genes(HR_Rv_7dpi_epiconn, min_cells=3)
 
 
-# In[144]:
+# In[69]:
 
 
 # Find mito_genes in dataset.
@@ -628,20 +902,20 @@ sc.pl.violin(HR_Rv_7dpi_epiconn, ['total_counts', 'n_genes_by_counts', 'percent_
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
-# In[145]:
+# In[70]:
 
 
 sc.pp.normalize_per_cell(HR_Rv_7dpi_epiconn, counts_per_cell_after=1e4)
 sc.pp.log1p(HR_Rv_7dpi_epiconn)
 
 
-# In[146]:
+# In[71]:
 
 
 sc.pp.regress_out(HR_Rv_7dpi_epiconn, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
-# In[147]:
+# In[72]:
 
 
 sc.pp.highly_variable_genes(HR_Rv_7dpi_epiconn)
@@ -650,46 +924,46 @@ sc.external.pp.bbknn(HR_Rv_7dpi_epiconn, batch_key='batch')
 sc.tl.umap(HR_Rv_7dpi_epiconn)
 
 
-# In[148]:
+# In[73]:
 
 
 sc.pl.umap(HR_Rv_7dpi_epiconn, color='batch',
           title = '7dpi epicardial niche')
 
 
-# In[150]:
+# In[74]:
 
 
 sc.pl.umap(HR_Rv_7dpi_epiconn, color=['total_counts', 'n_genes_by_counts', 'percent_mito'],
           title = '7dpi epicardial niche')
 
 
-# In[149]:
+# In[75]:
 
 
 sc.pl.umap(HR_Rv_7dpi_epiconn, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_epiconn.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '7dpi epicardial niche')
 
 
-# In[151]:
+# In[76]:
 
 
 sc.tl.leiden(HR_Rv_7dpi_epiconn, resolution=2)
 
 
-# In[152]:
+# In[77]:
 
 
 sc.pl.umap(HR_Rv_7dpi_epiconn, color='leiden', legend_loc='on data', legend_fontsize='x-large')
 
 
-# In[153]:
+# In[78]:
 
 
 sc.tl.paga(HR_Rv_7dpi_epiconn, groups='leiden')
 
 
-# In[154]:
+# In[79]:
 
 
 sc.pl.paga(HR_Rv_7dpi_epiconn, show=True, node_size_scale = 2)#,
@@ -700,47 +974,320 @@ sc.pl.paga(HR_Rv_7dpi_epiconn, show=True, node_size_scale = 2)#,
 #           save = 'scvelo_epicardial_niche_3dpi_20n_leiden_diffmap_recolor.png')
 
 
-# In[155]:
+# In[80]:
 
 
 sc.tl.umap(HR_Rv_7dpi_epiconn, init_pos = 'paga')
 
 
-# In[156]:
+# In[81]:
 
 
 scv.pp.moments(HR_Rv_7dpi_epiconn)
 
 
-# In[157]:
+# In[82]:
 
 
 scv.tl.velocity(HR_Rv_7dpi_epiconn, mode='stochastic')
 
 
-# In[158]:
+# In[83]:
 
 
 scv.tl.velocity_graph(HR_Rv_7dpi_epiconn)
 
 
-# In[159]:
+# In[84]:
 
 
 scv.pl.velocity_embedding_stream(HR_Rv_7dpi_epiconn, title = '', 
-                                 color = 'Cell_type', legend_loc = 'none',
-                                 save = '_scvelo_epicardial_niche_7dpi_20n_cell_types_umap.png')
+                                 color = 'Cell_type', legend_loc = 'none')#,
+#                                 save = '_scvelo_epicardial_niche_7dpi_20n_cell_types_umap.png')
 
 
-# In[207]:
+# In[85]:
 
 
 epi_velo_genes = ['col11a1a', 'col12a1a', 'fn1a', 'postnb', 'stra6','nrg1']
-scv.pl.velocity(HR_Rv_7dpi_epiconn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300,
-                save = 'gene_velocity_epicardial_niche_7dpi_umap.png')
+scv.pl.velocity(HR_Rv_7dpi_epiconn, epi_velo_genes, basis='umap', ncols=1, fontsize=16, figsize=(9,6), dpi = 300)#,
+#                save = 'gene_velocity_epicardial_niche_7dpi_umap.png')
 
 
-# # Trajectories in control epicardial connected niche
+# In[86]:
+
+
+sc.pl.paga(HR_Rv_7dpi_epiconn, show=True, color = 'Cell_type', node_size_scale = 2)
+
+
+# In[87]:
+
+
+sc.pl.umap(HR_Rv_7dpi_epiconn, color=['leiden', 'Cell_type'], legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[88]:
+
+
+print(HR_Rv_7dpi_epiconn.uns['velocity_graph'].max(axis=1).max(axis=0))
+
+
+# Epi: 1, 2, 5, 10; col11/col12: 4, 13; cfibro: 7
+
+# In[105]:
+
+
+# Epicardium to col11/col12
+leiden_1 = ['1', '2', '5', '10']
+leiden_2 = ['4', '13']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[106]:
+
+
+# Col11/col12 to epicardium
+leiden_1 = ['4', '13']
+leiden_2 = ['1', '2', '5', '10']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[107]:
+
+
+# Const. fibroblasts to col11/col12 fibroblasts
+leiden_1 = ['7']
+leiden_2 = ['4', '13']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[108]:
+
+
+# Col11/col12 to cfibro
+leiden_1 = ['4', '13']
+leiden_2 = ['7']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[109]:
+
+
+# Const. fibroblasts to epicardium
+leiden_1 = ['7']
+leiden_2 = ['1', '2', '5', '10']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[110]:
+
+
+# Epicardium to const. fibroblasts
+leiden_1 = ['1', '2', '5', '10']
+leiden_2 = ['7']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[95]:
+
+
+# Epi to col11/col12 fibroblasts
+leiden_1 = ['1', '2', '5', '10']
+leiden_2 = ['4', '13']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2))
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2))
+
+
+# In[98]:
+
+
+from scipy import stats
+print(stats.ttest_ind(max_transitions_1to2, max_transitions_1tonot2, equal_var=False))
+test_2 = stats.ttest_ind(max_transitions_1to2[max_transitions_1to2 != 0], max_transitions_1tonot2, equal_var=False)
+print(test_2[1])
+
+
+# In[96]:
+
+
+# Const. fibroblasts to col11/col12 fibroblasts
+leiden_1 = ['7']
+leiden_2 = ['4', '13']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2))
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2))
+
+
+# In[97]:
+
+
+# Const. fibroblasts to epicardium - closer than col11/col12 fibroblasts.
+leiden_1 = ['7']
+leiden_2 = ['1', '2', '5', '10']
+# Find (numeric) indices for both types
+leiden_1_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_1] 
+leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if HR_Rv_7dpi_epiconn.obs.leiden[i] in leiden_2]
+# Subset velocity graph for both types
+transitions_1to2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, leiden_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_leiden_2_index = [i for i in range(len(HR_Rv_7dpi_epiconn.obs.leiden)) if not HR_Rv_7dpi_epiconn.obs.leiden[i] in (leiden_1 + leiden_2)]
+transitions_1tonot2 = (HR_Rv_7dpi_epiconn.uns['velocity_graph'])[leiden_1_index,:][:, not_leiden_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2))
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2))
+
 
 # In[ ]:
 
@@ -933,7 +1480,7 @@ sc.pl.umap(HR_Rv_ctrl_epiconn[HR_Rv_ctrl_epiconn.obs['dpi'] == '0'], color = 'Ce
 
 # # Endocardial niche for deep injuries at 7dpi
 
-# In[209]:
+# In[22]:
 
 
 deep_injury_libraries = ['Hr1', 'Hr2a', 'Hr2b', 'Hr6v', 'Hr9'] # All samples with > 50 nppc fibroblasts.
@@ -943,7 +1490,7 @@ scv.pp.remove_duplicate_cells(HR_Rv_7dpi_deep_endo)
 sc.pp.filter_genes(HR_Rv_7dpi_deep_endo, min_cells=3)
 
 
-# In[210]:
+# In[23]:
 
 
 # Find mito_genes in dataset.
@@ -956,20 +1503,20 @@ sc.pl.violin(HR_Rv_7dpi_deep_endo, ['total_counts', 'n_genes_by_counts', 'percen
              jitter=0.4, multi_panel=True, size = 0.1)
 
 
-# In[211]:
+# In[24]:
 
 
 sc.pp.normalize_per_cell(HR_Rv_7dpi_deep_endo, counts_per_cell_after=1e4)
 sc.pp.log1p(HR_Rv_7dpi_deep_endo)
 
 
-# In[212]:
+# In[25]:
 
 
 sc.pp.regress_out(HR_Rv_7dpi_deep_endo, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
 
 
-# In[213]:
+# In[26]:
 
 
 sc.pp.highly_variable_genes(HR_Rv_7dpi_deep_endo)
@@ -978,40 +1525,40 @@ sc.external.pp.bbknn(HR_Rv_7dpi_deep_endo, batch_key='batch')
 sc.tl.umap(HR_Rv_7dpi_deep_endo)
 
 
-# In[214]:
+# In[27]:
 
 
 sc.pl.umap(HR_Rv_7dpi_deep_endo, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_7dpi_deep_endo.obs.Cell_type.cat.categories.tolist()].color.tolist(),
           title = '7dpi deep injury endocardial niche')
 
 
-# In[215]:
+# In[28]:
 
 
 sc.pl.umap(HR_Rv_7dpi_deep_endo, color=['total_counts', 'n_genes_by_counts', 'percent_mito'], 
           title = '7dpi deep injury endocardial niche')
 
 
-# In[216]:
+# In[29]:
 
 
 sc.pl.umap(HR_Rv_7dpi_deep_endo, color='batch',
           title = '7dpi deep injury endocardial niche')
 
 
-# In[217]:
+# In[30]:
 
 
 sc.tl.leiden(HR_Rv_7dpi_deep_endo, resolution=2)
 
 
-# In[218]:
+# In[31]:
 
 
 sc.tl.paga(HR_Rv_7dpi_deep_endo, groups='leiden')
 
 
-# In[219]:
+# In[32]:
 
 
 sc.pl.paga(HR_Rv_7dpi_deep_endo, show=True, color = 'Cell_type', node_size_scale = 2)#, 
@@ -1021,49 +1568,55 @@ sc.pl.paga(HR_Rv_7dpi_deep_endo, show=True, color = 'Cell_type', node_size_scale
   #         node_size_scale = 2)#, save = 'scvelo_deep_endo_niche_7dpi_20n_leiden_diffmap.png')
 
 
-# In[220]:
+# In[33]:
 
 
 sc.tl.umap(HR_Rv_7dpi_deep_endo, init_pos='paga')
 
 
-# In[221]:
+# In[34]:
 
 
 sc.pl.umap(HR_Rv_7dpi_deep_endo, color = 'leiden')
 
 
-# In[222]:
+# In[35]:
 
 
 sc.pl.umap(HR_Rv_7dpi_deep_endo, color = 'batch')
 
 
-# In[223]:
+# In[36]:
 
 
 sc.pl.umap(HR_Rv_7dpi_deep_endo, color = 'Cell_type')
 
 
-# In[224]:
+# In[37]:
+
+
+sc.pl.umap(HR_Rv_7dpi_deep_endo, color = ['pecam1', 'cdh5', 'nppc'])
+
+
+# In[38]:
 
 
 scv.pp.moments(HR_Rv_7dpi_deep_endo)
 
 
-# In[225]:
+# In[39]:
 
 
 scv.tl.velocity(HR_Rv_7dpi_deep_endo, mode='stochastic')
 
 
-# In[226]:
+# In[40]:
 
 
 scv.tl.velocity_graph(HR_Rv_7dpi_deep_endo)
 
 
-# In[227]:
+# In[41]:
 
 
 scv.pl.velocity_embedding_stream(HR_Rv_7dpi_deep_endo, basis='umap', title = '', 
@@ -1071,7 +1624,7 @@ scv.pl.velocity_embedding_stream(HR_Rv_7dpi_deep_endo, basis='umap', title = '',
                                 save = 'gene_velocity_endoventricular_deep_niche_7dpi_umap.png')
 
 
-# In[138]:
+# In[42]:
 
 
 scv.pl.velocity_embedding(HR_Rv_7dpi_deep_endo, basis='umap', title = '', scale = 0.3,
@@ -1079,16 +1632,726 @@ scv.pl.velocity_embedding(HR_Rv_7dpi_deep_endo, basis='umap', title = '', scale 
 #                         save = 'gene_velocity_endoventricular_deep_niche_7dpi_umap.png')
 
 
-# In[141]:
+# In[ ]:
 
 
 scv.tl.velocity_confidence(HR_Rv_7dpi_deep_endo)
 
 
-# In[142]:
+# In[ ]:
 
 
 keys = 'velocity_length', 'velocity_confidence'
 scv.pl.scatter(HR_Rv_7dpi_deep_endo, c=keys, cmap='coolwarm', perc=[5, 95])#,
 #                                save = 'strength_coherence_scvelo_deep_endo_niche_7dpi_20n_cell_types_umap.png')
+
+
+# # Test transition probabilities on endocrine pancreas dataset
+
+# In[52]:
+
+
+adata = scv.datasets.pancreas()
+
+
+# In[53]:
+
+
+scv.pp.filter_and_normalize(adata, min_shared_counts=20, n_top_genes=2000)
+scv.pp.moments(adata, n_pcs=30, n_neighbors=30)
+
+
+# In[54]:
+
+
+scv.tl.velocity(adata)
+
+
+# In[55]:
+
+
+scv.tl.velocity_graph(adata)
+
+
+# In[56]:
+
+
+scv.pl.velocity_embedding_stream(adata, basis='umap')
+
+
+# In[57]:
+
+
+print(adata.uns['velocity_graph'].max(axis=1).max(axis=0))
+
+
+# In[58]:
+
+
+adata.obs
+
+
+# clusters: 'Ductal' to 'Ngn3 low EP', 'Ngn3 high EP' to 'Pre-endocrine'
+
+# In[119]:
+
+
+# Ductal to Ngn3 low EP
+clusters_1 = ['Ductal']
+clusters_2 = ['Ngn3 low EP']
+# Find (numeric) indices for both types
+clusters_1_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_1] 
+clusters_2_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_2]
+# Subset velocity graph for both types
+transitions_1to2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, clusters_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_clusters_2_index = [i for i in range(len(adata.obs.clusters)) if not adata.obs.clusters[i] in (clusters_1 + clusters_2)]
+transitions_1tonot2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, not_clusters_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[59]:
+
+
+# Ngn3 low EP to Ductal
+clusters_1 = ['Ngn3 low EP']
+clusters_2 = ['Ductal']
+# Find (numeric) indices for both types
+clusters_1_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_1] 
+clusters_2_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_2]
+# Subset velocity graph for both types
+transitions_1to2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, clusters_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_clusters_2_index = [i for i in range(len(adata.obs.clusters)) if not adata.obs.clusters[i] in (clusters_1 + clusters_2)]
+transitions_1tonot2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, not_clusters_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[60]:
+
+
+# 'Ngn3 high EP' to 'Pre-endocrine'
+clusters_1 = ['Ngn3 high EP']
+clusters_2 = ['Pre-endocrine']
+# Find (numeric) indices for both types
+clusters_1_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_1] 
+clusters_2_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_2]
+# Subset velocity graph for both types
+transitions_1to2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, clusters_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_clusters_2_index = [i for i in range(len(adata.obs.clusters)) if not adata.obs.clusters[i] in (clusters_1 + clusters_2)]
+transitions_1tonot2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, not_clusters_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2, sharex=True)
+ax1.set_title('Ngn3 high EP to Pre-endocrine')
+ax2.set_title('Ngn3 high EP to rest')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+pl.savefig('figures/Ngn3highEP_to_Pre-endo_transitions_3dpi.png')
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# In[124]:
+
+
+# 'Pre-endocrine' to 'Ngn3 high EP'
+clusters_1 = ['Pre-endocrine']
+clusters_2 = ['Ngn3 high EP']
+# Find (numeric) indices for both types
+clusters_1_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_1] 
+clusters_2_index = [i for i in range(len(adata.obs.clusters)) if adata.obs.clusters[i] in clusters_2]
+# Subset velocity graph for both types
+transitions_1to2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, clusters_2_index]
+# Take row maxima
+max_transitions_1to2 = transitions_1to2.max(axis=1).toarray()
+# Subset velocity graph for type 1 and not-type-2
+not_clusters_2_index = [i for i in range(len(adata.obs.clusters)) if not adata.obs.clusters[i] in (clusters_1 + clusters_2)]
+transitions_1tonot2 = (adata.uns['velocity_graph'])[clusters_1_index,:][:, not_clusters_2_index]
+# Take row maxima
+max_transitions_1tonot2 = transitions_1tonot2.max(axis=1).toarray()
+# Plot distributions
+fig, (ax1, ax2) = pl.subplots(1, 2)
+fig.suptitle('Horizontally stacked subplots')
+ax1.hist(max_transitions_1to2[max_transitions_1to2 != 0])
+ax2.hist(max_transitions_1tonot2)
+print(np.mean(max_transitions_1to2[max_transitions_1to2 != 0]))
+print(np.mean(max_transitions_1tonot2[max_transitions_1tonot2 != 0]))
+
+
+# # Cardiomyocyte states at 7dpi
+
+# In[169]:
+
+
+HR_Rv_3dpi.obs['Cell_type'].value_counts()/HR_Rv_3dpi.obs['Cell_type'].value_counts().sum()
+
+
+# In[170]:
+
+
+CM_types = ['Cardiomyocytes (Ventricle)', 'Cardiomyocytes (ttn.2)', 'Cardiomyocytes (proliferating)']
+
+
+# In[171]:
+
+
+HR_Rv_3dpi_CM = HR_Rv_3dpi[HR_Rv_3dpi.obs['Cell_type'].isin(CM_types)]
+sc.pp.filter_genes(HR_Rv_3dpi_CM, min_cells=3)
+
+
+# In[172]:
+
+
+# Find mito_genes in dataset.
+mito_in_index = list(set(HR_Rv_3dpi_CM.var.index.values) & set(mito_genes))
+# Get mitochondrial percentages and read counts; plot violin plots
+HR_Rv_3dpi_CM.obs['percent_mito'] = np.sum(
+    HR_Rv_3dpi_CM[:, mito_in_index].X, axis=1) / np.sum(HR_Rv_3dpi_CM.X, axis=1)
+sc.pp.calculate_qc_metrics(HR_Rv_3dpi_CM, percent_top=None, log1p=True, inplace=True)
+sc.pl.violin(HR_Rv_3dpi_CM, ['total_counts', 'n_genes_by_counts', 'percent_mito'],
+             jitter=0.4, multi_panel=True, size = 0.1)
+
+
+# In[173]:
+
+
+sc.pp.normalize_per_cell(HR_Rv_3dpi_CM, counts_per_cell_after=1e4)
+sc.pp.log1p(HR_Rv_3dpi_CM)
+
+
+# In[174]:
+
+
+sc.pp.regress_out(HR_Rv_3dpi_CM, ['total_counts', 'n_genes_by_counts', 'percent_mito'])
+
+
+# In[175]:
+
+
+sc.pp.highly_variable_genes(HR_Rv_3dpi_CM)
+sc.tl.pca(HR_Rv_3dpi_CM)
+sc.external.pp.bbknn(HR_Rv_3dpi_CM, batch_key='batch')
+sc.tl.umap(HR_Rv_3dpi_CM)
+
+
+# In[176]:
+
+
+sc.pl.umap(HR_Rv_3dpi_CM, color='batch',
+          title = '3dpi Cardiomyocytes')
+
+
+# In[177]:
+
+
+sc.pl.umap(HR_Rv_3dpi_CM, color=['total_counts', 'n_genes_by_counts', 'percent_mito'],
+          title = '3dpi Cardiomyocytes')
+
+
+# In[178]:
+
+
+sc.pl.umap(HR_Rv_3dpi_CM, color='Cell_type', palette = cell_type_colors.loc[HR_Rv_3dpi_CM.obs.Cell_type.cat.categories.tolist()].color.tolist(),
+          title = '3dpi Cardiomyocytes')
+
+
+# In[179]:
+
+
+sc.tl.leiden(HR_Rv_3dpi_CM, resolution=2)
+
+
+# In[180]:
+
+
+sc.pl.umap(HR_Rv_3dpi_CM, color='leiden', legend_loc='on data', legend_fontsize='x-large')
+
+
+# In[181]:
+
+
+sc.tl.paga(HR_Rv_3dpi_CM, groups='leiden')
+
+
+# In[182]:
+
+
+sc.pl.paga(HR_Rv_3dpi_CM, show=True, node_size_scale = 2)#,
+#           labels = ['', '', '', '', '', 
+#                     '', '', '', '', '', 
+#                     '', '', '', '', '',
+#                    ''], 
+#           save = 'scvelo_epicardial_niche_3dpi_20n_leiden_diffmap_recolor.png')
+
+
+# In[183]:
+
+
+sc.tl.umap(HR_Rv_3dpi_CM, init_pos = 'paga')
+
+
+# In[184]:
+
+
+scv.pp.moments(HR_Rv_3dpi_CM)
+
+
+# In[185]:
+
+
+scv.tl.velocity(HR_Rv_3dpi_CM, mode='stochastic')
+
+
+# In[186]:
+
+
+scv.tl.velocity_graph(HR_Rv_3dpi_CM)
+
+
+# In[187]:
+
+
+scv.pl.velocity_embedding_stream(HR_Rv_3dpi_CM, title = '', 
+                                 color = 'Cell_type')#, legend_loc = 'none')#,
+#                                 save = '_scvelo_epicardial_niche_3dpi_20n_cell_types_umap.png')
+
+
+# # Secretome analysis
+
+# How much of the transcriptome is part of the secretome for each cell type?
+
+# ## Load secretome genes
+
+# In[3]:
+
+
+#secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/1604312481_danio_rerio/Secretome_gene_names.csv', sep = '\t')
+#secretome = secretome[secretome['external_gene_name'].notna()]
+#secretome = (secretome[['external_gene_name']]).drop_duplicates()
+#secretome_nocol = secretome[~secretome['external_gene_name'].str.contains('^col[0-9]', na=False)]
+
+
+# Remove NAs and duplicates
+
+# In[5]:
+
+
+#secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Human_secretome_translated.tsv', sep = '\;')
+#secretome = secretome[secretome['external_gene_name'].notna()]
+#secretome = (secretome[['external_gene_name']]).drop_duplicates()
+
+
+# In[3]:
+
+
+secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names_noDRduplicates.scsv', sep = ';')
+#secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names.scsv', sep = '\t')
+secretome = secretome.rename(columns={'DR_name': 'external_gene_name'})
+secretome = secretome[secretome['external_gene_name'].notna()]
+secretome = (secretome[['external_gene_name']]).drop_duplicates()
+
+
+# In[4]:
+
+
+secretome
+
+
+# ## Calculate differentially expressed genes per timepoint
+
+# In[12]:
+
+
+def GetDiffGenes(adata):
+    result = pd.DataFrame({})
+    for ctype in adata.obs['Cell_type'].cat.categories:
+        ctype_d = {'Gene' : adata.uns['rank_genes_groups']['names'][ctype],
+                   'pvals_adj': adata.uns['rank_genes_groups']['pvals_adj'][ctype],
+                   'logfoldchanges': adata.uns['rank_genes_groups']['logfoldchanges'][ctype],
+                   'Cell_type':  np.repeat(ctype, len(adata.var.index))}
+        ctype_degdf = pd.DataFrame(data=ctype_d)
+        result = result.append(ctype_degdf[(ctype_degdf.pvals_adj < 0.01) & (ctype_degdf.logfoldchanges > 1)], ignore_index=True)
+    return result
+
+
+# In[13]:
+
+
+HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '0') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_ctrl.var_names if not name == 'RFP']
+HR_Rv_ctrl = HR_Rv_ctrl[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_ctrl, target_sum=1e4)
+sc.pp.log1p(HR_Rv_ctrl)
+sc.tl.rank_genes_groups(HR_Rv_ctrl, groupby = 'Cell_type')
+dg_ctrl = GetDiffGenes(HR_Rv_ctrl)
+
+
+# In[14]:
+
+
+HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
+HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_3dpi, target_sum=1e4)
+sc.pp.log1p(HR_Rv_3dpi)
+sc.tl.rank_genes_groups(HR_Rv_3dpi, groupby = 'Cell_type')
+dg_3dpi = GetDiffGenes(HR_Rv_3dpi)
+
+
+# In[15]:
+
+
+HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
+all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
+HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_7dpi, target_sum=1e4)
+sc.pp.log1p(HR_Rv_7dpi)
+sc.tl.rank_genes_groups(HR_Rv_7dpi, groupby = 'Cell_type')
+dg_7dpi = GetDiffGenes(HR_Rv_7dpi)
+
+
+# ## Annotate genes with secretome and count numbers differentially expressed
+
+# In[29]:
+
+
+dg_ctrl_counts = pd.DataFrame({'DG_count' : dg_ctrl.Cell_type.value_counts()})
+diff_secretome_ctrl = dg_ctrl[dg_ctrl.Gene.isin(secretome.external_gene_name)]
+ds_ctrl_counts = pd.DataFrame({'DSec_count' : diff_secretome_ctrl.Cell_type.value_counts()})
+diff_ctrl_counts = pd.concat([dg_ctrl_counts, ds_ctrl_counts], axis = 1, join='inner')
+diff_ctrl_counts['DSec_ratio'] = diff_ctrl_counts['DSec_count']/diff_ctrl_counts['DG_count']
+
+
+# In[30]:
+
+
+dg_3dpi_counts = pd.DataFrame({'DG_count' : dg_3dpi.Cell_type.value_counts()})
+diff_secretome_3dpi = dg_3dpi[dg_3dpi.Gene.isin(secretome.external_gene_name)]
+ds_3dpi_counts = pd.DataFrame({'DSec_count' : diff_secretome_3dpi.Cell_type.value_counts()})
+diff_3dpi_counts = pd.concat([dg_3dpi_counts, ds_3dpi_counts], axis = 1, join='inner')
+diff_3dpi_counts['DSec_ratio'] = diff_3dpi_counts['DSec_count']/diff_3dpi_counts['DG_count']
+
+
+# In[31]:
+
+
+dg_7dpi_counts = pd.DataFrame({'DG_count' : dg_7dpi.Cell_type.value_counts()})
+diff_secretome_7dpi = dg_7dpi[dg_7dpi.Gene.isin(secretome.external_gene_name)]
+ds_7dpi_counts = pd.DataFrame({'DSec_count' : diff_secretome_7dpi.Cell_type.value_counts()})
+diff_7dpi_counts = pd.concat([dg_7dpi_counts, ds_7dpi_counts], axis = 1, join='inner')
+diff_7dpi_counts['DSec_ratio'] = diff_7dpi_counts['DSec_count']/diff_7dpi_counts['DG_count']
+
+
+# In[32]:
+
+
+diff_ctrl_counts
+
+
+# In[33]:
+
+
+diff_3dpi_counts
+
+
+# In[34]:
+
+
+diff_7dpi_counts
+
+
+# ## Secretome expression per cell type
+
+# In[5]:
+
+
+def CountSecretome(adata, secretome):
+    secretome_ind = np.unique([adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+    result = pd.DataFrame({'Cell_type' : adata.obs['Cell_type'].cat.categories,
+                          'Secretome' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories)),
+                          'SEM' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories))})
+    for ctype in adata.obs['Cell_type'].cat.categories:
+        ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
+        if(len(ctype_index) == 0):
+            continue
+        secretome_slice = adata.X[:,secretome_ind]
+        result.Secretome[result['Cell_type'] == ctype] = (sum(secretome_slice[ctype_index, :].sum(axis = 1))/len(ctype_index))[0,0]
+        result.SEM[result['Cell_type'] == ctype] = np.std(secretome_slice[ctype_index, :].sum(axis = 1))/np.sqrt(len(ctype_index))
+    result = result[result.Secretome != -1]
+    return(result)
+
+
+# In[6]:
+
+
+def ExpressedSecretome(adata, secretome):
+    secretome_ind = np.unique([adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+    secretome_slice = adata.X[:,secretome_ind]
+    secretome_dense_slice = adata.X[:,secretome_ind].todense()
+    secretome_dense_slice_z = preprocessing.scale(secretome_dense_slice)
+
+    ctype_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+    ctype_z_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+    for ctype in adata.obs['Cell_type'].cat.categories:
+        ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
+        if(len(ctype_index) == 0):
+            continue
+        ctype_average = pd.DataFrame({ctype : np.squeeze(np.asarray(secretome_slice[ctype_index, :].mean(axis = 0)))},
+                                  index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index]) # axis = 0 gets us gene-level averages. #.sum(axis = 1))/len(ctype_index))[0,0]
+        ctype_averages = ctype_averages.join(ctype_average)
+        
+        ctype_z_average = pd.DataFrame({ctype : secretome_dense_slice_z[ctype_index, :].mean(axis = 0)},
+                                    index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+        ctype_z_averages = ctype_z_averages.join(ctype_z_average)
+    return(ctype_averages, ctype_z_averages)
+
+
+# In[7]:
+
+
+HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '0') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_ctrl.var_names if not name == 'RFP']
+HR_Rv_ctrl = HR_Rv_ctrl[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_ctrl, target_sum=1e4)
+secretome_ctrl = CountSecretome(HR_Rv_ctrl, secretome)
+secretome_averages_ctrl, secretome_z_averages_ctrl = ExpressedSecretome(HR_Rv_ctrl, secretome)
+
+
+# In[37]:
+
+
+secretome_averages_ctrl_save = secretome_averages_ctrl[secretome_averages_ctrl.max(axis = 1) > 10]
+secretome_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_ctrl.csv')
+secretome_z_averages_ctrl_save = secretome_z_averages_ctrl[secretome_z_averages_ctrl.max(axis = 1) > 2]
+secretome_z_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_ctrl.csv')
+
+
+# In[22]:
+
+
+#import matplotlib.pyplot as plt
+
+secretome_ctrl_plot = secretome_ctrl[secretome_ctrl.Cell_type.isin(epifibro_types)] 
+secretome_ctrl_plot = secretome_ctrl_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+secretome_ctrl_plot = secretome_ctrl_plot.sort_values(by = 'Secretome', ascending = False)
+
+pl.bar(x = np.arange(len(secretome_ctrl_plot)),
+       height = secretome_ctrl_plot.Secretome/100,
+       yerr = 3 * secretome_ctrl_plot.SEM/100, capsize = 2,
+       color = secretome_ctrl_plot.color)
+pl.xlabel('Cell type')
+pl.xticks(np.arange(len(secretome_ctrl_plot)), secretome_ctrl_plot.Cell_type, rotation=270)
+pl.ylabel('Secretome (%)')
+pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_ctrl_fibroniche.pdf', bbox_inches = 'tight', transparent = True)
+pl.show()
+
+
+# In[11]:
+
+
+HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
+HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_3dpi, target_sum=1e4)
+secretome_3dpi = CountSecretome(HR_Rv_3dpi, secretome)
+secretome_averages_3dpi, secretome_z_averages_3dpi = ExpressedSecretome(HR_Rv_3dpi, secretome)
+
+
+# In[40]:
+
+
+secretome_averages_3dpi_save = secretome_averages_3dpi[secretome_averages_3dpi.max(axis = 1) > 10]
+secretome_averages_3dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_3dpi.csv')
+secretome_z_averages_3dpi_save = secretome_z_averages_3dpi[secretome_z_averages_3dpi.max(axis = 1) > 2]
+secretome_z_averages_3dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_3dpi.csv')
+
+
+# In[23]:
+
+
+import matplotlib.pyplot as plt
+
+secretome_3dpi_plot = secretome_3dpi[secretome_3dpi.Cell_type.isin(epifibro_types)]
+secretome_3dpi_plot = secretome_3dpi_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+secretome_3dpi_plot = secretome_3dpi_plot.sort_values(by = 'Secretome', ascending = False)
+
+plt.bar(x = np.arange(len(secretome_3dpi_plot)),
+       height = secretome_3dpi_plot.Secretome/100,
+       yerr = 3 * secretome_3dpi_plot.SEM/100, capsize = 2,
+       color = secretome_3dpi_plot.color)
+plt.xlabel('Cell type')
+plt.xticks(np.arange(len(secretome_3dpi_plot)), secretome_3dpi_plot.Cell_type, rotation=270)
+plt.ylabel('Secretome (%)')
+plt.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_3dpi_fibroniche.pdf', bbox_inches = 'tight', transparent = True)
+plt.show()
+
+
+# In[42]:
+
+
+sns.clustermap(np.log1p(secretome_averages_3dpi[secretome_averages_3dpi.max(axis = 1) > 10]), method = 'ward', xticklabels = True, yticklabels = True)
+pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_3dpi_high_genes.pdf', bbox_inches = 'tight', transparent = True)
+pl.show()
+
+
+# In[43]:
+
+
+secretome_z_averages_3dpi_plot = secretome_z_averages_3dpi
+secretome_z_averages_3dpi_plot[secretome_z_averages_3dpi_plot > 5] = 5
+
+sns.clustermap(secretome_z_averages_3dpi_plot[secretome_z_averages_3dpi_plot.max(axis = 1) > 2], method = 'ward', xticklabels = True, yticklabels = True, figsize = (10,25))
+pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_3dpi_high_z.pdf', bbox_inches = 'tight', transparent = True)
+pl.show()
+
+
+# In[44]:
+
+
+HR_Rv_7dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '7') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
+HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_7dpi, target_sum=1e4)
+secretome_7dpi = CountSecretome(HR_Rv_7dpi, secretome)
+secretome_averages_7dpi, secretome_z_averages_7dpi = ExpressedSecretome(HR_Rv_7dpi, secretome)
+
+
+# In[45]:
+
+
+secretome_averages_7dpi_save = secretome_averages_7dpi[secretome_averages_7dpi.max(axis = 1) > 10]
+secretome_averages_7dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_7dpi.csv')
+secretome_z_averages_7dpi_save = secretome_z_averages_7dpi[secretome_z_averages_7dpi.max(axis = 1) > 2]
+secretome_z_averages_7dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_7dpi.csv')
+
+
+# In[46]:
+
+
+import matplotlib.pyplot as plt
+
+secretome_7dpi_plot = secretome_7dpi #[secretome_7dpi.Cell_type.isin(epifibro_types)]
+secretome_7dpi_plot = secretome_7dpi_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+secretome_7dpi_plot = secretome_7dpi_plot.sort_values(by = 'Secretome', ascending = False)
+
+pl.bar(x = np.arange(len(secretome_7dpi_plot)),
+       height = secretome_7dpi_plot.Secretome/100,
+       yerr = 3 * secretome_7dpi_plot.SEM/100, capsize = 2,
+       color = secretome_7dpi_plot.color)
+pl.xlabel('Cell type')
+pl.xticks(np.arange(len(secretome_7dpi_plot)), secretome_7dpi_plot.Cell_type, rotation=270)
+pl.ylabel('Secretome (%)')
+pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_7dpi.pdf', bbox_inches = 'tight', transparent = True)
+pl.show()
+
+
+# In[47]:
+
+
+HR_Rv_3dpi_inh = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] == 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_3dpi_inh.var_names if not name == 'RFP']
+HR_Rv_3dpi_inh = HR_Rv_3dpi_inh[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_3dpi_inh, target_sum=1e4)
+secretome_3dpi_inh = CountSecretome(HR_Rv_3dpi_inh, secretome)
+secretome_averages_3dpi_inh, secretome_z_averages_3dpi_inh = ExpressedSecretome(HR_Rv_3dpi_inh, secretome)
+
+
+# In[48]:
+
+
+secretome_averages_3dpi_inh_save = secretome_averages_3dpi_inh[secretome_averages_3dpi_inh.max(axis = 1) > 10]
+secretome_averages_3dpi_inh_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_3dpi_inh.csv')
+secretome_z_averages_3dpi_inh_save = secretome_z_averages_3dpi_inh[secretome_z_averages_3dpi_inh.max(axis = 1) > 2]
+secretome_z_averages_3dpi_inh_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_3dpi_inh.csv')
+
+
+# In[49]:
+
+
+import matplotlib.pyplot as plt
+
+secretome_3dpi_inh_plot = secretome_3dpi_inh #[secretome_3dpi_inh.Cell_type.isin(epifibro_types)]
+secretome_3dpi_inh_plot = secretome_3dpi_inh_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+secretome_3dpi_inh_plot = secretome_3dpi_inh_plot.sort_values(by = 'Secretome', ascending = False)
+
+plt.bar(x = np.arange(len(secretome_3dpi_inh_plot)),
+       height = secretome_3dpi_inh_plot.Secretome/100,
+       yerr = 3 * secretome_3dpi_inh_plot.SEM/100, capsize = 2,
+       color = secretome_3dpi_inh_plot.color)
+plt.xlabel('Cell type')
+plt.xticks(np.arange(len(secretome_3dpi_inh_plot)), secretome_3dpi_inh_plot.Cell_type, rotation=270)
+plt.ylabel('Secretome (%)')
+plt.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_3dpi_inh.pdf', bbox_inches = 'tight', transparent = True)
+plt.show()
+
+
+# In[50]:
+
+
+HR_Rv_7dpi_inh = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '7') & (HR_Rv_filter.obs['inhib'] == 'IWR1')]
+all_genes_but_RFP = [name for name in HR_Rv_7dpi_inh.var_names if not name == 'RFP']
+HR_Rv_7dpi_inh = HR_Rv_7dpi_inh[:, all_genes_but_RFP]
+sc.pp.normalize_total(HR_Rv_7dpi_inh, target_sum=1e4)
+secretome_7dpi_inh = CountSecretome(HR_Rv_7dpi_inh, secretome)
+secretome_averages_7dpi_inh, secretome_z_averages_7dpi_inh = ExpressedSecretome(HR_Rv_7dpi_inh, secretome)
+
+
+# In[51]:
+
+
+secretome_averages_7dpi_inh_save = secretome_averages_7dpi_inh[secretome_averages_7dpi_inh.max(axis = 1) > 10]
+secretome_averages_7dpi_inh_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_7dpi_inh.csv')
+secretome_z_averages_7dpi_inh_save = secretome_z_averages_7dpi_inh[secretome_z_averages_7dpi_inh.max(axis = 1) > 2]
+secretome_z_averages_7dpi_inh_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_7dpi_inh.csv')
+
+
+# In[52]:
+
+
+import matplotlib.pyplot as plt
+
+secretome_7dpi_inh_plot = secretome_7dpi_inh #[secretome_7dpi_inh.Cell_type.isin(epifibro_types)]
+secretome_7dpi_inh_plot = secretome_7dpi_inh_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+secretome_7dpi_inh_plot = secretome_7dpi_inh_plot.sort_values(by = 'Secretome', ascending = False)
+
+plt.bar(x = np.arange(len(secretome_7dpi_inh_plot)),
+       height = secretome_7dpi_inh_plot.Secretome/100,
+       yerr = 3 * secretome_7dpi_inh_plot.SEM/100, capsize = 2,
+       color = secretome_7dpi_inh_plot.color)
+plt.xlabel('Cell type')
+plt.xticks(np.arange(len(secretome_7dpi_inh_plot)), secretome_7dpi_inh_plot.Cell_type, rotation=270)
+plt.ylabel('Secretome (%)')
+plt.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_7dpi_inh.pdf', bbox_inches = 'tight', transparent = True)
+plt.show()
+
+
+# In[ ]:
+
+
+
 
