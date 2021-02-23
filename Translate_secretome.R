@@ -73,8 +73,12 @@ DR_secretome <- DR_secretome[, c("Ensembl", "Gene", "Gene description", "Evidenc
 DR_secretome <- DR_secretome[!is.na(DR_secretome$DR_name), ]
 write.table(DR_secretome, "~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names_noDRduplicates.scsv",
             quote = F, row.names = F, sep = ";")
-# DR_secretome_old <- read.csv("~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names.scsv",
-                               # sep = "\t")
+
+# Compare secretome with and without duplicates ####
+DR_secretome_old <- read.csv("~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names.scsv",
+sep = "\t")
+DR_secretome_nodup <- read.csv("~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names_noDRduplicates.scsv",
+                             sep = ";")
 
 
 Alliance_conversion <- merge(DR_to_HS[, c("DR_ID", "DR_name", "HS_ID", "HS_name")], 
