@@ -4,9 +4,9 @@
 # BiocManager::install("biomaRt")
 library("biomaRt")
 library(data.table)
+library(rjson)
 
 # Alliance orthology ####
-library(rjson)
 orthology <- fromJSON(file="~/Documents/Projects/heart_Bo/Data/ORTHOLOGY-ALLIANCE-JSON_COMBINED_37.json")
 orthology_DT <- data.table(DR_name = unlist(lapply(orthology$data, function(x) {x$Gene1Symbol})),
                           HS_name = unlist(lapply(orthology$data, function(x) {x$Gene2Symbol})),
@@ -74,57 +74,3 @@ DR_secretome <- DR_secretome[!is.na(DR_secretome$DR_name), ]
 write.table(DR_secretome, "~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names_noDRduplicates.scsv",
             quote = F, row.names = F, sep = ";")
 
-# Compare secretome with and without duplicates ####
-DR_secretome_old <- read.csv("~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names.scsv",
-sep = "\t")
-DR_secretome_nodup <- read.csv("~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names_noDRduplicates.scsv",
-                             sep = ";")
-
-
-Alliance_conversion <- merge(DR_to_HS[, c("DR_ID", "DR_name", "HS_ID", "HS_name")], 
-                             HS_hgnc_IDs[, c("ensembl_gene_id", "hgnc_id")], by.x = "HS_ID", by.y = "hgnc_id", all.x = T)
-colnames(Alliance_conversion)[5] <- "HS_ensembl_ID"
-DR <- useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset="drerio_gene_ensembl")
-DR_attributes <- listAttributes(DR)
-DR_zfin_IDs <-
-  getBM(mart = DR, attributes=c("ensembl_gene_id", "external_gene_name", "zfin_id_id"))
-DR_zfin_IDs$zfin_id_id <- paste("ZFIN:", DR_zfin_IDs$zfin_id_id, sep = "")
-Alliance_conversion <- merge(Alliance_conversion, DR_zfin_IDs[, c("ensembl_gene_id", "zfin_id_id")], by.x = "DR_ID", by.y = "zfin_id_id", all.x = T)
-
-length(unique(DR_secretome$Gene))
-length(unique(human_secretome_hgnc$Gene))
-
-orthology$data[290317]
-head(unlist(DR_to_HS_orthology_records))
-
-listEnsemblArchives()
-# ensembl <- useMart(biomart="ENSEMBL_MART_ENSEMBL", host="http://oct2014.archive.ensembl.org")
-# datasets <- listDatasets(ensembl)
-
-Zv11 <- useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset="drerio_gene_ensembl")
-attributes = listAttributes(Zv11)
-translator <- getBM(mart=Zv11, attributes=c("ensembl_gene_id", "external_gene_name"))
-
-secretome <- fread("~/Documents/Projects/heart_Bo/Data/1604312481_danio_rerio/resultsTable.xls")
-secretome <- merge(secretome, translator, by.x = "Gene", by.y = "ensembl_gene_id")
-write.table(secretome, "~/Documents/Projects/heart_Bo/Data/1604312481_danio_rerio/Secretome_gene_names.scsv",
-          quote = F, row.names = F, sep = ";")
-
-# DR orthologues of human secretome ####
-Zv11 <- useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset="drerio_gene_ensembl")
-attributes = listAttributes(Zv11)
-human_DR_orthologues <- 
-  getBM(mart=Zv11, attributes=c("ensembl_gene_id", "external_gene_name", "hsapiens_homolog_ensembl_gene",
-                                "hsapiens_homolog_associated_gene_name"))
-human_secretome <- fread("~/Documents/Projects/heart_Bo/Data/Human_secretome.tsv")
-human_secretome_orthologue <-
-  merge(human_secretome, human_DR_orthologues, by.x = "Ensembl", by.y = "hsapiens_homolog_ensembl_gene", all.x = T)
-write.table(human_secretome_orthologue, "~/Documents/Projects/heart_Bo/Data/Human_secretome_translated.tsv",
-            quote = F, row.names = F, sep = ";")
-
-# HG orthologues ####
-HG <- useMart(biomart="ENSEMBL_MART_ENSEMBL", dataset="hsapiens_gene_ensembl")
-HG_attributes <- listAttributes(HG)
-HG_to_DR_orthologues <-
-  getBM(mart = HG, attributes=c("ensembl_gene_id", "external_gene_name", "drerio_homolog_ensembl_gene", "drerio_homolog_associated_gene_name"))
-#(same as from DR)
