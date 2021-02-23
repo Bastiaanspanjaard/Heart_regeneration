@@ -7,7 +7,7 @@ inclusion_limit <- 10 # How many cells are needed of a certain type to include a
 # that type.
 
 # Prepare colors and cell type data ####
-cell_annotations_2 <- read.csv("./Data/final_metadata_Tmacromerged_2.csv", stringsAsFactors = F)
+cell_annotations <- read.csv("./Data/final_metadata_Tmacromerged_2.csv", stringsAsFactors = F)
 # Make table of existing cell types and frequencies
 celltype_frequencies <- data.frame(table(cell_annotations$Cell_type), stringsAsFactors = F)
 colnames(celltype_frequencies)[1] <- c("Cell_type")
