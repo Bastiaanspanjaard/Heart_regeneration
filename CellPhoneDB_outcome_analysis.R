@@ -1,7 +1,5 @@
 # Requirements ####
 require(data.table)
-# require(igraph)
-# require(reshape2)
 require(ggplot2)
 require(pheatmap)
 source("./Scripts/HR_library.R")
@@ -117,7 +115,7 @@ max_out_count <- max(outgoing_ctrl$Count, outgoing_inhib_3dpi$Count, outgoing_in
                  outgoing_noinhib_3dpi$Count, outgoing_noinhib_7dpi$Count)
 max_out_plot <- 10 * ceiling(max_out_count/10)
 
-pdf("./Images/Ctrl_alliance_CPDB_outgoing_counts.pdf")
+# pdf("./Images/Ctrl_alliance_CPDB_outgoing_counts.pdf")
 ggplot(outgoing_ctrl) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -126,9 +124,9 @@ ggplot(outgoing_ctrl) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Noinhib_3dpi_alliance_CPDB_outgoing_counts.pdf")
+# pdf("./Images/Noinhib_3dpi_alliance_CPDB_outgoing_counts.pdf")
 ggplot(outgoing_noinhib_3dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -137,9 +135,9 @@ ggplot(outgoing_noinhib_3dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Noinhib_7dpi_alliance_CPDB_outgoing_counts.pdf")
+# pdf("./Images/Noinhib_7dpi_alliance_CPDB_outgoing_counts.pdf")
 ggplot(outgoing_noinhib_7dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -148,9 +146,9 @@ ggplot(outgoing_noinhib_7dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Inhib_3dpi_alliance_CPDB_outgoing_counts.pdf")
+# pdf("./Images/Inhib_3dpi_alliance_CPDB_outgoing_counts.pdf")
 ggplot(outgoing_inhib_3dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -159,9 +157,9 @@ ggplot(outgoing_inhib_3dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Inhib_7dpi_alliance_CPDB_outgoing_counts.pdf")
+# pdf("./Images/Inhib_7dpi_alliance_CPDB_outgoing_counts.pdf")
 ggplot(outgoing_inhib_7dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -170,7 +168,7 @@ ggplot(outgoing_inhib_7dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
 # Count incoming interactions ####
 incoming_ctrl <- data.table(From = colnames(incidence_ctrl),
@@ -198,7 +196,7 @@ max_incoming_count <- max(incoming_ctrl$Count, incoming_inhib_3dpi$Count, incomi
                      incoming_noinhib_3dpi$Count, incoming_noinhib_7dpi$Count)
 max_incoming_plot <- 10 * ceiling(max_incoming_count/10)
 
-pdf("./Images/Ctrl_alliance_CPDB_incoming_counts.pdf")
+# pdf("./Images/Ctrl_alliance_CPDB_incoming_counts.pdf")
 ggplot(incoming_ctrl) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -207,9 +205,9 @@ ggplot(incoming_ctrl) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Noinhib_3dpi_alliance_CPDB_incoming_counts.pdf")
+# pdf("./Images/Noinhib_3dpi_alliance_CPDB_incoming_counts.pdf")
 ggplot(incoming_noinhib_3dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -218,9 +216,9 @@ ggplot(incoming_noinhib_3dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Noinhib_7dpi_alliance_CPDB_incoming_counts.pdf")
+# pdf("./Images/Noinhib_7dpi_alliance_CPDB_incoming_counts.pdf")
 ggplot(incoming_noinhib_7dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -229,9 +227,9 @@ ggplot(incoming_noinhib_7dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Inhib_3dpi_alliance_CPDB_incoming_counts.pdf")
+# pdf("./Images/Inhib_3dpi_alliance_CPDB_incoming_counts.pdf")
 ggplot(incoming_inhib_3dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -240,9 +238,9 @@ ggplot(incoming_inhib_3dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
-pdf("./Images/Inhib_7dpi_alliance_CPDB_incoming_counts.pdf")
+# pdf("./Images/Inhib_7dpi_alliance_CPDB_incoming_counts.pdf")
 ggplot(incoming_inhib_7dpi) +
   geom_bar(aes(x = From, y = Count, fill = From), stat = "identity") +
   scale_fill_manual(values = celltype_colors) +
@@ -251,7 +249,7 @@ ggplot(incoming_inhib_7dpi) +
   theme(axis.text.x = element_text(angle = 270, hjust = 0, vjust = 0.5, size = 10),
         legend.position = "none",
         plot.title = element_text(hjust = 0.5, size = 24)) 
-dev.off()
+# dev.off()
 
 # Interaction heatmaps ####
 pheatmap_break_max <- max(incidence_ctrl, incidence_noinhib_3dpi, incidence_noinhib_7dpi,
@@ -259,30 +257,39 @@ pheatmap_break_max <- max(incidence_ctrl, incidence_noinhib_3dpi, incidence_noin
 # 101 breaks from 0 to max value:
 incidence_breaks <- pheatmap_break_max * (0:100)/100
 
-pdf("./Images/Ctrl_alliance_CPDB_interaction_counts.pdf")
+# pdf("./Images/Ctrl_alliance_CPDB_interaction_counts.pdf")
 pheatmap(incidence_ctrl, clustering_method = "ward.D2", breaks = incidence_breaks,
          main = "Interaction counts control")
-dev.off()
+# dev.off()
 
-pdf("./Images/Noinhib_3dpi_alliance_CPDB_interaction_counts.pdf")
+# pdf("./Images/Noinhib_3dpi_alliance_CPDB_interaction_counts.pdf")
 pheatmap(incidence_noinhib_3dpi, clustering_method = "ward.D2", breaks = incidence_breaks,
          main = "Interaction counts 3dpi")
-dev.off()
+# dev.off()
 
-pdf("./Images/Noinhib_7dpi_alliance_CPDB_interaction_counts.pdf")
+# pdf("./Images/Noinhib_7dpi_alliance_CPDB_interaction_counts.pdf")
 pheatmap(incidence_noinhib_7dpi, clustering_method = "ward.D2", breaks = incidence_breaks,
          main = "Interaction counts 7dpi")
-dev.off()
+# dev.off()
 
-pdf("./Images/Inhib_3dpi_alliance_CPDB_interaction_counts.pdf")
+# pdf("./Images/Inhib_3dpi_alliance_CPDB_interaction_counts.pdf")
 pheatmap(incidence_inhib_3dpi, clustering_method = "ward.D2", breaks = incidence_breaks,
          main = "Interaction counts 3dpi wnt-inhibited")
-dev.off()
+# dev.off()
 
-pdf("./Images/Inhib_7dpi_alliance_CPDB_interaction_counts.pdf")
+# pdf("./Images/Inhib_7dpi_alliance_CPDB_interaction_counts.pdf")
 pheatmap(incidence_inhib_7dpi, clustering_method = "ward.D2", breaks = incidence_breaks,
          main = "Interaction counts 7dpi wnt-inhibited")
-dev.off()
+# dev.off()
+
+colnames(noinhib_3dpi[, 1:13])
+plvapb_columns <- c(1:12, grep("Bl\\.ves\\.EC [(]plvapb[)]$", colnames(noinhib_3dpi)))
+plvapb_interactions <- 
+  noinhib_3dpi[, ..plvapb_columns]
+plvapb_interactions <-
+  plvapb_interactions[apply(plvapb_interactions[, -(1:12)], 1, function(x) sum(!is.na(x)) > 0), ]
+
+View(t(noinhib_3dpi[noinhib_3dpi$interacting_pair %in% c("VEGFA_FLT1", "VEGFA_KDR"), ]))
 
 # OLD ####
 # Load data ####
