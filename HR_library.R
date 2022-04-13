@@ -7,7 +7,12 @@
 suppressPackageStartupMessages(require(ggplot2))
 suppressPackageStartupMessages(require(dplyr))
 suppressPackageStartupMessages(require(tidyr))
+# install_local("./Scripts/collapsibleTree/")
 suppressPackageStartupMessages(require(collapsibleTree))
+# require(devtools)
+# install_version("data.tree", version = "0.7.11")
+# Note that collapsibleTree NEEDS data.tree version 0.7.11; it does not work
+# with the newer upgrade to data.tree 1.0.0.
 suppressPackageStartupMessages(require(data.tree))
 suppressPackageStartupMessages(require(pheatmap))
 suppressPackageStartupMessages(require(reshape2))
@@ -255,7 +260,7 @@ ExtractTreeFrequencies <- function(tree_list, sample_fraction = 1, sampling_seed
   colnames(comparison_list$Normalized_frequencies) <- celltype_frequencies$Cell_type
   
   # Extract cell type frequencies
-  set.seed(sampling_seed)
+  # set.seed(sampling_seed)
   for(t in 1:length(tree_list)){
     edge_list_full <- tree_list[[t]]$Edge_list
     # Cell.type == "NA" are nodes; leave those in, sample over the others.
@@ -299,6 +304,7 @@ ExtractTreeFrequencies <- function(tree_list, sample_fraction = 1, sampling_seed
     comparison_list$Normalized_frequencies <- 
       rbind(comparison_list$Normalized_frequencies, sample_type_nf)
   }
+  
   comparison_list$Frequencies[is.na(comparison_list$Frequencies)] <- 0
   comparison_list$Frequencies <- 
     comparison_list$Frequencies[, colSums(comparison_list$Frequencies) > 0]
