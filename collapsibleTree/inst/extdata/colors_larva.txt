@@ -1,0 +1,71 @@
+cluster	Cell.type	origin	color	zoom1	color1	zoom2	color2	zoom3	color3	zoom4	color4
+17	Hepatocytes A	Endoderm	#7400C2	1	#1a9850	NA		NA		NA	
+20	Intestinal cells A	Endoderm	#8E14E0	4	#fc8d59	NA		NA		NA	
+35	Epithelial cells (Mucosa)	Endoderm	#A929FF	7	#ffffbf	NA		NA		NA	
+38	Intestinal cells B (Exocrine)	Endoderm	#BB56FF	5	#fee08b	NA		NA		NA	
+41	Pancreas exocrine cells	Endoderm	#CD82FF	6	#d73027	NA		NA		NA	
+58	Hepatocytes B	Endoderm	#DFAEFF	2	#1a9850	NA		NA		NA	
+65	Hepatocytes C	Endoderm	#F1DBFF	3	#1a9850	NA		NA		NA	
+8	Erythrocytes A	Lateral plate mesoderm	#844420	NA		NA		NA		1	#d95f02
+14	Erythrocytes B	Lateral plate mesoderm	#904A23	NA		NA		NA		2	#d95f02
+25	Lymphocytes A	Lateral plate mesoderm	#9D5126	NA		NA		NA		3	#1b9e77
+32	Nephric duct cells	Lateral plate mesoderm	#A85A2D	NA		NA		NA		7	#d5d4e8
+34	Endothelial cells	Lateral plate mesoderm	#AE673D	NA		NA		NA		8	#7570b3
+39	Macrophages	Lateral plate mesoderm	#B5734D	NA		NA		NA		4	#8dcebb
+59	Neutrophils	Lateral plate mesoderm	#BB805D	NA		NA		NA		5	#d1ebe3
+66	Kidney cells	Lateral plate mesoderm	#C28C6D	NA		NA		NA		9	#bab7d9
+69	Lymphocytes B	Lateral plate mesoderm	#C9997E	NA		NA		NA		6	#1b9e77
+28	Pigment cells (Xantophores)	Neural crest	#944D72	NA		NA		1	#99000d	NA	
+37	Pigment cells (Melanocytes)	Neural crest	#DF74AC	NA		NA		2	#cb181d	NA	
+40	Pigment cells (Iridophores)	Neural crest	#F89ACB	NA		NA		3	#ef3b2c	NA	
+42	Glial cells (Peripheral)	Neural crest	#FABFDE	NA		NA		4	#ff7f00	NA	
+50	Neurons E (Peripheral)	Neural crest	#FDE5F2	NA		NA		5	#ff9832	NA	
+2	Neurons A (Brain)	Neuroectoderm	#173416	NA		6	#00441b	6	#4daf4a	NA	
+4	Neuronal precursors A	Neuroectoderm	#214B1F	NA		8	#238b45	15	#4daf4a	NA	
+6	Neurons B (Proliferating)	Neuroectoderm	#2B6229	NA		9	#41ab5d	16	#4daf4a	NA	
+9	Cone cells	Neuroectoderm	#357933	NA		1	#3f007d	NA		NA	
+13	Retinal cells A	Neuroectoderm	#3F913D	NA		2	#54278f	NA		NA	
+23	Neuronal precursors B	Neuroectoderm	#4AA847	NA		10	#74c476	17	#4daf4a	NA	
+24	Neurons C (Spinal cord)	Neuroectoderm	#57B354	NA		11	#ef3b2c	8	#a6d7a4	NA	
+27	Retinal cells B	Neuroectoderm	#66BA64	NA		3	#6a51a3	NA		NA	
+29	Rod cells	Neuroectoderm	#75C173	NA		4	#807dba	NA		NA	
+33	Neurons D (Brain)	Neuroectoderm	#84C782	NA		7	#006d2c	7	#70bf6e	NA	
+44	Radial glia A	Neuroectoderm	#93CE91	NA		12	#08519c	NA		NA	
+46	Retinal pigment epithelial cells	Neuroectoderm	#A2D5A0	NA		5	#9e9ac8	NA		NA	
+48	Radial glia B	Neuroectoderm	#B1DCAF	NA		13	#2171b5	NA		NA	
+53	Olfactory receptor cells	Neuroectoderm	#C0E2BE	NA		15	#a65628	NA		NA	
+57	Epithelial cells (Otic vesicle)	Neuroectoderm	#CFE9CD	NA		16	#ff7f00	NA		NA	
+62	Oligodendrocytes	Neuroectoderm	#DEF0DC	NA		14	#ffff33	9	#377eb8	NA	
+68	Inner ear cells	Neuroectoderm	#EDF7EC	NA		17	#f781bf	NA		NA	
+12	Chondrocytes A	Paraxial mesoderm - cartilage	#B75B01	NA		NA		NA		NA	
+49	Chondrocytes B	Paraxial mesoderm - cartilage	#ED7600	NA		NA		NA		NA	
+55	Chondrocytes C	Paraxial mesoderm - cartilage	#FF9833	NA		NA		NA		NA	
+60	Osteoblasts	Paraxial mesoderm - cartilage	#FFBE7F	NA		NA		NA		NA	
+67	Chondrocytes D	Paraxial mesoderm - cartilage	#FFE5CC	NA		NA		NA		NA	
+0	Undifferentiated mesodermal cells	Paraxial mesoderm - fibroblasts	#99991E	NA		NA		NA		NA	
+5	Fibroblasts A	Paraxial mesoderm - fibroblasts	#E6E62D	NA		NA		NA		NA	
+16	Fibroblasts B (Fin)	Paraxial mesoderm - fibroblasts	#FFFF57	NA		NA		NA		NA	
+22	Fibroblasts C	Paraxial mesoderm - fibroblasts	#FFFF8C	NA		NA		NA		NA	
+31	Fibroblasts D	Paraxial mesoderm - fibroblasts	#FFFFC1	NA		NA		NA		NA	
+1	Skeletal muscle cells A	Paraxial mesoderm - muscle	#9F1213	NA		NA		NA		NA	
+3	Muscle cells (Pectoral fin)	Paraxial mesoderm - muscle	#B91516	NA		NA		NA		NA	
+11	Skeletal muscle cells B	Paraxial mesoderm - muscle	#D31819	NA		NA		NA		NA	
+18	Satellite cells	Paraxial mesoderm - muscle	#E52729	NA		NA		NA		NA	
+19	Smooth muscle cells A (Vasculature)	Paraxial mesoderm - muscle	#EA4E4F	NA		NA		NA		NA	
+43	Skeletal muscle cells C	Paraxial mesoderm - muscle	#EE7475	NA		NA		NA		NA	
+45	Skeletal muscle cells D	Paraxial mesoderm - muscle	#F39B9B	NA		NA		NA		NA	
+56	Smooth muscle B	Paraxial mesoderm - muscle	#F7C1C1	NA		NA		NA		NA	
+61	Skeletal muscle cells E (slow)	Paraxial mesoderm - muscle	#FCE8E8	NA		NA		NA		NA	
+7	Epidermal cells A	Surface ectoderm	#214B6E	NA		NA		NA		NA	
+10	Epithelial cells (Fin)	Surface ectoderm	#265780	NA		NA		NA		NA	
+15	Epidermal cells B	Surface ectoderm	#2C6493	NA		NA		NA		NA	
+21	Lens cells A	Surface ectoderm	#3171A6	NA		NA		NA		NA	
+26	Keratinocytes A	Surface ectoderm	#377EB8	NA		NA		NA		NA	
+30	Epidermal cells C	Surface ectoderm	#4E8DC0	NA		NA		NA		NA	
+36	Lens cells B	Surface ectoderm	#649BC7	NA		NA		NA		NA	
+47	Epidermal cells D	Surface ectoderm	#7BA9CF	NA		NA		NA		NA	
+51	Neuromast cells	Surface ectoderm	#91B8D7	NA		NA		NA		NA	
+52	Epidermal precursors	Surface ectoderm	#A7C6DF	NA		NA		NA		NA	
+54	Corneal cells	Surface ectoderm	#BED5E7	NA		NA		NA		NA	
+63	Epithelial cells (other)	Surface ectoderm	#D4E3EF	NA		NA		NA		NA	
+64	Keratinocytes B	Surface ectoderm	#EBF2F7	NA		NA		NA		NA	

@@ -1,0 +1,160 @@
+---
+title: 'Collapsible Tree: Geography Example'
+author: "Adeel Khan"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(collapsibleTree)
+load(system.file("extdata/Geography.rda", package = "collapsibleTree"))
+```
+
+## Overview
+
+collapsibleTree is an R [htmlwidget](http://www.htmlwidgets.org/) that allows you to create interactive collapsible Reingold-Tilford tree diagrams using D3.js, adapted from Mike Bostock's [example](https://bl.ocks.org/mbostock/4339083). Turn your data frame into a hierarchical visualization without worrying about nested lists or JSON objects!
+
+If you're using [Shiny](https://shiny.rstudio.com/), you can bind the most recently clicked node to a Shiny input, allowing for easier interaction with complex nested objects. The input will return a named list containing the most recently selected node, as well as all of its parents. See the [Shiny example](https://adeelk93.shinyapps.io/collapsibletree/) for more info.
+
+## Installation
+
+```{r eval=FALSE}
+# Install package from CRAN:
+install.packages("collapsibleTree")
+
+# Alternately, install the latest development version from GitHub:
+# install.packages("devtools")
+devtools::install_github("AdeelK93/collapsibleTree")
+```
+
+## Data frames, not lists
+
+When working with data in R, it makes sense (at least to me) to represent everything as a data frame. I'm a big fan of [tidy data](https://cran.r-project.org/package=tidyr/vignettes/tidy-data.html), but this structure does not lend itself to easily designing hierarchical networks. 
+
+collapsibleTree uses [data.tree](https://cran.r-project.org/web/packages/data.tree/vignettes/data.tree.html) to handle all of that, freeing you from a lot of recursive list construction.
+
+Here is an example geography dataset from [data.world](https://data.world/glx/geography-table):
+
+```{r summary}
+summary(Geography)
+```
+
+## Rendering the plot
+
+With your data frame in hand, and a vector of columns to graph, creating an interactive collapsible tree diagram can be done like so:
+
+```{r plot}
+collapsibleTree(
+  Geography,
+  hierarchy = c("continent", "type", "country"),
+  width = 800
+)
+```
+
+## Basing Gradients on a Numeric Column
+
+Throw in some gradients if you'd like! Each node can have its own distinct color. Let's use some `dplyr` to help us with the data aggregation and use `colorspace` to make some nice looking palettes.
+
+We can create a new column in the source data frame for the total number of countries on each continent, and map that column to the fill gradient of the nodes. `collapsibleTreeSummary` serves as a convenience function around `collapsibleTree`. 
+
+Looking at this chart, you can tell that Africa has roughly the same number of countries as Europe, and that most countries are... countries. Hovering over the node can confirm this fact.
+
+Also note that the nodes are a little bit further apart on this example, due to individual countries not being represented. Link length and chart margins are automatically calculated based on the number of nodes and the length of the labels.
+
+```{r plotsummary, warning=FALSE, message=FALSE}
+library(dplyr)
+
+Geography %>%
+  group_by(continent, type) %>%
+  summarize(`Number of Countries` = n()) %>%
+  collapsibleTreeSummary(
+    hierarchy = c("continent", "type"),
+    root = "Geography",
+    width = 800,
+    attribute = "Number of Countries",
+    zoomable = FALSE
+  )
+```
+
+## Varying Tree Depths using NAs
+
+Sometimes you need to represent trees with varying levels of depth. In the below example, every continent besides Antartica has a subregion. Antartica has an `NA` for its subregion, so no leafs will be drawn.
+
+```{r NAs}
+collapsibleTree(
+  Geography,
+  hierarchy = c("continent", "sub_region"),
+  width = 800
+)
+```
+
+## Converting a data frame to a tree
+
+A large amount of rectangular data that people want to convert into a tree follows the following model: Every column is a hierarchy level and every row is a leaf. In the previous examples, this model holds up nicely. Let's try an example where it doesn't: an org chart.
+
+```{r org}
+org <- data.frame(
+    Manager = c(
+        NA, "Ana", "Ana", "Bill", "Bill", "Bill", "Claudette", "Claudette", "Danny",
+        "Fred", "Fred", "Grace", "Larry", "Larry", "Nicholas", "Nicholas"
+    ),
+    Employee = c(
+        "Ana", "Bill", "Larry", "Claudette", "Danny", "Erika", "Fred", "Grace",
+        "Henri", "Ida", "Joaquin", "Kate", "Mindy", "Nicholas", "Odette", "Peter"
+    ),
+    Title = c(
+        "President", "VP Operations", "VP Finance", "Director", "Director", "Scientist",
+        "Manager", "Manager", "Jr Scientist", "Operator", "Operator", "Associate",
+        "Analyst", "Director", "Accountant", "Accountant"
+    )
+)
+```
+
+If we use the regular `collapsibleTree` function here and consider every row as a leaf, what we end up is a series of manager-employee relationships. The first level contains all people who manage others, and the second contains all the people who are managed. We also do not have a way of mapping titles to any employee in particular since the rows map to manager-employee relationships rather than the employees themselves.
+
+```{r collapsibleTree}
+collapsibleTree(org, c("Manager", "Employee"), collapsed = FALSE)
+```
+
+This isn't necessarily worthless, but what we want is an org chart. Let's try a different model: The first column is the parent, the second is the node itself, and all other columns are attributes describing that node. We can now map titles to employees in tooltips.
+
+```{r basic}
+collapsibleTreeNetwork(org, attribute = "Title", collapsed = FALSE)
+```
+
+Note that in the original data frame, we denoted Ana as the root by giving her an `NA` as a manager. Every tree must have exactly one root.
+
+In addition to title, we can also easily map colors and sizes to our org chart. It's not always easy to get our data in this structure, but if we can, it allows us a much greater degree of customizability over our chart.
+
+```{r color}
+org$Color <- org$Title
+levels(org$Color) <- colorspace::rainbow_hcl(11)
+collapsibleTreeNetwork(
+  org,
+  attribute = "Title",
+  fill = "Color",
+  nodeSize = "leafCount",
+  collapsed = FALSE
+)
+```
+
+It's also possible to assign custom html tooltips to each node since we now have so much more control over the nodes. Images used in the tooltips are from the Unsplash API.
+
+```{r unsplash}
+org$tooltip <- paste0(
+  org$Employee,
+  "<br>Title: ",
+  org$Title,
+  "<br><img src='https://source.unsplash.com/collection/385548/150x100'>"
+)
+
+collapsibleTreeNetwork(
+  org,
+  attribute = "Title",
+  fill = "Color",
+  nodeSize = "leafCount",
+  tooltipHtml = "tooltip",
+  collapsed = FALSE
+)
+```

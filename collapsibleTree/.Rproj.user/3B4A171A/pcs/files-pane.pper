@@ -1,0 +1,9 @@
+{
+    "path" : "~/Documents/Scripts/collapsibleTree",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}

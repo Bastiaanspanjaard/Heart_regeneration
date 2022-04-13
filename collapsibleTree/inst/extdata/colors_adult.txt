@@ -1,0 +1,44 @@
+cluster	Cell.type	origin	color	zoom1	color1	zoom2	color2	zoom3	color3
+0	Neurons (CNS)	brain	#377EB8	NA		NA		NA	
+1	Radial glia	brain	#649BC7	NA		NA		NA	
+2	Oligodendrocytes	brain	#91B8D7	NA		NA		NA	
+3	Microglia	brain	#BDD4E7	1	#e41a1c	NA		NA	
+4	Unknown	brain	#EBF2F7	NA		NA		NA	
+0	Endothelial cells (Heart)	heart	#9F1213	NA		NA		6	#ff7f00
+1	Erythrocytes	heart	#B71416	NA		NA		3	#377eb8
+2	Endocardial cells	heart	#CF1719	NA		NA		7	#4daf4a
+3	Cardiomyocytes (Atrium)	heart	#E41C1E	NA		NA		1	#e41a1c
+4	Cardiomyocytes (Ventricle)	heart	#E62F31	NA		NA		2	#e94749
+5	Fibroblasts (Heart)	heart	#E84143	NA		NA		8	#ffff99
+6	T cells	heart	#EA5455	2	#006d2c	NA		4	#9bbedb
+7	Macrophages	heart	#EC6668	8	#3f007d	NA		5	#afcbe2
+8	Smooth muscle cells (Heart)	heart	#EF797A	NA		NA		NA	
+9	Unknown	heart	#F18B8C	NA		NA		NA	
+10	Apelin expressing cells	heart	#F39E9E	NA		NA		NA	
+11	Monocytes	heart	#F5B0B1	5	#08519c	NA		NA	
+12	B cells	heart	#F7C3C3	3	#238b45	NA		NA	
+13	Endothelial cells (Blood vessel)	heart	#F9D5D5	NA		NA		NA	
+14	Granulocytes	heart	#FCE8E8	6	#2171b5	NA		NA	
+0	Pancreas exocrine cells A	pancreas	#173416	NA		8	#cccc7a	NA	
+1	Pancreas endocrine cells (delta)	pancreas	#1D431C	NA		3	#377eb8	NA	
+2	Bi-hormonal endocrine cells	pancreas	#245323	NA		7	#ee7576	NA	
+3	Pancreas endocrine cells (beta)	pancreas	#2B632A	NA		2	#4daf4a	NA	
+4	Smooth muscle cells B (Endocrine pancreas)	pancreas	#327330	NA		NA		NA	
+5	Hepatocytes	pancreas	#398337	NA		NA		NA	
+6	Pancreas endocrine cells (alpha)	pancreas	#40923E	NA		1	#e41a1c	NA	
+7	Smooth muscle cells A	pancreas	#47A244	NA		NA		NA	
+8	sst1.1 expressing cells	pancreas	#4FB04C	NA		6	#b7dfb6	NA	
+9	Hepatic stellate cells	pancreas	#5AB557	NA		NA		NA	
+10	Endothelial cells (Blood vessel)	pancreas	#65BA63	NA		NA		NA	
+11	Pancreas exocrine cells B	pancreas	#71BF6E	NA		9	#cccc7a	NA	
+12	Fibroblasts (Endoderm)	pancreas	#7CC47A	NA		NA		NA	
+13	Pancreas duct epithelial cells	pancreas	#87C985	NA		10	#ffff33	NA	
+14	T cells	pancreas	#92CE90	4	#41ab5d	NA		NA	
+15	Endothelial cells (lymph)	pancreas	#9ED39C	NA		NA		NA	
+16	Pancreas endocrine cells (gip)	pancreas	#A9D8A7	NA		5	#984ea3	NA	
+17	Peripheral Neurons	pancreas	#B4DDB3	NA		NA		NA	
+18	Macrophages	pancreas	#BFE2BE	9	#54278f	NA		NA	
+19	Hepatic duct cells	pancreas	#CBE7C9	NA		NA		NA	
+20	Apelin cells	pancreas	#D6ECD5	NA		NA		NA	
+21	Pancreas endocrine cells (epsilon)	pancreas	#E1F1E0	NA		4	#ff7f00	NA	
+22	Granulocytes	pancreas	#EDF7EC	7	#6baed6	NA		NA	

@@ -1,0 +1,123 @@
+---
+title: 'Collapsible Tree Example 1: R Markdown'
+author: "Adeel Khan"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(collapsibleTree)
+load(system.file("extdata/Geography.rda", package = "collapsibleTree"))
+```
+
+## Data frames, not lists
+
+When working with data in R, it makes sense (at least to me) to represent everything as a data frame. I'm a big fan of [tidy data](https://cran.r-project.org/web/packages/tidyr/vignettes/tidy-data.html), but this structure does not lend itself to easily designing hierarchical networks. 
+
+collapsibleTree uses [data.tree](https://cran.r-project.org/web/packages/data.tree/vignettes/data.tree.html) to handle all of that, freeing you from a lot of recursive list construction.
+
+Here is an example geography dataset from [data.world](https://data.world/glx/geography-table):
+
+```{r summary}
+summary(Geography)
+```
+
+## Rendering the plot
+
+With your data frame in hand, and a vector of columns to graph, creating an interactive collapsible tree diagram can be done like so:
+
+```{r plot}
+collapsibleTree(
+  Geography,
+  hierarchy = c("continent", "type", "country"),
+  width = 800
+)
+```
+
+## Adding Colors
+
+You can add colors to each node in the diagram manually by declaring a `fill` value. Fill is declared as a hierarchy, applied down the tree. In order to get your vectors to the right length for complex trees (this one has 385 nodes), you could use a pattern like this:
+
+```{r plotcolored}
+collapsibleTree(
+  Geography,
+  hierarchy = c("continent", "type", "country"),
+  width = 800,
+  fill = c(
+    # The root
+    "white",
+    # Unique continents
+    rep("firebrick", length(unique(Geography$continent))),
+    # Unique types per continent
+    rep("steelblue", length(unique(paste(Geography$continent, Geography$type)))),
+    # Unique countries
+    rep("green", length(unique(Geography$country)))
+  )
+)
+```
+
+## Using Gradients
+
+Throw in some gradients if you'd like! Each node can have its own distinct color. Let's use some `dplyr` to help us with the data aggregation and use `RColorBrewer` and `colorspace` to make some nice looking palettes.
+
+The fill order is depends on the order of the data frame. This time we'll sort alphabetically rather than using the order the dataset originally came in.
+
+```{r plotgradient, warning=FALSE}
+library(dplyr, warn.conflicts = FALSE)
+
+# Continents are a simple gradient
+continentColors <- RColorBrewer::brewer.pal(length(unique(Geography$continent)), "Reds")
+# Types will be a gradient that resets between continents
+typeColors <- Geography %>%
+  arrange(continent, type) %>% 
+  group_by(continent) %>%
+  distinct(type) %>%
+  mutate(colors = colorspace::sequential_hcl(length(type))[seq_along(type)])
+# Countries will also be a gradient that resets between continents, but not types
+countryColors <- Geography %>%
+  arrange(continent, type) %>% 
+  group_by(continent) %>%
+  distinct(country) %>%
+  mutate(colors = colorspace::rainbow_hcl(length(country))[seq_along(country)])
+
+Geography %>%
+  arrange(continent, type, country) %>%
+  collapsibleTree(
+    hierarchy = c("continent", "type", "country"),
+    root = "Geography",
+    width = 800,
+    fill = c("white", continentColors, typeColors$colors, countryColors$colors)
+  )
+```
+
+## Basing Gradients on a Numeric Column
+
+Using `dplyr` and `colorspace` again, we can create a new column in the source data frame for the total number of countries on each continent, and map that column to the fill gradient of the nodes. `collapsibleTreeSummary` serves as a convenience function around `collapsibleTree`. 
+
+Looking at this chart, you can tell that Africa has roughly the same number of countries as Europe, and that most countries are... countries. Hovering over the node can confirm this fact.
+
+Also note that the nodes are a little bit further apart on this example, due to individual countries not being represented. Link length and chart margins are automatically calculated based on the number of nodes and the length of the labels.
+
+```{r plotsummary, warning=FALSE}
+Geography %>%
+  group_by(continent, type) %>%
+  summarise(`Number of Countries` = n()) %>%
+  collapsibleTreeSummary(
+    hierarchy = c("continent", "type"),
+    root = "Geography",
+    width = 800,
+    attribute = "Number of Countries"
+  )
+```
+
+## Varying Tree Depths using NAs
+
+Sometimes you need to represent trees with varying levels of depth. In the below example, every continent besides Antartica has a subregion. Antartica has an `NA` for its subregion, so no leafs will be drawn.
+
+```{r NAs}
+collapsibleTree(
+  Geography,
+  hierarchy = c("continent", "sub_region"),
+  width = 800
+)
+```

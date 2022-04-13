@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1516288637661.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1662512384",
+    "id" : "9BD5CAB0",
+    "lastKnownWriteTime" : 1516289741,
+    "last_content_update" : 1516289741881,
+    "path" : "~/Documents/Scripts/collapsibleTree/R/collapsibleTree.R",
+    "project_path" : "R/collapsibleTree.R",
+    "properties" : {
+        "cursorPosition" : "107,87",
+        "scrollLine" : "88"
+    },
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
