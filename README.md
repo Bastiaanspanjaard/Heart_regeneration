@@ -1,5 +1,5 @@
 # Heart regeneration
-Data analysis scripts for single cell heart regeneration in zebrafish. Includes cell type determination using Seurat [Seurat](http://satijalab.org/seurat/), bulk RNA deconvolution using [AutoGeneS](https://autogenes.readthedocs.io/en/latest/), lineage tree building using [LINNAEUS](https://github.com/Bastiaanspanjaard/LINNAEUS), lineage tree analysis using scripts in this repository and trajectory analysis using [scanpy/PAGA](https://scanpy.readthedocs.io/en/stable/) and RNA velocity using [scvelo](https://scvelo.readthedocs.io).
+Data analysis scripts for single cell heart regeneration in zebrafish. External packages used: [Seurat](http://satijalab.org/seurat/) for single-cell transcriptome analysis, [AutoGeneS](https://autogenes.readthedocs.io/en/latest/) for bulk deconvolution, [LINNAEUS](https://github.com/Bastiaanspanjaard/LINNAEUS) for lineage tree building, [CellPhoneDB](https://github.com/Teichlab/cellphonedb) for ligand-receptor analysis, and [scanpy/PAGA](https://scanpy.readthedocs.io/en/stable/) and [scvelo](https://scvelo.readthedocs.io) for single-cell trajectory analysis.
 
 # Data analysis workflow
 1. __Determine cell types and marker gene expression.__ (Seurat, Bo's scripts)
