@@ -4,6 +4,8 @@ require(ggplot2)
 library(cowplot)
 library(reshape2)
 library(pheatmap)
+library(ggbeeswarm)
+
 combine_plots <- function(...,
                           title.text = NULL,
                           title.color = "black",
@@ -145,17 +147,25 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
   return(datac)
 }
 
-# define colors for cell types ####
+# Define colors for cell types ####
 # saveRDS(colors,file = "final_clustering/finalplots/color_scheme_seurat.rds")
 colors <- readRDS(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/finalplots/color_scheme_seurat.rds")
 col.table <- colors
 
-set1 <- c("Epicardium (Atrium)","Macrophages","T-cells","Neutrophils","B-cells",
-  "Monocytes","Fibroblasts","Epicardium (Ventricle)",
-  "Fibroblast-like cells","Perivascular cells","Endocardium (A)","Smooth muscle cells",
+# NEW
+set1 <- c("Epicardium (A)","Macrophages","T-cells","Neutrophils","B-cells",
+  "Monocytes","Fibroblasts","Epicardium (V)",
+  "Valve fibroblasts","Perivascular cells","Endocardium (A)","Smooth muscle cells",
   "Endocardium (V)","Cardiomyocytes (ttn.2) A","Cardiomyocytes V","Cardiomyocytes A", # TEST - DOES ADDING THE "A" to CM (ttn.2) not break anything?
   "Endocardium (frzb)","Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Bl.ves.EC (lyve1)","Cardiomyocytes (ttn.2) V",
   "Proliferating cells","Cardiomyocytes (proliferating)","Myelin cells")
+# OLD
+# set1 <- c("Epicardium (Atrium)","Macrophages","T-cells","Neutrophils","B-cells",
+#           "Monocytes","Fibroblasts","Epicardium (Ventricle)",
+#           "Fibroblast-like cells","Perivascular cells","Endocardium (A)","Smooth muscle cells",
+#           "Endocardium (V)","Cardiomyocytes (ttn.2) A","Cardiomyocytes V","Cardiomyocytes A", # TEST - DOES ADDING THE "A" to CM (ttn.2) not break anything?
+#           "Endocardium (frzb)","Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Bl.ves.EC (lyve1)","Cardiomyocytes (ttn.2) V",
+#           "Proliferating cells","Cardiomyocytes (proliferating)","Myelin cells")
 names(set1) <- c("creamyellow2","winered","pink","syn-magenta","syn-magentalight",
                  "darkpink","yellow","darkyellow",
                  "yellowochre","darkpurple","blue","ocker",
@@ -174,11 +184,17 @@ names(setCM) <- c("green2","green","darkgreen",
 setCM <- data.frame(name = names(setCM),setCM = setCM)
 col.table <- merge(x = col.table,y = setCM,by.x = "name",by.y = "name",all.x = T)
 
-setFibro <- c("Fibroblast","Epicardium (Ventricle)","Epicardium (Atrium)",
-             "Fibroblast (cxcl12a)","Fibroblast (col11a1a)","Fibroblast (cfd)",
-             "Fibroblast-like cells","Fibroblast (col12a1a)","Perivascular cells",
-             "Fibroblast (nppc)","Fibroblast (spock3)","Fibroblast (mpeg1.1)",
-             "Fibroblast (proliferating)")
+setFibro <- c("Fibroblasts (const.)","Epicardium (V)","Epicardium (A)",
+             "Fibroblasts (cxcl12a)","Fibroblasts (col11a1a)","Fibroblasts (cfd)",
+             "Valve fibroblasts","Fibroblasts (col12a1a)","Perivascular cells",
+             "Fibroblasts (nppc)","Fibroblasts (spock3)","Fibroblasts (mpeg1.1)",
+             "Fibroblasts (prolif.)")
+# OLD
+# setFibro <- c("Fibroblast","Epicardium (Ventricle)","Epicardium (Atrium)",
+#               "Fibroblast (cxcl12a)","Fibroblast (col11a1a)","Fibroblast (cfd)",
+#               "Fibroblast-like cells","Fibroblast (col12a1a)","Perivascular cells",
+#               "Fibroblast (nppc)","Fibroblast (spock3)","Fibroblast (mpeg1.1)",
+#               "Fibroblast (proliferating)")
 names(setFibro) <-      c("syn-lightyellow","darkyellow","creamyellow2",
                           "lightpink","lightblue","green2",
                           "yellowochre","syn-red","darkpurple",
@@ -208,12 +224,13 @@ col.table <- merge(x = col.table,y = setImmune,by.x = "name",by.y = "name",all.x
 # saveRDS(col.table,file = "/local/Bo/Remap_allhearts/final_clustering/col.table.rds")
 
 
-# get all plot relevant objects ####
+# Get all plot relevant objects ####
 
 ## allhearts
 load(file = "/local/Bo/Remap_allhearts/final_clustering/final.all.hearts.noErynoDuplex.Robj")
 load(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/CM2.Robj")
 final.all.hearts$plot.ident <- final.all.hearts$lineage.ident
+# NEW
 final.all.hearts@meta.data$plot.ident <- plyr::mapvalues(final.all.hearts@meta.data$plot.ident, 
    from =c("Cardiomyocytes A","Cardiomyocytes V" ,"Cardiomyocytes (ttn.2) A",
            "Cardiomyocytes (ttn.2) V","Endocardium (V)","Endocardium (A)",
@@ -243,12 +260,45 @@ final.all.hearts@meta.data$plot.ident <- plyr::mapvalues(final.all.hearts@meta.d
          "Endocardium (frzb)","Fibroblasts","Fibroblasts",
          "Myelin cells","Neuronal cells","Perivascular cells",
          "Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Fibroblasts",
-         "Epicardium (Atrium)","Epicardium (Ventricle)","Fibroblasts",
+         "Epicardium (A)","Epicardium (V)","Fibroblasts",
          "Fibroblasts","Bl.ves.EC (lyve1)","Fibroblasts")  )
-plot_grid(
-  DimPlot(final.all.hearts,group.by = "plot.ident", label = T)+NoLegend(),
-  DimPlot(final.all.hearts, label = T,group.by = "seurat_clusters")+NoLegend()
-)
+# OLD
+# final.all.hearts@meta.data$plot.ident <- 
+#   plyr::mapvalues(final.all.hearts@meta.data$plot.ident, 
+#                   from =c("Cardiomyocytes A","Cardiomyocytes V" ,"Cardiomyocytes (ttn.2) A",
+#                           "Cardiomyocytes (ttn.2) V","Endocardium (V)","Endocardium (A)",
+#                           "Fibroblast","Smooth muscle cells","Cardiomyocytes (proliferating)",
+#                           "B-cells","Macrophage (CM duplex)","Macrophage (Fibroblast duplex)",
+#                           "Macrophage (Endothelia duplex)","Proliferating cells","Fibroblast (mpeg1.1)",
+#                           "Fibroblast (cfd)","Monocytes","Macrophage (il1b)",
+#                           "T-cells (il4/13)","Macrophages","T-cells",
+#                           "Macrophage (proliferating)","Macrophage (cd59)","Neutrophils",
+#                           "Macrophage (epdl)","T-cells (proliferating)","Macrophage (Ery duplex)",
+#                           "Macrophage (apoeb)","Dead cells","Fibroblast-like cells",
+#                           "Endocardium (frzb)","Fibroblast (nppc)","Fibroblast (spock3)",
+#                           "Myelin cells","Neuronal cells","Perivascular cells",
+#                           "Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Fibroblast (cxcl12a)",
+#                           "Epicardium (Atrium)","Epicardium (Ventricle)","Fibroblast (col12a1a)",
+#                           "Fibroblast (col11a1a)","Bl.ves.EC (lyve1)","Fibroblast (proliferating)")     , 
+#                   to = c("Cardiomyocytes A","Cardiomyocytes V" ,"Cardiomyocytes (ttn.2) A",
+#                          "Cardiomyocytes (ttn.2) V","Endocardium (V)","Endocardium (A)",
+#                          "Fibroblasts","Smooth muscle cells","Cardiomyocytes (proliferating)",
+#                          "B-cells","Macrophages","Macrophages",
+#                          "Macrophages","Proliferating cells","Fibroblasts",
+#                          "Fibroblasts","Monocytes","Macrophages",
+#                          "T-cells","Macrophages","T-cells",
+#                          "Macrophages","Macrophages","Neutrophils",
+#                          "Macrophages","T-cells","Macrophages",
+#                          "Macrophages","Macrophages","Fibroblast-like cells",
+#                          "Endocardium (frzb)","Fibroblasts","Fibroblasts",
+#                          "Myelin cells","Neuronal cells","Perivascular cells",
+#                          "Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Fibroblasts",
+#                          "Epicardium (Atrium)","Epicardium (Ventricle)","Fibroblasts",
+#                          "Fibroblasts","Bl.ves.EC (lyve1)","Fibroblasts")  )
+# plot_grid(
+#   DimPlot(final.all.hearts,group.by = "plot.ident", label = T)+NoLegend(),
+#   DimPlot(final.all.hearts, label = T,group.by = "seurat_clusters")+NoLegend()
+# )
 final.all.hearts <- SetIdent(final.all.hearts,value = "plot.ident")
 # final.all.hearts$plot.ident2 <- plyr::mapvalues(final.all.hearts$plot.ident2, from ="Cardiomyocytes (ttn.2)", to = "Cardiomyocytes (ttn.2) A")
 final.all.hearts <- SetIdent(final.all.hearts, cells = WhichCells(final.all.hearts,expression = seurat_clusters %in% c(36,73) ),value = "Epicardium (Atrium)")
@@ -261,7 +311,7 @@ final.all.hearts <- SetIdent(final.all.hearts,
                              value = "Cardiomyocytes (ttn.2) V")
 
 
-DimPlot(final.all.hearts,label = T)
+# DimPlot(final.all.hearts,label = T)
 # final.all.hearts <- StashIdent(final.all.hearts,save.name = "plot.ident2")
 final.all.hearts[["plot.ident2"]] <- Idents(object = final.all.hearts)
 # final.all.hearts$plot.ident2 <- plyr::mapvalues(final.all.hearts$plot.ident2, from ="Cardiomyocytes (ttn.2)", to = "Cardiomyocytes (ttn.2) A")
@@ -273,24 +323,101 @@ final.all.hearts[["plot.ident2"]] <- Idents(object = final.all.hearts)
 # final.all.hearts.sce@colData@listData <- final.all.hearts.sce@colData@listData[c("orig.ident", "time", "morphine", "AV", "inhib", "plot.ident2")]
 # save(final.all.hearts.sce, file = "/local/users/Bastiaan/Projects/heart_Bo/Data/SCE_fullobject.Robj")
 
+all.heart.norm.counts <- data.frame(table(final.all.hearts@meta.data$orig.ident))
 
-DimPlot(final.all.hearts, group.by = "plot.ident2",label = F,
-cols = colors$color[match(c("viridian","creamyellow2","winered","pink","syn-magenta","syn-magentalight",
-         "darkpink","yellow","darkyellow",
-         "yellowochre","darkpurple","blue","ocker",
-          "darkblue","green","darkgreen","middlegreen",
-          "mattblue","orange","mattorange","darkorange","green2",
-          "white","cream","cream"),colors$name)] )
+# DimPlot(final.all.hearts, group.by = "plot.ident2",label = F,
+#         cols = colors$color[match(c("viridian","creamyellow2","winered","pink","syn-magenta","syn-magentalight",
+#                                     "darkpink","yellow","darkyellow",
+#                                     "yellowochre","darkpurple","blue","ocker",
+#                                     "darkblue","green","darkgreen","middlegreen",
+#                                     "mattblue","orange","mattorange","darkorange","green2",
+#                                     "white","cream","cream"),colors$name)] )
 
-# Plot 1B and time-resolved subsets
+
+
+# cols = c("Epicardium (Atrium)","Macrophages","T-cells","Neutrophils","B-cells",
+#           "Monocytes","Fibroblasts","Epicardium (Ventricle)",
+#           "Fibroblast-like cells","Perivascular cells","Endocardium (A)","Smooth muscle cells",
+#           "Endocardium (V)","Cardiomyocytes (ttn.2)","Cardiomyocytes V","Cardiomyocytes A",
+#           "Endocardium (frzb)","Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Bl.ves.EC (lyve1)","Cardiomyocytes (ttn.2) V",
+#           "Proliferating cells","Myelin cells","Cardiomyocytes (proliferating)","Neuronal cells"))+NoLegend()
+
+
+## CM
+# load(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/CM.Robj")
+# final.all.hearts <- SetIdent(final.all.hearts,value = "lineage.ident")
+# CM <- subset(final.all.hearts,idents = c("Cardiomyocytes A","Cardiomyocytes V","Cardiomyocytes (ttn.2) A","Cardiomyocytes (ttn.2) V","Cardiomyocytes (proliferating)"))
+# select.cells <- CellSelector(DimPlot(CM)+NoLegend())
+# CM <- subset(CM,cells = select.cells)
+# CM <- StashIdent(CM,save.name = "work.ident")
+# CM$work.ident <- as.character(CM$work.ident)
+
+# select.cells <- CellSelector(DimPlot(CM)+NoLegend())
+CM <- SetIdent(CM,value = "work.ident")
+CM <- SetIdent(CM,cells = WhichCells(final.all.hearts,expression = seurat_clusters == 6), value = "Cardiomyocytes (ttn.2) V")
+CM <- StashIdent(CM,save.name = "work.ident2")
+#save(CM,file = "final_clustering/CM2.Robj")
+
+# DimPlot(CM,group.by = "work.ident", #"new.ident", 
+#         label = T,cols = colors[match(c("green2","green","darkgreen",
+#                                         "middlegreen","viridian"),colors$name),]$color,pt.size = 1.2)
+
+
+## endo
+final.all.hearts <- SetIdent(final.all.hearts,value = "final.zoom")
+endo <- subset(final.all.hearts,idents = c("Endocardium 1 (V)","Endocardium 1 (A)","Endocardium 2 (V)","Endocardium 2 (A)","Endocardium frzb (A)","Endocardium frzb (V)"))
+#select.cells <- CellSelector(DimPlot(endo)+NoLegend())
+endo <- subset(endo,cells = select.cells)
+endo <- StashIdent(endo,save.name = "work.ident")
+endo$work.ident <- as.character(endo$work.ident)
+endo$lineage.ident <- as.character(endo$lineage.ident)
+
+# DimPlot(endo,label = T,group.by = "lineage.ident",
+#         cols=colors[match(c("lightblue","darkpurple","darkblue"
+#                        ),colors$name),]$color,pt.size = 1)
+
+
+
+## niche
+load(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/niche.noEry.Robj")
+# DimPlot(niche,group.by = "work.ident",label = T)
+niche@meta.data$work.ident <- 
+  plyr::mapvalues(niche@meta.data$work.ident, 
+                  from = c("Fibroblast", "Fibroblast (cfd)", "Fibroblast (cxcl12a)", "Fibroblast (spock3)",
+                          "Fibroblast-like cells", "Fibroblast (col12a1a)", "Fibroblast (col11a1a)",
+                          "Epicardium (Ventricle)", "Epicardium (Atrium)", "Fibroblast (mpeg1.1)",
+                          "Fibroblast (nppc)", "Fibroblast (proliferating)", "Perivascular cells"), 
+                  to = c("Fibroblasts (const.)", "Fibroblasts (cfd)", "Fibroblasts (cxcl12a)", "Fibroblasts (spock3)",
+                         "Valve fibroblasts", "Fibroblasts (col12a1a)", "Fibroblasts (col11a1a)",
+                         "Epicardium (V)", "Epicardium (A)", "Fibroblasts (mpeg1.1)",
+                         "Fibroblasts (nppc)", "Fibroblasts (prolif.)", "Perivascular cells")  )
+ 
+
+## immune
+load(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/immune.noEry.Robj")
+
+# Plot not in manuscript
+# DimPlot(immune,group.by = "work.ident",label = T)+NoLegend()
+# DimPlot(immune,label = F,group.by = "work.ident",
+#         cols=colors[match(
+#           c("yellow","syn-red","green",
+#             "orange","darkblue","ocker",
+#             "leadwhite","leadwhite","pink",
+#             "winered","lightblue","darkgreen",
+#             "leadwhite","white2","darkpurple2",
+#             "darkorange","leadwhite")
+#           ,colors$name),]$color,pt.size = 1)
+
+# Plot UMAPs ####
+# Plot 1b and time-resolved subsets
 # png("/local/users/Bastiaan/Projects/heart_Bo/Images/Hearts_all_UMAP.png",
 #     width = 960, height = 960)
 DimPlot(final.all.hearts,label = F, pt.size = 0.75,
         cols = col.table$color[match(levels(final.all.hearts$plot.ident2),col.table$set1)]) + NoLegend() +
-theme(axis.line = element_blank(),
-      axis.ticks = element_blank(),
-      axis.title = element_blank(),
-      axis.text = element_blank())
+  theme(axis.line = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        axis.text = element_blank())
 # dev.off()
 hearts.ctrl <- subset(x = final.all.hearts, subset = time == "Ctrl")
 # png("/local/users/Bastiaan/Projects/heart_Bo/Images/Hearts_ctrl_subset_UMAP.png",
@@ -333,77 +460,16 @@ DimPlot(hearts.30dpi, label = F, pt.size = 0.75,
         axis.text = element_blank())
 # dev.off()
 
-
-# cols = c("Epicardium (Atrium)","Macrophages","T-cells","Neutrophils","B-cells",
-#           "Monocytes","Fibroblasts","Epicardium (Ventricle)",
-#           "Fibroblast-like cells","Perivascular cells","Endocardium (A)","Smooth muscle cells",
-#           "Endocardium (V)","Cardiomyocytes (ttn.2)","Cardiomyocytes V","Cardiomyocytes A",
-#           "Endocardium (frzb)","Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Bl.ves.EC (lyve1)","Cardiomyocytes (ttn.2) V",
-#           "Proliferating cells","Myelin cells","Cardiomyocytes (proliferating)","Neuronal cells"))+NoLegend()
-
-
-## CM
-# load(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/CM.Robj")
-# final.all.hearts <- SetIdent(final.all.hearts,value = "lineage.ident")
-# CM <- subset(final.all.hearts,idents = c("Cardiomyocytes A","Cardiomyocytes V","Cardiomyocytes (ttn.2) A","Cardiomyocytes (ttn.2) V","Cardiomyocytes (proliferating)"))
-# select.cells <- CellSelector(DimPlot(CM)+NoLegend())
-# CM <- subset(CM,cells = select.cells)
-# CM <- StashIdent(CM,save.name = "work.ident")
-# CM$work.ident <- as.character(CM$work.ident)
-
-# select.cells <- CellSelector(DimPlot(CM)+NoLegend())
-CM <- SetIdent(CM,value = "work.ident")
-CM <- SetIdent(CM,cells = WhichCells(final.all.hearts,expression = seurat_clusters == 6), value = "Cardiomyocytes (ttn.2) V")
-CM <- StashIdent(CM,save.name = "work.ident2")
-
-#save(CM,file = "final_clustering/CM2.Robj")
-
-DimPlot(CM,group.by = "work.ident", #"new.ident", 
-        label = T,cols = colors[match(c("green2","green","darkgreen",
-                                        "middlegreen","viridian"),colors$name),]$color,pt.size = 1.2)
-
-
-## endo
-final.all.hearts <- SetIdent(final.all.hearts,value = "final.zoom")
-endo <- subset(final.all.hearts,idents = c("Endocardium 1 (V)","Endocardium 1 (A)","Endocardium 2 (V)","Endocardium 2 (A)","Endocardium frzb (A)","Endocardium frzb (V)"))
-#select.cells <- CellSelector(DimPlot(endo)+NoLegend())
-endo <- subset(endo,cells = select.cells)
-endo <- StashIdent(endo,save.name = "work.ident")
-endo$work.ident <- as.character(endo$work.ident)
-endo$lineage.ident <- as.character(endo$lineage.ident)
-
-DimPlot(endo,label = T,group.by = "lineage.ident",
-        cols=colors[match(c("lightblue","darkpurple","darkblue"
-                       ),colors$name),]$color,pt.size = 1)
-
-
-
-## niche
-load(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/niche.noEry.Robj")
-# DimPlot(niche,group.by = "work.ident",label = T)
-niche@meta.data$work.ident <- 
-  plyr::mapvalues(niche@meta.data$work.ident, 
-                  from = c("Fibroblast", "Fibroblast (cfd)", "Fibroblast (cxcl12a)", "Fibroblast (spock3)",
-                          "Fibroblast-like cells", "Fibroblast (col12a1a)", "Fibroblast (col11a1a)",
-                          "Epicardium (Ventricle)", "Epicardium (Atrium)", "Fibroblast (mpeg1.1)",
-                          "Fibroblast (nppc)", "Fibroblast (proliferating)", "Perivascular cells"), 
-                  to = c("Fibroblasts (const.)", "Fibroblasts (cfd)", "Fibroblasts (cxcl12a)", "Fibroblasts (spock3)",
-                         "Valve fibroblasts", "Fibroblasts (col12a1a)", "Fibroblasts (col11a1a)",
-                         "Epicardium (V)", "Epicardium (A)", "Fibroblasts (mpeg1.1)",
-                         "Fibroblasts (nppc)", "Fibroblast (prolif.)", "Perivascular cells")  )
- 
+# 2c
 DimPlot(niche,label = F,group.by = "work.ident",
         cols=colors[match(
-         #consistent:
-           c("syn-lightyellow","darkyellow","creamyellow2",
+          #consistent:
+          c("syn-lightyellow","darkyellow","creamyellow2",
             "lightpink","lightblue","green2",
             "yellowochre","syn-red","darkpurple",
             "purple","lightpurple","white2",
             "darkblue2")
-,colors$name),]$color,pt.size = 1)
-
-
-
+          ,colors$name),]$color,pt.size = 1)
 #pretty:
 # c("syn-red","darkblue2","lightblue",
 #   "lightpink","darkyellow2","green2",
@@ -421,101 +487,90 @@ DimPlot(niche,label = F,group.by = "work.ident",
 #           ,colors$name),]$color,pt.size = 1)
 
 
-
-
-## immune
-load(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/immune.noEry.Robj")
-
-# DimPlot(immune,group.by = "work.ident",label = T)+NoLegend()
-DimPlot(immune,label = F,group.by = "work.ident",
-        cols=colors[match(
-          c("yellow","syn-red","green",
-            "orange","darkblue","ocker",
-            "leadwhite","leadwhite","pink",
-            "winered","lightblue","darkgreen",
-            "leadwhite","white2","darkpurple2",
-            "darkorange","leadwhite")
-          ,colors$name),]$color,pt.size = 1)
-
-
-# Gene expression ####
-FeaturePlot(final.all.hearts, features = c("wwtr1", "mst1", "stk3",
-                                           "lats1", "lats2", "yap1"))
-VlnPlot(final.all.hearts, features = c("wwtr1"))
-
-CalculateTimeAverages <- function(seuratobject, features){
-  time_average <-
-    AverageExpression(seuratobject, features = features,
-                      add.ident = "time")
-  time_average_long <- melt(cbind(time_average$RNA,
-                                    data.frame(Gene = rownames(time_average$RNA),
-                                               stringsAsFactors = F)))
-  colnames(time_average_long)[3] <- "Expression"
-  time_average_long$Cell_type <-
-    sapply(as.character(time_average_long$variable),
-           function(x){
-             unlist(strsplit(x, "_"))[1]
-           })
-  time_average_long$Time <-
-    sapply(as.character(time_average_long$variable),
-           function(x){
-             unlist(strsplit(x, "_"))[2]
-           })
-  return(time_average_long)
-}
-
-wwtr1_time_av <- CalculateTimeAverages(final.all.hearts, features = c("wwtr1"))
-
-niche_col12_time_average <-
-  AverageExpression(niche, features = c("col12a1a", "col12a1b", "serpine1"),
-                    add.ident = "time")
-niche_time_averages <- melt(cbind(niche_col12_time_average$RNA,
-                                  data.frame(Gene = rownames(niche_col12_time_average$RNA),
-                                             stringsAsFactors = F)))
-colnames(niche_time_averages)[3] <- "Expression"
-niche_time_averages$Cell_type <-
-  sapply(as.character(niche_time_averages$variable),
-         function(x){
-           unlist(strsplit(x, "_"))[1]
-         })
-niche_time_averages$Time <-
-  sapply(as.character(niche_time_averages$variable),
-         function(x){
-           unlist(strsplit(x, "_"))[2]
-         })
-
-FeaturePlot(final.all.hearts, features = c("nppc", "klf1"))
-DotPlot(final.all.hearts, features = c("nppc", "klf1"))
-VlnPlot(final.all.hearts, features = c("nppc", "klf1"))
-DimPlot(final.all.hearts[final.all.hearts@meta.data$time == "7dpi"])
-sevendpi.hearts <- subset(final.all.hearts, subset = time == "7dpi")
-DimPlot(sevendpi.hearts)
-VlnPlot(sevendpi.hearts, features = c("nppc", "klf1", "klf2", "klf4"))
-
-FeaturePlot(final.all.hearts, features = c("fli1a", "rspo1", "rspo2", "rspo3", "rspo4"))
-
-VlnPlot(niche, features = c("col12a1a", "col12a1b", "serpine1"),
-        group.by = "work.ident",
-        #idents = c("Fibroblasts (const.)", "Fibroblasts (col12a1a)", "Fibroblasts (col11a1a)"),
-        split.by = "time")
-niche <- SetIdent(niche, value = "work.ident")
-niche_col12_time_average <-
-  AverageExpression(niche, features = c("col12a1a", "col12a1b", "serpine1"),
-                  add.ident = "time")
-niche_time_averages <- melt(cbind(niche_col12_time_average$RNA,
-                            data.frame(Gene = rownames(niche_col12_time_average$RNA),
-                                       stringsAsFactors = F)))
-colnames(niche_time_averages)[3] <- "Expression"
-niche_time_averages$Cell_type <-
-  sapply(as.character(niche_time_averages$variable),
-       function(x){
-         unlist(strsplit(x, "_"))[1]
-       })
-niche_time_averages$Time <-
-  sapply(as.character(niche_time_averages$variable),
-         function(x){
-           unlist(strsplit(x, "_"))[2]
-         })
+# Gene expression - UNUSED? ####
+# FeaturePlot(final.all.hearts, features = c("vangl2", "prickle1a", "fhl2a"))
+# VlnPlot(final.all.hearts, features = c("yap1"),
+#         cols = col.table$color[match(levels(final.all.hearts$plot.ident2),col.table$set1)])
+# 
+# CalculateTimeAverages <- function(seuratobject, features){
+#   time_average <-
+#     AverageExpression(seuratobject, features = features,
+#                       add.ident = "time")
+#   time_average_long <- melt(cbind(time_average$RNA,
+#                                     data.frame(Gene = rownames(time_average$RNA),
+#                                                stringsAsFactors = F)))
+#   colnames(time_average_long)[3] <- "Expression"
+#   time_average_long$Cell_type <-
+#     sapply(as.character(time_average_long$variable),
+#            function(x){
+#              unlist(strsplit(x, "_"))[1]
+#            })
+#   time_average_long$Time <-
+#     sapply(as.character(time_average_long$variable),
+#            function(x){
+#              unlist(strsplit(x, "_"))[2]
+#            })
+#   return(time_average_long)
+# }
+# 
+# wwtr1_time_av <- CalculateTimeAverages(final.all.hearts, features = c("wwtr1"))
+# yap1_time_av <- CalculateTimeAverages(final.all.hearts, features = c("yap1"))
+# yap1_time_av$Time <- factor(yap1_time_av$Time, levels = c("Ctrl", "3dpi", "7dpi", "30dpi"))
+# ggplot(yap1_time_av) +
+#   geom_point(aes(x = Time, y = Expression, color = Cell_type)) +
+#   facet_wrap(~Cell_type)
+# 
+# 
+# niche_col12_time_average <-
+#   AverageExpression(niche, features = c("col12a1a", "col12a1b", "serpine1"),
+#                     add.ident = "time")
+# niche_time_averages <- melt(cbind(niche_col12_time_average$RNA,
+#                                   data.frame(Gene = rownames(niche_col12_time_average$RNA),
+#                                              stringsAsFactors = F)))
+# colnames(niche_time_averages)[3] <- "Expression"
+# niche_time_averages$Cell_type <-
+#   sapply(as.character(niche_time_averages$variable),
+#          function(x){
+#            unlist(strsplit(x, "_"))[1]
+#          })
+# niche_time_averages$Time <-
+#   sapply(as.character(niche_time_averages$variable),
+#          function(x){
+#            unlist(strsplit(x, "_"))[2]
+#          })
+# 
+# FeaturePlot(final.all.hearts, features = c("nppc", "klf1"))
+# DotPlot(final.all.hearts, features = c("nppc", "klf1"))
+# VlnPlot(final.all.hearts, features = c("nppc", "klf1"))
+# DimPlot(final.all.hearts[final.all.hearts@meta.data$time == "7dpi"])
+# sevendpi.hearts <- subset(final.all.hearts, subset = time == "7dpi")
+# DimPlot(sevendpi.hearts)
+# VlnPlot(sevendpi.hearts, features = c("nppc", "klf1", "klf2", "klf4"))
+# 
+# FeaturePlot(final.all.hearts, features = c("fli1a", "rspo1", "rspo2", "rspo3", "rspo4"))
+# 
+# VlnPlot(niche, features = c("col12a1a", "col12a1b", "serpine1"),
+#         group.by = "work.ident",
+#         #idents = c("Fibroblasts (const.)", "Fibroblasts (col12a1a)", "Fibroblasts (col11a1a)"),
+#         split.by = "time")
+# niche <- SetIdent(niche, value = "work.ident")
+# niche_col12_time_average <-
+#   AverageExpression(niche, features = c("col12a1a", "col12a1b", "serpine1"),
+#                   add.ident = "time")
+# niche_time_averages <- melt(cbind(niche_col12_time_average$RNA,
+#                             data.frame(Gene = rownames(niche_col12_time_average$RNA),
+#                                        stringsAsFactors = F)))
+# colnames(niche_time_averages)[3] <- "Expression"
+# niche_time_averages$Cell_type <-
+#   sapply(as.character(niche_time_averages$variable),
+#        function(x){
+#          unlist(strsplit(x, "_"))[1]
+#        })
+# niche_time_averages$Time <-
+#   sapply(as.character(niche_time_averages$variable),
+#          function(x){
+#            unlist(strsplit(x, "_"))[2]
+#          })
 
 final.all.hearts <- SetIdent(final.all.hearts, value = "lineage.ident2")
 final.all.hearts@meta.data$time_ident <-
@@ -584,12 +639,21 @@ endo_emt_time_averages$Time <-
            unlist(strsplit(x, "_"))[2]
          })
 
-# pie charts ####
+# Pie charts 1b ####
 pie.numbers <- list()
 pie.numbers[["Ctrl"]] <-  summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "Ctrl",]$big.ident) / sum(summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "Ctrl",]$big.ident))
 pie.numbers[["3dpi"]] <- summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "3dpi",]$big.ident) / sum(summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "3dpi",]$big.ident))
 pie.numbers[["7dpi"]] <- summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "7dpi",]$big.ident) / sum(summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "7dpi",]$big.ident))
 pie.numbers[["30dpi"]] <- summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "30dpi",]$big.ident) / sum(summary(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "30dpi",]$big.ident))
+
+type_freqs_df <-
+  data.frame(table(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "3dpi", ][, c("orig.ident", "big.ident")]))
+dataset_freqs_df <-
+  data.frame(table(final.all.hearts@meta.data[final.all.hearts@meta.data$time == "3dpi", ][, c("orig.ident")]))
+type_freqs_df <-
+  merge(type_freqs_df, dataset_freqs_df,
+        by.x = "orig.ident", by.y = "Var1")
+type_freqs_df$Ratio_freq <- type_freqs_df$Freq.x/type_freqs_df$Freq.y
 
 pie.numbers <- data.frame(Ctrl = pie.numbers[["Ctrl"]],
                           dpi3 = pie.numbers[["3dpi"]],
@@ -601,7 +665,8 @@ pie.numbers <- data.frame(table(final.all.hearts@meta.data$time, final.all.heart
 colnames(pie.numbers) <- c("Time","Cell.type","Freq")
 
 for (i in unique(pie.numbers$Time)) {
-  pie.numbers$ratio[pie.numbers$Time == i] <-  pie.numbers$Freq[pie.numbers$Time == i] / sum(pie.numbers$Freq[pie.numbers$Time == i])
+  pie.numbers$ratio[pie.numbers$Time == i] <-  
+    pie.numbers$Freq[pie.numbers$Time == i] / sum(pie.numbers$Freq[pie.numbers$Time == i])
 }
 
 pie.numbers <- pie.numbers[complete.cases(pie.numbers),]
@@ -610,18 +675,22 @@ pie.numbers$Time <- factor(pie.numbers$Time,levels = c("Ctrl","3dpi","7dpi","30d
 pie.numbers$Cell.type <-  plyr::mapvalues(pie.numbers$Cell.type,
             from =c("Endocardium","Smooth muscle cells","Fibroblasts",
             "Cardiomyocytes","Macrophages","T-cells",
-            "Fibroblast-like cells","Bl.ves.EC","B-cells",
+            "Fibroblast-like cells","Bl.ves.EC (apnln)", 
+            "Bl.ves.EC (plvapb)", "Bl.ves.EC (lyve1)", "B-cells",
             "Neutrophils","Perivascular cells","Proliferating cells",
             "Myelin cells","Neuronal cells"), 
             to = c("Endocardium","Smooth muscle cells","Fibroblasts",
                    "Cardiomyocytes","Macrophages","T-cells",
-                   "Fibroblast-like cells","Blood ves. cells","B-cells",
+                   "Valve Fibroblasts","Blood ves. cells",
+                   "Blood ves. cells","Blood ves. cells","B-cells",
                    "Neutrophils","Perivascular cells","Proliferating cells",
                    "Neuronal/Myelin cells","Neuronal/Myelin cells"))
-
-pie.numbers$Cell.type <- factor(pie.numbers$Cell.type,
-levels =c("Fibroblasts","Macrophages","Neutrophils","T-cells","B-cells","Blood ves. cells",
-          "Endocardium","Cardiomyocytes","Smooth muscle cells","Perivascular cells","Fibroblast-like cells","Proliferating cells","Neuronal/Myelin cells"))
+pie.numbers$Cell.type <- 
+  factor(pie.numbers$Cell.type,
+         levels =c("Fibroblasts","Macrophages","Neutrophils","T-cells","B-cells",
+                   "Blood ves. cells", "Endocardium","Cardiomyocytes",
+                   "Smooth muscle cells","Perivascular cells","Valve Fibroblasts",
+                   "Proliferating cells","Neuronal/Myelin cells"))
 
 pie.plot <- list()
 for (i in as.character(unique(pie.numbers$Time))) {
@@ -640,8 +709,10 @@ for (i in as.character(unique(pie.numbers$Time))) {
 
 combine_plots(plotlist = pie.plot)
 
-# significant test for pie numbers ####
-pie.test <- data.frame(table(final.all.hearts@meta.data$orig.ident, final.all.hearts@meta.data$big.ident))
+# Significance test for pie numbers ####
+# ALSO CONTAINS BARPLOTS OF CELL TYPE FREQUENCIES
+pie.test <- data.frame(table(final.all.hearts@meta.data$orig.ident, 
+                             final.all.hearts@meta.data$big.ident))
 colnames(pie.test) <- c("Library","Cell.type","Freq")
 pie.test <- merge(x=pie.test, y= unique(data.frame(Library=final.all.hearts@meta.data$orig.ident,
                                                       split=final.all.hearts@meta.data$AV,
@@ -649,7 +720,8 @@ pie.test <- merge(x=pie.test, y= unique(data.frame(Library=final.all.hearts@meta
                                                       inhib=final.all.hearts@meta.data$inhib)),
                     by.x = "Library", by.y = "Library",all.y = F)
 for (i in as.character(unique(pie.test$Library))) {
-  pie.test$norm.f[pie.test$Library == i] <- sum(pie.test$Freq[pie.test$Library == i]) / all.heart.norm.counts[all.heart.norm.counts$Var1 == i,]$Freq
+  pie.test$norm.f[pie.test$Library == i] <- 
+    sum(pie.test$Freq[pie.test$Library == i]) / all.heart.norm.counts[all.heart.norm.counts$Var1 == i,]$Freq
 }
 
 x <- pie.test[pie.test$split == "Wholeheart",]
@@ -684,9 +756,9 @@ for (i in unique(pie.test.norm$Cell.type)) {
     )
 }
 
-pdf(file = "final_clustering/finalplots/Rplot01.pdf")
+# pdf(file = "final_clustering/finalplots/Rplot01.pdf")
 combine_plots(plotlist = barplots)
-dev.off()
+# dev.off()
 
 
 #test
@@ -708,18 +780,16 @@ for (i in unique(x$Cell.type)) {
   test.results[i,]$dpi30 <-  test$p.value
 }
 test.results < 0.05
-write.csv(test.results,file = "final_clustering/t_test_results.csv",quote = F)
+# write.csv(test.results,file = "final_clustering/t_test_results.csv",quote = F)
 
-z <- x[x$Cell.type == "Neutrophils",]
-z.ctrl <- z[z$time == "Ctrl",]
-z.3dpi <- z[z$time == "3dpi",]
-z.7dpi <- z[]
-test <- t.test(z.ctrl$Freq,z.3dpi$Freq)
-test$p.value
+# z <- x[x$Cell.type == "Neutrophils",]
+# z.ctrl <- z[z$time == "Ctrl",]
+# z.3dpi <- z[z$time == "3dpi",]
+# z.7dpi <- z[]
+# test <- t.test(z.ctrl$Freq,z.3dpi$Freq)
+# test$p.value
 
-# av splitt plot ####
-all.heart.norm.counts <- data.frame(table(final.all.hearts@meta.data$orig.ident))
-
+# A-V split plot 1d ####
 ## CM
 CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$work.ident))
 colnames(CM.counts) <- c("Library","Cell.type","Freq")
@@ -796,7 +866,7 @@ epi.counts <- merge(x=epi.counts, y= unique(data.frame(Library=final.all.hearts@
                       by.x = "Library", by.y = "Library",all.y = F)
 
 y <- epi.counts[epi.counts$inhib == "NULL",]
-y <- y[y$Cell.type %in% c("Epicardium (Ventricle)","Epicardium (Atrium)"),]
+y <- y[y$Cell.type %in% c("Epicardium (V)","Epicardium (A)"),]
 for (i in unique(y$Library)) {
   y$ratio[y$Library == i] <-  y$Freq[y$Library == i] / sum(y$Freq[y$Library == i])
 }
@@ -812,7 +882,7 @@ plot.av <-
 plot.av
 
 
-# time course without inhib ####
+# Time course 2a, S4c, 3a without inhib ####
 ## CM
 CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$lineage.ident))
 colnames(CM.counts) <- c("Library","Cell.type","Freq")
@@ -838,35 +908,56 @@ x$norm.ratio <- x$ratio * x$norm.f
 x$time <- factor(x$time,levels = c("Ctrl","3dpi","7dpi","30dpi"))
 
 #CM.norm.allheart <- summarySE(data = x,measurevar = "norm.ratio" ,groupvars = c("time","Cell.type"))
+# Fig. 2a
 CM.norm.CM <- summarySE(data = x,measurevar = "ratio" ,groupvars = c("time","Cell.type"))
 barplots <- list()
-for (i in c("Cardiomyocytes V", "Cardiomyocytes (proliferating)", "Cardiomyocytes (ttn.2) V",
-            "Cardiomyocytes (ttn.2) A", "Cardiomyocytes A")){#unique(CM.norm.CM$Cell.type)) {
+for (i in c("Cardiomyocytes V", "Cardiomyocytes (ttn.2) V", "Cardiomyocytes (proliferating)")){
+  #            "Cardiomyocytes (ttn.2) A", "Cardiomyocytes A")){#unique(CM.norm.CM$Cell.type)) {
   barplots[[i]] <- 
     plot_grid(
-      ggplot(CM.norm.CM[CM.norm.CM$Cell.type == i,], aes(x=time, y=ratio, fill = Cell.type ) )+ 
-        geom_bar(position=position_dodge(), stat="identity") +
-        geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se),
+      ggplot()+ 
+        geom_bar(data = CM.norm.CM[CM.norm.CM$Cell.type == i,], 
+                 aes(x=time, y=ratio, fill = Cell.type), 
+                 position=position_dodge(), stat="identity") +
+        geom_errorbar(data = CM.norm.CM[CM.norm.CM$Cell.type == i,],
+                      aes(x=time, ymin=ratio-se, ymax=ratio+se), size = 2,
                       width=.2,                    # Width of the error bars
                       position=position_dodge(.9)) +
+        geom_beeswarm(data = x[x$Cell.type == i, ], size = 4,
+                   aes(x = time, y = ratio), priority = "ascending", cex = 3) +
         scale_fill_manual(values = col.table[which(col.table == i,arr.ind=TRUE)[which.max(which(col.table == i,arr.ind=TRUE)[,2]),1],]$color )+
         #coord_cartesian(ylim = c(0, max(niche.norm.fibro[niche.norm.fibro$Cell.type == i,]$ratio)+0.15         ),) +  
-        ylab("Normalized ratio to all Cardiomyocytes") +
-        NoLegend()+
-        ggtitle(i)
+        # ylab("Normalized ratio to all Cardiomyocytes") +
+        labs(x = "", y = "") +
+        NoLegend() +
+        theme(line = element_line(size = 2),
+              panel.grid = element_blank(),
+              panel.background = element_blank(),
+              axis.line = element_line(),
+              axis.text.x = element_blank(),
+              axis.ticks = element_line(size = 2),
+              axis.ticks.length = unit(8,"pt"),
+              axis.text.y = element_text(size = 36, family = "Helvetica",
+                                         face = "bold"),
+              plot.margin = unit(c(10, 60, 0, 0), "pt"))
+      #+
+        # ggtitle(i)
     )
 }
-combine_plots(plotlist = barplots)
+# png("/local/users/Bastiaan/Projects/heart_Bo/Images/CM_dynamics_2a.png",
+#     height = 480, width = 1780)
+combine_plots(plotlist = barplots, nrow = 1)
+# dev.off()
 
-ggplot(x[x$Cell.type %in% c("Cardiomyocytes V", "Cardiomyocytes (proliferating)", "Cardiomyocytes (ttn.2) V",
-                            "Cardiomyocytes (ttn.2) A", "Cardiomyocytes A"), ]) +
-  geom_bar(aes(x = Library, y = ratio, fill = Cell.type), stat = "identity") +
-  facet_wrap(~time)
-
-ggplot(x[x$Cell.type %in% c("Cardiomyocytes V", "Cardiomyocytes (proliferating)", "Cardiomyocytes (ttn.2) V",
-                            "Cardiomyocytes (ttn.2) A", "Cardiomyocytes A"), ]) +
-  geom_bar(aes(x = Library, y = Freq, fill = Cell.type), stat = "identity") +
-  facet_wrap(~time)
+# ggplot(x[x$Cell.type %in% c("Cardiomyocytes V", "Cardiomyocytes (proliferating)", "Cardiomyocytes (ttn.2) V",
+#                             "Cardiomyocytes (ttn.2) A", "Cardiomyocytes A"), ]) +
+#   geom_bar(aes(x = Library, y = ratio, fill = Cell.type), stat = "identity") +
+#   facet_wrap(~time)
+# 
+# ggplot(x[x$Cell.type %in% c("Cardiomyocytes V", "Cardiomyocytes (proliferating)", "Cardiomyocytes (ttn.2) V",
+#                             "Cardiomyocytes (ttn.2) A", "Cardiomyocytes A"), ]) +
+#   geom_bar(aes(x = Library, y = Freq, fill = Cell.type), stat = "identity") +
+#   facet_wrap(~time)
 
 
 ## niche
@@ -895,8 +986,72 @@ x$time <- factor(x$time,levels = c("Ctrl","3dpi","7dpi","30dpi"))
 
 niche.norm.allheart <- summarySE(data = x,measurevar = "norm.ratio" ,groupvars = c("time","Cell.type"))
 niche.norm <- summarySE(data = x,measurevar = "ratio" ,groupvars = c("time","Cell.type"))
-#barplots <- list()
-for (i in setdiff(unique(niche.norm$Cell.type),c("Perivascular cells","Fibroblast-like cells")) ) {
+# Fig S4c
+barplots <- list()
+for (i in c("Fibroblasts (const.)", "Fibroblasts (prolif.)", "Fibroblasts (col11a1a)", "Fibroblasts (col12a1a)",
+            "Fibroblasts (cxcl12a)", "Fibroblasts (cfd)", "Fibroblasts (spock3)", "Fibroblasts (nppc)",
+            "Epicardium (V)", "Epicardium (A)")) {
+  barplots[[i]] <- 
+    ggplot(niche.norm[niche.norm$Cell.type == i,], aes(x=time, y=ratio,fill = Cell.type) )+ 
+    geom_bar(position=position_dodge(), stat="identity") +
+    geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se), size = 2,
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9)) +
+    geom_beeswarm(data = x[x$Cell.type == i, ], size = 4,
+                  aes(x = time, y = ratio), priority = "ascending", cex = 3) +
+    scale_fill_manual(values = col.table[which(col.table == i,arr.ind=TRUE)[which.max(which(col.table == i,arr.ind=TRUE)[,2]),1],]$color )+
+    labs(x = "", y = "") +
+    ggtitle(i) +
+    NoLegend() +
+    theme(line = element_line(size = 2),
+          panel.grid = element_blank(),
+          panel.background = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 32,
+                                    family = "Helvetica", face = "bold"),
+          axis.line = element_line(),
+          axis.text.x = element_text(size = 32, family = "Helvetica",
+                                     face = "bold", angle = 45, hjust = 0.5, vjust = 0.6),
+          axis.ticks = element_line(size = 2),
+          axis.ticks.length = unit(8,"pt"),
+          axis.text.y = element_text(size = 32, family = "Helvetica",
+                                     face = "bold"),
+          plot.margin = unit(c(10, 50, 0, 0), "pt"))
+}
+for (i in c("Perivascular cells","Valve fibroblasts")) {
+  barplots[[i]] <- 
+    ggplot(niche.norm.allheart[niche.norm.allheart$Cell.type == i,], aes(x=time, y=norm.ratio, fill = Cell.type) )+ 
+    geom_bar(position=position_dodge(), stat="identity") +
+    geom_errorbar(aes(ymin=norm.ratio-se, ymax=norm.ratio+se), size = 2,
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9)) +
+    geom_beeswarm(data = x[x$Cell.type == i, ], size = 4,
+                  aes(x = time, y = norm.ratio), priority = "ascending", cex = 3) +
+    scale_fill_manual(values = col.table[which(col.table == i,arr.ind=TRUE)[which.max(which(col.table == i,arr.ind=TRUE)[,2]),1],]$color )+
+    labs(x = "", y = "") +
+    ggtitle(i) +
+    NoLegend() +
+    theme(line = element_line(size = 2),
+          panel.grid = element_blank(),
+          panel.background = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 32,
+                                    family = "Helvetica", face = "bold"),
+          axis.line = element_line(),
+          axis.text.x = element_text(size = 32, family = "Helvetica",
+                                     face = "bold", angle = 45, hjust = 0.5, vjust = 0.6),
+          axis.ticks = element_line(size = 2),
+          axis.ticks.length = unit(8,"pt"),
+          axis.text.y = element_text(size = 32, family = "Helvetica",
+                                     face = "bold"),
+          plot.margin = unit(c(10, 50, 0, 0), "pt"))
+}
+
+# png("/local/users/Bastiaan/Projects/heart_Bo/Images/Niche_dynamics_S4c.png",
+#     height = 1200, width = 1800)
+combine_plots(plotlist = barplots, ncol = 4, align = "v", axis = "l")
+# dev.off()
+
+
+for (i in setdiff(unique(niche.norm$Cell.type),c("Perivascular cells","Valve fibroblasts")) ) {
   barplots[[i]] <- 
     plot_grid(
       ggplot(niche.norm[niche.norm$Cell.type == i,], aes(x=time, y=ratio,fill = Cell.type) )+ 
@@ -911,24 +1066,70 @@ for (i in setdiff(unique(niche.norm$Cell.type),c("Perivascular cells","Fibroblas
         ggtitle(i)
     )
 }
-#combine_plots(plotlist = barplots)
+# combine_plots(plotlist = barplots)
 
-for (i in c("Perivascular cells","Fibroblast-like cells")) {
+# For 3a, combine selected fibroblast barplots with barplots for perivascular cells/valve fibroblasts
+barplots <- list()
+for (i in c("Fibroblasts (const.)", "Fibroblasts (col11a1a)",
+            "Fibroblasts (nppc)", "Fibroblasts (col12a1a)")) {
   barplots[[i]] <- 
-    plot_grid(
-      ggplot(niche.norm.allheart[niche.norm.allheart$Cell.type == i,], aes(x=time, y=norm.ratio, fill = Cell.type) )+ 
-        geom_bar(position=position_dodge(), stat="identity") +
-        geom_errorbar(aes(ymin=norm.ratio-se, ymax=norm.ratio+se),
-                      width=.2,                    # Width of the error bars
-                      position=position_dodge(.9)) +
-        scale_fill_manual(values = col.table[which(col.table == i,arr.ind=TRUE)[which.max(which(col.table == i,arr.ind=TRUE)[,2]),1],]$color )+
-        #coord_cartesian(ylim = c(0, max(niche.norm.fibro[niche.norm.fibro$Cell.type == i,]$ratio)+0.15         ),) +  
-        ylab("Normalized ratio to all cells") +
-        NoLegend()+
-        ggtitle(i)
-    )
+    ggplot(niche.norm[niche.norm$Cell.type == i,], aes(x=time, y=ratio,fill = Cell.type) )+ 
+    geom_bar(position=position_dodge(), stat="identity") +
+    geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se), size = 2,
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9)) +
+    geom_beeswarm(data = x[x$Cell.type == i, ], size = 4,
+                  aes(x = time, y = ratio), priority = "ascending", cex = 3) +
+    scale_fill_manual(values = col.table[which(col.table == i,arr.ind=TRUE)[which.max(which(col.table == i,arr.ind=TRUE)[,2]),1],]$color )+
+    labs(x = "", y = "") +
+    ggtitle(i) +
+    NoLegend() +
+    theme(line = element_line(size = 2),
+          panel.grid = element_blank(),
+          panel.background = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 42,
+                                    family = "Helvetica", face = "bold"),
+          axis.line = element_line(),
+          axis.text.x = element_text(size = 36, family = "Helvetica",
+                                     face = "bold"),
+          axis.ticks = element_line(size = 2),
+          axis.ticks.length = unit(8,"pt"),
+          axis.text.y = element_text(size = 36, family = "Helvetica",
+                                     face = "bold"),
+          plot.margin = unit(c(10, 50, 0, 0), "pt"))
 }
-#combine_plots(plotlist = barplots)
+for (i in c("Perivascular cells","Valve fibroblasts")) {
+  barplots[[i]] <- 
+    ggplot(niche.norm.allheart[niche.norm.allheart$Cell.type == i,], aes(x=time, y=norm.ratio, fill = Cell.type) )+ 
+    geom_bar(position=position_dodge(), stat="identity") +
+    geom_errorbar(aes(ymin=norm.ratio-se, ymax=norm.ratio+se), size = 2,
+                  width=.2,                    # Width of the error bars
+                  position=position_dodge(.9)) +
+    geom_beeswarm(data = x[x$Cell.type == i, ], size = 4,
+                  aes(x = time, y = norm.ratio), priority = "ascending", cex = 3) +
+    scale_fill_manual(values = col.table[which(col.table == i,arr.ind=TRUE)[which.max(which(col.table == i,arr.ind=TRUE)[,2]),1],]$color )+
+    labs(x = "", y = "") +
+    ggtitle(i) +
+    NoLegend() +
+    theme(line = element_line(size = 2),
+          panel.grid = element_blank(),
+          panel.background = element_blank(),
+          plot.title = element_text(hjust = 0.5, size = 42,
+                                    family = "Helvetica", face = "bold"),
+          axis.line = element_line(),
+          axis.text.x = element_text(size = 36, family = "Helvetica",
+                                     face = "bold"),
+          axis.ticks = element_line(size = 2),
+          axis.ticks.length = unit(8,"pt"),
+          axis.text.y = element_text(size = 36, family = "Helvetica",
+                                     face = "bold"),
+          plot.margin = unit(c(10, 50, 0, 0), "pt"))
+}
+
+# png("/local/users/Bastiaan/Projects/heart_Bo/Images/Niche_dynamics_3a.png",
+#     height = 1900, width = 1080)
+combine_plots(plotlist = barplots, ncol = 2, align = "v", axis = "l")
+# dev.off()
 
 ## immune
 immune.counts <- data.frame(table(immune@meta.data$orig.ident, immune@meta.data$work.ident))
@@ -956,7 +1157,7 @@ x$time <- factor(x$time,levels = c("Ctrl","3dpi","7dpi","30dpi"))
 
 #immune.norm.allheart <- summarySE(data = x,measurevar = "norm.ratio" ,groupvars = c("time","Cell.type"))
 immune.norm <- summarySE(data = x,measurevar = "ratio" ,groupvars = c("time","Cell.type"))
-#barplots <- list()
+barplots <- list()
 for (i in (unique(immune.norm$Cell.type)) ) {
   barplots[[i]] <- 
     plot_grid(
@@ -972,16 +1173,16 @@ for (i in (unique(immune.norm$Cell.type)) ) {
         ggtitle(i)
     )
 }
-#combine_plots(plotlist = barplots)
+combine_plots(plotlist = barplots)
 
 #barplots <- barplots[order(names(barplots))]
 
-pdf(file = "final_clustering/finalplots/all_dynamics.pdf",onefile = T,width = 30,height = 30)
+# pdf(file = "final_clustering/finalplots/all_dynamics.pdf",onefile = T,width = 30,height = 30)
 combine_plots(plotlist = barplots)
-dev.off()
+# dev.off()
 
 
-# time course with inhib all ####
+# NOT USED? Time course with inhib all ####
 ## CM
 CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$lineage.ident))
 colnames(CM.counts) <- c("Library","Cell.type","Freq")
@@ -1050,7 +1251,7 @@ x$time <- factor(x$time,levels = c("Ctrl","3dpi","3dpiinhib","7dpi","7dpiinhib",
 
 niche.norm.allheart <- summarySE(data = x,measurevar = "norm.ratio" ,groupvars = c("time","Cell.type"))
 niche.norm <- summarySE(data = x,measurevar = "ratio" ,groupvars = c("time","Cell.type"))
-#barplots <- list()
+barplots <- list()
 for (i in setdiff(unique(niche.norm$Cell.type),c("Perivascular cells","Fibroblast-like cells")) ) {
   barplots[[i]] <- 
     plot_grid(
@@ -1066,7 +1267,7 @@ for (i in setdiff(unique(niche.norm$Cell.type),c("Perivascular cells","Fibroblas
         ggtitle(i)
     )
 }
-#combine_plots(plotlist = barplots)
+combine_plots(plotlist = barplots)
 
 for (i in c("Perivascular cells","Fibroblast-like cells")) {
   barplots[[i]] <- 
@@ -1126,7 +1327,7 @@ for (i in (unique(immune.norm$Cell.type)) ) {
         ggtitle(i)
     )
 }
-#combine_plots(plotlist = barplots)
+# combine_plots(plotlist = barplots)
 
 ## all
 all.count <- data.frame(table(final.all.hearts@meta.data$orig.ident, final.all.hearts@meta.data$big.ident))
@@ -1153,7 +1354,7 @@ x$time <- factor(x$time,levels = c("Ctrl","3dpi","3dpiinhib","7dpi","7dpiinhib",
 
 #immune.norm.allheart <- summarySE(data = x,measurevar = "norm.ratio" ,groupvars = c("time","Cell.type"))
 all.norm <- summarySE(data = x,measurevar = "ratio" ,groupvars = c("time","Cell.type"))
-#barplots <- list()
+barplots <- list()
 for (i in (unique(all.norm$Cell.type)) ) {
   barplots[[i]] <- 
     plot_grid(
@@ -1170,16 +1371,16 @@ for (i in (unique(all.norm$Cell.type)) ) {
     )
 }
 
-#barplots <- barplots[order(names(barplots))]
+barplots <- barplots[order(names(barplots))]
 
-pdf(file = "all_dynamics_inhib_new.pdf",onefile = T,width = 40,height = 30)
+# pdf(file = "all_dynamics_inhib_new.pdf",onefile = T,width = 40,height = 30)
 combine_plots(plotlist = barplots)
-dev.off()
+# dev.off()
 
 
 
 
-#experimental timecourse####
+# NOT USED? Experimental timecourse####
 all.counts <- data.frame(table(final.all.hearts@meta.data$orig.ident, final.all.hearts@meta.data$lineage.ident))
 colnames(all.counts) <- c("Library","Cell.type","Freq")
 all.counts <- merge(x=all.counts, y= unique(data.frame(Library=final.all.hearts@meta.data$orig.ident,
@@ -1214,27 +1415,30 @@ for (i in (unique(all.norm$Cell.type)) ) {
 
 barplots <- barplots[order(names(barplots))]
 
-pdf(file = "final_clustering/all_dynamics.pdf",onefile = T,width = 30,height = 30)
+# pdf(file = "final_clustering/all_dynamics.pdf",onefile = T,width = 30,height = 30)
 combine_plots(plotlist = barplots)
-dev.off()
+# dev.off()
 
 
 
 
-# time course with inhib ####
+# Timecourse with inhib 6c, 6d, S26 1&2 ####
 
 ## CM
-CM.names <- Idents(all.hearts)
-CM.names <- CM.names[names(CM.names) %in% rownames(CM@meta.data)]
+# CM.names <- Idents(all.hearts)
+# CM.names <- CM.names[names(CM.names) %in% rownames(CM@meta.data)]
+# 
+# CM.v2 <- names(CM.names[CM.names == "Cardiomyocytes (V) 2"])
+# 
+# CM <- SetIdent(CM,value = "lineage.ident")
+# CM <- SetIdent(CM,cells = CM.v2,value = "Cardiomyocytes (ttn.2) V")
+# CM <- StashIdent(CM, save.name = "new.ident")
+# save(CM,file = "/local/Bo/Remap_allhearts/final_clustering/CM.noEry.Robj")
 
-CM.v2 <- names(CM.names[CM.names == "Cardiomyocytes (V) 2"])
-
-CM <- SetIdent(CM,value = "lineage.ident")
-CM <- SetIdent(CM,cells = CM.v2,value = "Cardiomyocytes (ttn.2) V")
-CM <- StashIdent(CM, save.name = "new.ident")
-save(CM,file = "/local/Bo/Remap_allhearts/final_clustering/CM.noEry.Robj")
-
-CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$new.ident))
+# OLD
+# CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$new.ident))
+# NEW
+CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$lineage.ident))
 colnames(CM.counts) <- c("Library","Cell.type","Freq")
 CM.counts <- merge(x=CM.counts, y= unique(data.frame(Library=CM@meta.data$orig.ident,
                                                      split=CM@meta.data$AV,
@@ -1258,24 +1462,39 @@ x[x$Library == "Hr34",]$time <- "inhib 3dpi"
 x[x$Library == "Hr35",]$time <- "inhib 3dpi"
 
 x <- x[x$time %in% c("7dpi","3dpi","inhib 3dpi","inhib 7dpi"),]
-x <- x[x$Cell.type %in% c("Cardiomyocytes (ttn.2) V","Cardiomyocytes (proliferating)"),]
+x <- x[x$Cell.type %in% c("Cardiomyocytes (ttn.2) V"), ]#,"Cardiomyocytes (proliferating)"),]
 
 x.numbers <- summarySE(data = x,measurevar = c("ratio"), groupvars = c("time","Cell.type") )
 x.numbers$time <- factor(x.numbers$time, levels = c("3dpi","inhib 3dpi",
                                                     "7dpi","inhib 7dpi"))
-ggplot(x.numbers, aes(x=Cell.type,y=ratio, alpha=time, fill = Cell.type)) +
-  geom_bar(stat = "identity",position = "dodge") +
-  #scale_fill_manual(values = as.character(col.table$Color ) ) +
+# 6c
+# png("/local/users/Bastiaan/Projects/heart_Bo/Images/CM_dediff_inhib_dynamics_6c.png",
+#     height = 560, width = 400)
+ggplot(x.numbers, aes(x=time,y=ratio, alpha=time, fill = Cell.type)) +
+  geom_bar(stat = "identity",width = 1) +#position = "dodge") +
   scale_alpha_manual(values = c(1,0.7,1,0.7))+
-  geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se),width=.2,position=position_dodge(.9)) +
+  geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se),size = 2,
+                width=.2,position=position_dodge(.9))  +
+  geom_beeswarm(data = x, size = 4,
+                aes(x = time, y = ratio), priority = "ascending", 
+                cex = 3) +
   scale_fill_manual(values = rev(col.table[col.table$setCM %in% unique(as.character(x.numbers$Cell.type)),]$color) ) +
-  #scale_y_continuous(limits = c(0,2.8)) +
-  ylab("ratio to all fibroblasts") +
-  theme_bw()
-
+  labs(x = "", y = "") +
+  NoLegend() +
+  theme(line = element_line(size = 2),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_line(size = 2),
+        axis.ticks.length = unit(8,"pt"),
+        axis.text.y = element_text(size = 36, family = "Helvetica",
+                                   face = "bold"))
+# dev.off()
 
 ## niche
-fibro.counts <- data.frame(table(niche@meta.data$orig.ident, niche@meta.data$work.ident))
+fibro.counts <- data.frame(table(niche@meta.data$orig.ident, niche@meta.data$work.ident),
+                           stringsAsFactors = F)
 colnames(fibro.counts) <- c("Library","Cell.type","Freq")
 fibro.counts <- merge(x=fibro.counts, y= unique(data.frame(Library=niche@meta.data$orig.ident,
                                                      split=niche@meta.data$AV,
@@ -1302,27 +1521,54 @@ x[x$Library == "Hr34",]$time <- "inhib 3dpi"
 x[x$Library == "Hr35",]$time <- "inhib 3dpi"
 
 x$norm.ratio <- x$ratio * x$norm.f
-x <- x[x$Cell.type %in% c("Fibroblast-like cells","Perivascular cells"),]
-x2 <- x[!x$Cell.type %in% c("Fibroblast-like cells","Perivascular cells"),]
+x1 <- x[x$Cell.type %in% c("Perivascular cells", "Valve fibroblasts",
+                           "Fibroblasts (nppc)", "Fibroblasts (spock3)"),]
+x1$Cell.type <- factor(x1$Cell.type,
+                       levels = c("Perivascular cells", "Valve fibroblasts",
+                                  "Fibroblasts (nppc)", "Fibroblasts (spock3)"))
+x1$time <- factor(x1$time, levels = c("3dpi","inhib 3dpi",
+                                      "7dpi","inhib 7dpi"))
 
-niche.norm.allheart <- summarySE(data = x,measurevar = c("norm.ratio"), groupvars = c("time","Cell.type") )
+niche.norm.allheart <- summarySE(data = x1,measurevar = c("norm.ratio"), 
+                                 groupvars = c("time","Cell.type") )
 niche.norm.allheart$time <- factor(niche.norm.allheart$time, levels = c("3dpi","inhib 3dpi",
                                                     "7dpi","inhib 7dpi"))
-ggplot(niche.norm.allheart, aes(x=Cell.type,y=norm.ratio, alpha=time, fill = Cell.type)) +
-  geom_bar(stat = "identity",position = "dodge") +
-  #scale_fill_manual(values = as.character(col.table$Color ) ) +
+
+# 6d
+# png("/local/users/Bastiaan/Projects/heart_Bo/Images/Periv_and_endo_niche_inhib_dynamics_6d.png",
+#     height = 450, width = 1065)
+ggplot(niche.norm.allheart, 
+       aes(x=Cell.type,y=norm.ratio)) +
+  geom_bar(aes(alpha=time, fill = Cell.type),
+           stat = "identity",position=position_dodge(width = 0.9)) +
+  geom_errorbar(aes(ymin=norm.ratio-se, ymax=norm.ratio+se, group = time),
+                width=.2,position=position_dodge(width = 0.9)) +
+  geom_beeswarm(data = x1, 
+             aes(x = Cell.type, y = norm.ratio, group = time),
+             size = 2, dodge.width = 0.9) +
   scale_alpha_manual(values = c(1,0.7,1,0.7))+
-  geom_errorbar(aes(ymin=norm.ratio-se, ymax=norm.ratio+se),width=.2,position=position_dodge(.9)) +
-  scale_fill_manual(values = col.table[col.table$setFibro %in% unique(as.character(niche.norm.allheart$Cell.type)),]$color ) +
-  #scale_y_continuous(limits = c(0,2.8)) +
-  ylab("ratio to all cells") +
-  theme_bw()
+  scale_fill_manual(values = setNames(col.table$color[!is.na(col.table$setFibro)], col.table$setFibro[!is.na(col.table$setFibro)])) + 
+  labs(x = "", y = "") +
+  NoLegend() +
+  theme(line = element_line(size = 2),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(),
+        axis.text.x = element_blank(),
+        axis.ticks = element_line(size = 2),
+        axis.ticks.length = unit(8,"pt"),
+        axis.text.y = element_text(size = 36, family = "Helvetica",
+                                   face = "bold"))
+# dev.off()
+
+x2 <- x[!x$Cell.type %in% c("Valve fibroblasts","Perivascular cells"),]
 
 niche.norm <- summarySE(data = x2,measurevar = c("ratio"), groupvars = c("time","Cell.type") )
 niche.norm$time <- factor(niche.norm$time, levels = c("3dpi","inhib 3dpi",
                                                                         "7dpi","inhib 7dpi"))
 niche.norm$Cell.type <- factor(niche.norm$Cell.type ,levels = col.table[col.table$setFibro %in% unique(as.character(niche.norm$Cell.type)),]$setFibro)
 
+# S26 1
 ggplot(niche.norm, aes(x=Cell.type,y=ratio, alpha=time, fill = Cell.type)) +
   geom_bar(stat = "identity",position = "dodge") +
   #scale_fill_manual(values = as.character(col.table$Color ) ) +
@@ -1338,6 +1584,7 @@ niche.norm2$time <- factor(niche.norm2$time, levels = c("3dpi","inhib 3dpi",
                                                       "7dpi","inhib 7dpi"))
 niche.norm2$Cell.type <- factor(niche.norm2$Cell.type ,levels = col.table[col.table$setFibro %in% unique(as.character(niche.norm2$Cell.type)),]$setFibro)
 
+# S26 2
 ggplot(niche.norm2, aes(x=Cell.type,y=norm.ratio, alpha=time, fill = Cell.type)) +
   geom_bar(stat = "identity",position = "dodge") +
   #scale_fill_manual(values = as.character(col.table$Color ) ) +
