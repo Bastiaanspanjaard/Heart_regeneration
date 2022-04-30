@@ -148,24 +148,15 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
 }
 
 # Define colors for cell types ####
-# saveRDS(colors,file = "final_clustering/finalplots/color_scheme_seurat.rds")
 colors <- readRDS(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/finalplots/color_scheme_seurat.rds")
 col.table <- colors
 
-# NEW
 set1 <- c("Epicardium (A)","Macrophages","T-cells","Neutrophils","B-cells",
   "Monocytes","Fibroblasts","Epicardium (V)",
   "Valve fibroblasts","Perivascular cells","Endocardium (A)","Smooth muscle cells",
   "Endocardium (V)","Cardiomyocytes (ttn.2) A","Cardiomyocytes V","Cardiomyocytes A", # TEST - DOES ADDING THE "A" to CM (ttn.2) not break anything?
   "Endocardium (frzb)","Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Bl.ves.EC (lyve1)","Cardiomyocytes (ttn.2) V",
   "Proliferating cells","Cardiomyocytes (proliferating)","Myelin cells")
-# OLD
-# set1 <- c("Epicardium (Atrium)","Macrophages","T-cells","Neutrophils","B-cells",
-#           "Monocytes","Fibroblasts","Epicardium (Ventricle)",
-#           "Fibroblast-like cells","Perivascular cells","Endocardium (A)","Smooth muscle cells",
-#           "Endocardium (V)","Cardiomyocytes (ttn.2) A","Cardiomyocytes V","Cardiomyocytes A", # TEST - DOES ADDING THE "A" to CM (ttn.2) not break anything?
-#           "Endocardium (frzb)","Bl.ves.EC (apnln)","Bl.ves.EC (plvapb)","Bl.ves.EC (lyve1)","Cardiomyocytes (ttn.2) V",
-#           "Proliferating cells","Cardiomyocytes (proliferating)","Myelin cells")
 names(set1) <- c("creamyellow2","winered","pink","syn-magenta","syn-magentalight",
                  "darkpink","yellow","darkyellow",
                  "yellowochre","darkpurple","blue","ocker",
@@ -189,12 +180,6 @@ setFibro <- c("Fibroblasts (const.)","Epicardium (V)","Epicardium (A)",
              "Valve fibroblasts","Fibroblasts (col12a1a)","Perivascular cells",
              "Fibroblasts (nppc)","Fibroblasts (spock3)","Fibroblasts (mpeg1.1)",
              "Fibroblasts (prolif.)")
-# OLD
-# setFibro <- c("Fibroblast","Epicardium (Ventricle)","Epicardium (Atrium)",
-#               "Fibroblast (cxcl12a)","Fibroblast (col11a1a)","Fibroblast (cfd)",
-#               "Fibroblast-like cells","Fibroblast (col12a1a)","Perivascular cells",
-#               "Fibroblast (nppc)","Fibroblast (spock3)","Fibroblast (mpeg1.1)",
-#               "Fibroblast (proliferating)")
 names(setFibro) <-      c("syn-lightyellow","darkyellow","creamyellow2",
                           "lightpink","lightblue","green2",
                           "yellowochre","syn-red","darkpurple",
@@ -470,22 +455,6 @@ DimPlot(niche,label = F,group.by = "work.ident",
             "purple","lightpurple","white2",
             "darkblue2")
           ,colors$name),]$color,pt.size = 1)
-#pretty:
-# c("syn-red","darkblue2","lightblue",
-#   "lightpink","darkyellow2","green2",
-#   "yellowochre","syn-lightyellow","darkpurple",
-#   "purple","lightpurple","white2",
-#   "creamyellow2")
-#eifel
-# DimPlot(niche,label = F,group.by = "work.ident",
-#         cols=colors[match(
-#           c("lightblue","orange2","yellowochre",
-#             "lightpink","darkyellow2","syn-red",
-#             "darkblue2","syn-lightyellow","purple",
-#             "darkgreen2","green2","white2",
-#             "creamyellow2")
-#           ,colors$name),]$color,pt.size = 1)
-
 
 # Gene expression - UNUSED? ####
 # FeaturePlot(final.all.hearts, features = c("vangl2", "prickle1a", "fhl2a"))
@@ -1435,8 +1404,6 @@ combine_plots(plotlist = barplots)
 # CM <- StashIdent(CM, save.name = "new.ident")
 # save(CM,file = "/local/Bo/Remap_allhearts/final_clustering/CM.noEry.Robj")
 
-# OLD
-# CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$new.ident))
 # NEW
 CM.counts <- data.frame(table(CM@meta.data$orig.ident, CM@meta.data$lineage.ident))
 colnames(CM.counts) <- c("Library","Cell.type","Freq")
@@ -1562,38 +1529,77 @@ ggplot(niche.norm.allheart,
 # dev.off()
 
 x2 <- x[!x$Cell.type %in% c("Valve fibroblasts","Perivascular cells"),]
-
+x2$Cell.type <- factor(x2$Cell.type,
+                       levels = col.table[col.table$setFibro %in% unique(as.character(niche.norm$Cell.type)),]$setFibro)
+x2$time <- factor(x2$time, levels = c("3dpi","inhib 3dpi",
+                                      "7dpi","inhib 7dpi"))
 niche.norm <- summarySE(data = x2,measurevar = c("ratio"), groupvars = c("time","Cell.type") )
 niche.norm$time <- factor(niche.norm$time, levels = c("3dpi","inhib 3dpi",
                                                                         "7dpi","inhib 7dpi"))
 niche.norm$Cell.type <- factor(niche.norm$Cell.type ,levels = col.table[col.table$setFibro %in% unique(as.character(niche.norm$Cell.type)),]$setFibro)
 
 # S26 1
-ggplot(niche.norm, aes(x=Cell.type,y=ratio, alpha=time, fill = Cell.type)) +
-  geom_bar(stat = "identity",position = "dodge") +
-  #scale_fill_manual(values = as.character(col.table$Color ) ) +
+# png("/local/users/Bastiaan/Projects/heart_Bo/Images/Niche_ratio_fib_inhib_dynamics_S26_1.png",
+#     height = 448, width = 2220)
+ggplot(niche.norm, aes(x=Cell.type,y=ratio)) +
+  geom_bar(aes(alpha=time, fill = Cell.type),
+           stat = "identity", position = position_dodge(width = 0.9)) +
+  geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se, group = time),
+                width=.2,position=position_dodge(.9)) +
+  geom_beeswarm(data = x2, cex = 0.5,
+                aes(x = Cell.type, y = ratio, group = time),
+                size = 2, dodge.width = 0.9) +
   scale_alpha_manual(values = c(1,0.7,1,0.7))+
-  geom_errorbar(aes(ymin=ratio-se, ymax=ratio+se),width=.2,position=position_dodge(.9)) +
-  scale_fill_manual(values = col.table[col.table$setFibro %in% unique(as.character(niche.norm$Cell.type)),]$color ) +
-  #scale_y_continuous(limits = c(0,2.8)) +
-  ylab("ratio to all fibroblasts") +
-  theme_bw()
+  scale_fill_manual(values = setNames(col.table$color[!is.na(col.table$setFibro)], col.table$setFibro[!is.na(col.table$setFibro)])) + 
+  labs(x = "", y = "ratio to all fibroblasts") +
+  NoLegend() +
+  theme(line = element_line(size = 2),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.length = unit(8,"pt"),
+        axis.title.y = element_text(size = 37, family = "Helvetica",
+                                    face = "bold"),
+        axis.text.y = element_text(size = 36, family = "Helvetica",
+                                   face = "bold"))
+# dev.off()
+
+x$Cell.type <- factor(as.character(x$Cell.type),
+                       levels = col.table[col.table$setFibro %in% unique(as.character(x$Cell.type)),]$setFibro)
+x$time <- factor(x$time, levels = c("3dpi","inhib 3dpi",
+                                      "7dpi","inhib 7dpi"))
 
 niche.norm2 <- summarySE(data = x,measurevar = c("norm.ratio"), groupvars = c("time","Cell.type") )
-niche.norm2$time <- factor(niche.norm2$time, levels = c("3dpi","inhib 3dpi",
-                                                      "7dpi","inhib 7dpi"))
-niche.norm2$Cell.type <- factor(niche.norm2$Cell.type ,levels = col.table[col.table$setFibro %in% unique(as.character(niche.norm2$Cell.type)),]$setFibro)
 
 # S26 2
-ggplot(niche.norm2, aes(x=Cell.type,y=norm.ratio, alpha=time, fill = Cell.type)) +
-  geom_bar(stat = "identity",position = "dodge") +
-  #scale_fill_manual(values = as.character(col.table$Color ) ) +
+# png("/local/users/Bastiaan/Projects/heart_Bo/Images/Niche_ratio_all_inhib_dynamics_S26_2.png",
+#     height = 448, width = 2220)
+ggplot(niche.norm2, aes(x=Cell.type,y=norm.ratio)) +
+  geom_bar(aes(alpha=time, fill = Cell.type), 
+           stat = "identity", position = position_dodge(width = 0.9)) +
+  geom_errorbar(aes(ymin=norm.ratio-se, ymax=norm.ratio+se, group = time),
+                width=.2, position=position_dodge(.9)) +
+  geom_beeswarm(data = x, cex = 0.5,
+                aes(x = Cell.type, y = norm.ratio, group = time),
+                size = 2, dodge.width = 0.9) +
   scale_alpha_manual(values = c(1,0.7,1,0.7))+
-  geom_errorbar(aes(ymin=norm.ratio-se, ymax=norm.ratio+se),width=.2,position=position_dodge(.9)) +
-  scale_fill_manual(values = col.table[col.table$setFibro %in% unique(as.character(niche.norm2$Cell.type)),]$color ) +
-  #scale_y_continuous(limits = c(0,2.8)) +
-  ylab("ratio to all cells") +
-  theme_bw()
+  scale_fill_manual(values = setNames(col.table$color[!is.na(col.table$setFibro)], col.table$setFibro[!is.na(col.table$setFibro)])) + 
+  labs(x = "", y = "ratio to all cells") +
+  NoLegend() +
+  theme(line = element_line(size = 2),
+        panel.grid = element_blank(),
+        panel.background = element_blank(),
+        axis.line = element_line(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.length = unit(8,"pt"),
+        axis.title.y = element_text(size = 37, family = "Helvetica",
+                                    face = "bold"),
+        axis.text.y = element_text(size = 36, family = "Helvetica",
+                                   face = "bold"))
+# dev.off()
 
 # Endo ##
 
@@ -1638,8 +1644,7 @@ ggplot(x.numbers, aes(x=Cell.type,y=ratio, alpha=time, fill = Cell.type)) +
 
 
 
-# Ecm analysis ####
-library(pheatmap)
+# NOT USED? Ecm analysis ####
 anno <-  rbind(
   data.frame (gene = c(rownames(final.all.hearts)[grep("^col[0-9]",rownames(final.all.hearts))],
                        rownames(final.all.hearts)[grep("^fn1",rownames(final.all.hearts))],
@@ -1745,7 +1750,7 @@ ggplot(breakdown.Sum,aes(x = names,y = breakdown.Sum,fill = names))+
                                "#9d3d58", "#a981b5", "#b18393", "#c5adcc"))
 
 
-# ECM genes withhin niche ####
+# ECM genes within niche 2d ####
 anno <-  rbind(
   data.frame (gene = c(rownames(final.all.hearts)[grep("^col[0-9]",rownames(final.all.hearts))],
                        rownames(final.all.hearts)[grep("^fn1",rownames(final.all.hearts))],
@@ -1780,13 +1785,13 @@ ecm.niche <- acast(ecm.niche, id~features.plot, value.var = "avg.exp")
 #ecm.tidy <- ecm.tidy[1:20,]
 ecm.niche <- scale(ecm.niche)
 
-pheatmap(ecm.niche,cluster_rows = T ,cluster_cols = T)
-                 #annotation_col = anno[,c(2),drop = F],
+# 2d
+pheatmap(ecm.niche,cluster_rows = T ,cluster_cols = T, 
+                 annotation_col = anno[,c(2),drop = F],
                  #annotation_row = ct[,c(2),drop = F],
-                 
-                 #annotation_colors =  list(Function = anno_col)[1])
+                 annotation_colors =  list(Function = anno_col)[1])
 
-# How much of niche clustering is determined by ECM genes? ####
+# S5: How much of niche clustering is determined by ECM genes? ####
 # Count number of differentially expressed ECM and non-ECM genes
 marker.niche <- 
   read.csv(file = "/data/junker/users/Bo/HeartRegen_paper/final_clustering/finalplots/marker.niche.csv",
@@ -1835,6 +1840,7 @@ niche_no_ECM <- RunPCA(object = niche_no_ECM, features = VariableFeatures(object
 niche_no_ECM <- FindNeighbors(object = niche_no_ECM,force.recalc = T, dims = 1:20)
 niche_no_ECM <- FindClusters(object = niche_no_ECM,resolution = 1)
 niche_no_ECM <- RunUMAP(niche_no_ECM, dims = 1:20)
+# S5a
 # png("/local/users/Bastiaan/Projects/heart_Bo/Images/No_ECM_niche_clustering.png")
 DimPlot(object = niche_no_ECM, reduction = "umap", group.by = "RNA_snn_res.1",label = TRUE,pt.size = 1) + #NoLegend() +
   scale_x_reverse() + scale_y_reverse()
@@ -1892,13 +1898,14 @@ ECM_or_not_cluster_compare_freq <- t(t(ECM_or_not_cluster_compare_square)/colSum
 colSums(ECM_or_not_cluster_compare_freq)
 ECM_or_not_cluster_compare_freq <- ECM_or_not_cluster_compare_freq[colnames(ECM_or_not_cluster_compare_freq), ]
 
+# S5b
 # pdf("/local/users/Bastiaan/Projects/heart_Bo/Images/No_ECM_cluster_voting.pdf")
 pheatmap(ECM_or_not_cluster_compare_freq, cluster_rows = F, cluster_cols = F)
 # dev.off()
 
 apply(ECM_or_not_cluster_compare_freq, 2, max)
 
-#secreted selected ####
+# NOT USED? Secreted selected ####
 secreted <- DotPlot(final.all.hearts,features = c("ghrh","bglap","pyya","nppb","nppc","wnt4a","adcyap1a","epoa","pros1","notum1a","urp1","hpx","apoa4b.1","ccl38a.4","htra1a","igf1"),group.by = "lineage.ident2")
 secreted <- DotPlot(final.all.hearts, features = unique(c(c("adcyap1a","wnt2ba","clu","clu","fshb","fshb","hpx","hpx","zgc:172271","zgc:172271","ngfb","ngfb","ngfb","ngfb","ngfb","ngfb","tfa","tfa","uts2b","adcyap1b","notum1a","htra1a","ins","pyyb","pyyb","npy","lamc1","bmp15","gdf3","wnt6a","apoeb","apoeb","apoa4b.1","gcgb","gcgb","wnt2","ccl38a.4","ccl38a.4","ccl38.1","ccl38.1","ccl38.6","ccl38.6","nog2","loxl2b","loxl2b","gnrh2","wnt7aa","inha","zgc:195023","nppb","nppa","pyya","epoa","epoa","spx","bglap","bmp3","plat","plat","nppc","pros1","shha","ghrh","agr2","insl5a","wnt4a","gdf10b","defbl1","gcga","vipb","scg3","fibinb","galn","urp1","igf1","apoa4b.3","wnt16"))),group.by = "lineage.ident2")
 
@@ -1912,7 +1919,7 @@ pheatmap(secreted,cluster_rows = T ,cluster_cols = T)
 #annotation_col = anno[,c(2),drop = F],
 #annotation_row = ct[,c(2),drop = F],
 
-#secreted non-curated ####
+# NOT USED? Secreted non-curated ####
 secretome <- read.csv("/local/Bo/Remap_allhearts/final_clustering/secreted/resultsTable_noncur_genes.csv")
 secreted <- DotPlot(final.all.hearts, features = as.character(unique(secretome$V2)) , group.by = "trashid",split.by  = "inhib")
                     
@@ -1926,7 +1933,7 @@ secreted.test<- scale(secreted.test)
 #wnt.all.2 <- scale(wnt.all.2)
 pheatmap(secreted.test)
 
-#secreted time ####
+# NOT USED? Secreted time ####
 
 sec.time <- DotPlot(final.all.hearts,group.by = "time",features = c("wnt4a","clu","igf1","loxl2b","bglap","ghrh","lamc1","tfa","ngfb","gcga","plat","nog2","insl5a","galn","gnrh2","fibinb"))
 sec.time <- sec.time$data
@@ -1946,7 +1953,7 @@ sec.time <- scale(sec.time)
 pheatmap(sec.time,cluster_rows = F ,cluster_cols = T)
 #annotation_colors =  list(Function = anno_col)[1])
 
-#selected genes ####
+# NOT USED? Selected genes ####
 selected <- DotPlot(final.all.hearts,group.by = "lineage.ident2",features = c("nrg1","nrg2a","nppa","nppb","tcf3","vegfc","emilin2a","cxcl8a","cxcr1","cxcr2"))
 selected <- selected$data
 selected <- selected[,c(1,2,3,4)]
@@ -1967,7 +1974,7 @@ selected <- scale(selected)
 pheatmap(selected,cluster_rows = T ,cluster_cols = F)
 
 
-# genes resposible for clustering ####
+# Genes resposible for clustering 2a-2 ####
 final.all.hearts <- SetIdent(final.all.hearts,value = "plot.ident")
 # marker.final.all.hearts <- FindAllMarkers(final.all.hearts,logfc.threshold = 0.5,min.pct = 0.1,only.pos = T)
 # write.csv(marker.final.all.hearts, file = "final_clustering/finalplots/marker.final.all.hearts.csv",
@@ -2039,9 +2046,9 @@ DotPlot(final.all.hearts,
 
 
 immune <- SetIdent(immune, value = "work.ident")
-marker.immune <- FindAllMarkers(immune,logfc.threshold = 0.5,min.pct = 0.1,only.pos = T)
-write.csv(marker.immune, file = "final_clustering/finalplots/marker.immune.csv",
-          quote = F, row.names = F)
+# marker.immune <- FindAllMarkers(immune,logfc.threshold = 0.5,min.pct = 0.1,only.pos = T)
+# write.csv(marker.immune, file = "final_clustering/finalplots/marker.immune.csv",
+#           quote = F, row.names = F)
 
 CM <- SetIdent(CM, value = "work.ident2")
 # marker.CM <- FindAllMarkers(CM,logfc.threshold = 0.3,min.pct = 0.1,only.pos = T)
@@ -2051,9 +2058,9 @@ marker.CM <- read.csv("/data/junker/users/Bo/HeartRegen_paper/final_clustering/f
                       stringsAsFactors = F)
 
 endo <- SetIdent(endo,value = "lineage.ident")
-marker.endo <- FindAllMarkers(endo,logfc.threshold = 0.5,min.pct = 0.1,only.pos = T,group)
-write.csv(marker.endo, file = "final_clustering/finalplots/endo.csv",
-          quote = F, row.names = F)
+# marker.endo <- FindAllMarkers(endo,logfc.threshold = 0.5,min.pct = 0.1,only.pos = T,group)
+# write.csv(marker.endo, file = "final_clustering/finalplots/endo.csv",
+#           quote = F, row.names = F)
 
 # Draw a heatmap of all cells for these marker genes
 ## allhearts
@@ -2077,13 +2084,12 @@ pheatmap(t(heatmap.data),cluster_rows = F ,cluster_cols = F
 
 ## CM
 CM <- SetIdent(CM, value = "work.ident2")
-marker.CM <- FindAllMarkers(CM,logfc.threshold = 0.3, only.pos = T)
+# marker.CM <- FindAllMarkers(CM,logfc.threshold = 0.3, only.pos = T)
 #write.csv(marker.CM, file = "final_clustering/finalplots/CM.alternative.csv",
 #          quote = F, row.names = F)
 marker.CM <- read.csv("/data/junker/users/Bo/HeartRegen_paper/final_clustering/finalplots/CM.alternative.csv", stringsAsFactors = F)
   # FindAllMarkers(CM,logfc.threshold = 0.3, only.pos = T)
 
-library(pheatmap)
 anno <-  rbind(
   data.frame (gene = c("bves","ttn.1","ttn.2","myom2a","myom1b","ndrg4","nppa","cav1","synpo2lb"),Function = "ttn2",color = "red"),
   data.frame (gene = c("aldoaa","eno3","pgam2","tpi1b","mdh2","idh2","atp5pd"),Function = "atp",color = "green"),
@@ -2143,7 +2149,10 @@ heatmap.data <- heatmap.data[,c(1,2,3,4)]
 heatmap.data <- acast(heatmap.data, id~features.plot, value.var = "avg.exp")
 #ecm.tidy <- ecm.tidy[1:20,]
 heatmap.data <- scale(heatmap.data)
+# 2a-2
+pdf("/local/users/Bastiaan/Projects/heart_Bo/Images/CM_expressions_2a_2.pdf")
 pheatmap(heatmap.data,cluster_rows = F ,cluster_cols = F)
+dev.off()
 
 ## endo
 genes <- character()
@@ -2577,7 +2586,7 @@ final.all.hearts@meta.data$trashid <- plyr::mapvalues(final.all.hearts@meta.data
 
 
 
-# fibroblast motivation ####
+# Fibroblast motivation 2b ####
 final.all.hearts <- SetIdent(final.all.hearts,value = "big.ident")
 
 genes <- c("aldh1a2","frzb","dkk3b","igf2b","pdgfrb","tgfb1a","shha","jak1","notch1b","tbx18","bmp4")
@@ -2620,7 +2629,7 @@ ggplot(moti2,aes(x = factor(gene ), y= value,alpha = mode))+
   scale_alpha_manual(values = c(1,0.5))+
   theme_bw()
 
-pd
+#pd
 FeaturePlot(final.all.hearts,features = c("nrg1"),pt.size = 1,cols = c("#f5f5f5","#9d3d58"))
 VlnPlot(final.all.hearts, features = c("nrg1", "aldh1a2", "fn1a")) # In rebuttal
 plot_grid(
@@ -2651,7 +2660,7 @@ ggplot(moti,aes(x = rownames(moti) , y= axin2))+
   RotatedAxis()
 
 
-pd
+#pd
 FeaturePlot(niche,features = c("axin2"),pt.size = 1,cols = c("#f5f5f5","#9d3d58"))
 
 valve.plot <- list()
@@ -2713,27 +2722,15 @@ pheatmap(test,cluster_rows = F,cluster_cols = F)
 FeaturePlot(niche,features = c("wif1"),
             pt.size = 1,cols = c("#e4e4e4","red"))
 
-jpeg(filename = "../finalplots/literature.genes.jpeg",height = 3000,width = 3000)
+# jpeg(filename = "../finalplots/literature.genes.jpeg",height = 3000,width = 3000)
 FeaturePlot(niche,features = c("postnb","col11a1a","col12a1a","fn1a","elnb","sfrp1a","sfrp1b","wif1","dkk3b","frzb","acta2","scxa","tagln","prrx1b","nrg1","snai2","tgfb1a","tgfb3","fn1a"),
               pt.size = 1,cols = c("#e4e4e4","red"))
-dev.off()
+# dev.off()
 
-jpeg(filename = "../finalplots/literature.genes2.jpeg",height = 600,width = 600)
+# jpeg(filename = "../finalplots/literature.genes2.jpeg",height = 600,width = 600)
 FeaturePlot(niche,features = c("fn1a"),
             pt.size = 1,cols = c("#e4e4e4","red"))
-dev.off()
-
-
-######
-test.matrix <- DotPlot(final.all.hearts,features = c("nrg1"),group.by = "lineage.ident2")
-test.matrix <- test.matrix$data
-test.matrix <- test.matrix[,c(1,2,3,4)]
-test.matrix <- acast(test.matrix, id~features.plot, value.var = "avg.exp")
-test.matrix <- test.matrix[!rownames(test.matrix) %in% c("Dead cells","Myelin cells","Neuronal cells"),]
-test.matrix <- as.data.frame(t(test.matrix))
-test.matrix <- as.data.frame(t(test.matrix))
-ggplot(test.matrix,aes(x=rownames(test.matrix),y=V1))+
-  geom_bar(stat = "identity") + RotatedAxis()
+# dev.off()
 
 # nppc ####
 test.matrix <- DotPlot(final.all.hearts,features = "nppc",group.by = "is.inhib")
@@ -2768,7 +2765,7 @@ pdgfrb <- ggplot(test.matrix,aes(x=factor(rownames(test.matrix),levels = c("Ctrl
 
 plot_grid(nppc,fli1a,pdgfrb)
 
-######
+# NOT USED? ####
 test.matrix <- DotPlot(niche,features = c("tcf21"),group.by = "work.ident")
 test.matrix <- test.matrix$data
 test.matrix <- test.matrix[,c(1,2,3,4)]
@@ -2791,7 +2788,7 @@ ggplot(test.matrix,aes(x=rownames(test.matrix),y=tcf21))+
   geom_bar(stat = "identity") + RotatedAxis()
 )
 
-##### plot fig2e ####
+##### NOT USED OLD plot fig2e ####
 
 test.matrix <- DotPlot(final.all.hearts,features = rev(c("nrg1","fn1a","aldh1a2","stra6","cxcl12b","cxcr4a")),group.by = "trashid",split.by = "inhib")
 test.matrix <- test.matrix$data
