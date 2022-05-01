@@ -1603,6 +1603,8 @@ diff_7dpi_counts['DSec_ratio'] = diff_7dpi_counts['DSec_count']/diff_7dpi_counts
 
 # ## Secretome expression per cell type
 
+# ### At control
+
 # In[44]:
 
 
@@ -1614,31 +1616,6 @@ secretome_ctrl = CountSecretome(HR_Rv_ctrl, secretome)
 secretome_averages_ctrl, secretome_z_averages_ctrl = ExpressedSecretome(HR_Rv_ctrl, secretome)
 
 
-# In[30]:
-
-
-#secretome_ctrl
-
-
-# In[21]:
-
-
-#secretome_old_ctrl = CountSecretome(HR_Rv_ctrl, secretome_old)
-#secretome_old_averages_ctrl, secretome_old_z_averages_ctrl = ExpressedSecretome(HR_Rv_ctrl, secretome_old)
-
-
-# In[108]:
-
-
-#secretome_z_averages_ctrl
-
-
-# In[109]:
-
-
-#secretome_old_z_averages_ctrl
-
-
 # In[45]:
 
 
@@ -1646,25 +1623,6 @@ secretome_averages_ctrl_save = secretome_averages_ctrl[secretome_averages_ctrl.m
 #secretome_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_ctrl.csv')
 secretome_z_averages_ctrl_save = secretome_z_averages_ctrl[secretome_z_averages_ctrl.max(axis = 1) > 2]
 #secretome_z_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_ctrl.csv')
-
-
-# In[27]:
-
-
-#secretome_old_averages_ctrl_save = secretome_old_averages_ctrl[secretome_old_averages_ctrl.max(axis = 1) > 10]
-#secretome_old_z_averages_ctrl_save = secretome_old_z_averages_ctrl[secretome_old_z_averages_ctrl.max(axis = 1) > 2]
-
-
-# In[110]:
-
-
-#secretome_z_averages_ctrl_save
-
-
-# In[111]:
-
-
-#secretome_old_z_averages_ctrl_save
 
 
 # In[112]:
@@ -1687,95 +1645,56 @@ secretome_z_averages_ctrl_save = secretome_z_averages_ctrl[secretome_z_averages_
 # pl.show()
 
 
-# In[ ]:
+# In[56]:
 
 
-# START PLOT IMPROVEMENT
-
-
-# In[31]:
-
-
-# HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '0') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
-# all_genes_but_RFP = [name for name in HR_Rv_ctrl.var_names if not name == 'RFP']
-# HR_Rv_ctrl = HR_Rv_ctrl[:, all_genes_but_RFP]
-# sc.pp.normalize_total(HR_Rv_ctrl, target_sum=1e4)
-#secretome_ctrl = CountSecretome(HR_Rv_ctrl, secretome)
-
-
-# In[47]:
-
-
-secretome_ind = [HR_Rv_ctrl.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in HR_Rv_ctrl.var.index]
-secretome_df = HR_Rv_ctrl.obs.loc[:, ['Cell_type']]
-secretome_df['Secretome'] = np.nan
-secretome_slice = HR_Rv_ctrl.X[:,secretome_ind]
+secretome_ctrl_ind = [HR_Rv_ctrl.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in HR_Rv_ctrl.var.index]
+secretome_ctrl_df = HR_Rv_ctrl.obs.loc[:, ['Cell_type']]
+secretome_ctrl_df['Secretome'] = np.nan
+secretome_ctrl_slice = HR_Rv_ctrl.X[:,secretome_ind]
 for ctype in HR_Rv_ctrl.obs['Cell_type'].cat.categories:
     ctype_index = HR_Rv_ctrl.obs[HR_Rv_ctrl.obs['Cell_type'] == ctype].index
     ctype_index_numeric = [x for x in range(0, len(HR_Rv_ctrl.obs)) if HR_Rv_ctrl.obs.Cell_type[x] == ctype]
     if(len(ctype_index_numeric) == 0):
         continue
     #print(len(ctype_index_numeric))
-    secretome_df.Secretome.loc[ctype_index] = np.array((secretome_slice[ctype_index_numeric, :].sum(axis = 1)))[:,0]/100
+    secretome_ctrl_df.Secretome.loc[ctype_index] = np.array((secretome_ctrl_slice[ctype_index_numeric, :].sum(axis = 1)))[:,0]/100
 
 
-# In[126]:
+# In[118]:
 
 
-# for ctype in HR_Rv_ctrl.obs['Cell_type'].cat.categories:
-#     ctype_index = HR_Rv_ctrl.obs[HR_Rv_ctrl.obs['Cell_type'] == ctype].index
-#     ctype_index_numeric = [x for x in range(0, len(HR_Rv_ctrl.obs)) if HR_Rv_ctrl.obs.Cell_type[x] == ctype]
-#     if(len(ctype_index_numeric) == 0):
-#         continue
-#     #print(len(ctype_index_numeric))
-#     secretome_df.Secretome.loc[ctype_index] = np.array((secretome_slice[ctype_index_numeric, :].sum(axis = 1)))[:,0]/100
-
-
-# In[164]:
-
-
-# celltype_order = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
-# fig, ax = pl.subplots(figsize=(12,4))
-# g = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_df, scale = 'width', inner=None,
-#               order = celltype_order, palette = cell_type_colors.loc[celltype_order].color)
-# g.set_xticklabels(g.get_xticklabels(), rotation=270)
-# pl.show()
-
-
-# In[163]:
-
-
-# celltype_order = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
-# fig, ax = pl.subplots(figsize=(12,4))
-# g = sns.pointplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_df,
-#                   capsize=.4, ci=99, join=False,
-#               order = celltype_order, color = 'black')#, palette = cell_type_colors.loc[celltype_order].color)
-# #ax = sns.pointplot(x="day", y="tip", data=tips, ci=68)
-# g.set_xticklabels(g.get_xticklabels(), rotation=270)
-# pl.show()
-
-
-# In[48]:
-
-
-celltype_order = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
+celltype_order_ctrl = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
 fig, ax = pl.subplots(figsize=(12,4))
-g = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_df, scale = 'width', inner=None,
-              order = celltype_order, palette = cell_type_colors.loc[celltype_order].color)
+g_ctrl = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_ctrl_df, scale = 'width', inner=None,
+              order = celltype_order_ctrl, palette = cell_type_colors.loc[celltype_order_ctrl].color)
 pl.setp(ax.collections, alpha=.5)
-g = sns.pointplot(ax=g, x="Cell_type", y="Secretome", data=secretome_df,
+g_ctrl = sns.pointplot(ax=g_ctrl, x="Cell_type", y="Secretome", data=secretome_ctrl_df,
                   capsize=.4, ci=99, join=False,
-              order = celltype_order, color = 'black')
-g.set_xticklabels(g.get_xticklabels(), rotation=270)
-g.spines['top'].set_visible(False)
-g.spines['right'].set_visible(False)
+              order = celltype_order_ctrl, color = 'black')
+g_ctrl.set_xticklabels(g_ctrl.get_xticklabels(), rotation=270)
+g_ctrl.spines['top'].set_visible(False)
+g_ctrl.spines['right'].set_visible(False)
 pl.show()
 
 
-# In[ ]:
+# In[119]:
 
 
-# END PLOT IMPROVEMENTS
+secretome_ctrl_epi = secretome_ctrl[secretome_ctrl.Cell_type.isin(epifibro_types)]
+secretome_ctrl_df_epi = secretome_ctrl_df[secretome_ctrl_df.Cell_type.isin(epifibro_types)]
+
+celltype_order_ctrl_epi = (secretome_ctrl_epi.sort_values(by = 'Secretome', ascending = False)).Cell_type
+fig, ax = pl.subplots(figsize=(12,4))
+g_ctrl = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_ctrl_df_epi, scale = 'width', inner=None,
+              order = celltype_order_ctrl_epi, palette = cell_type_colors.loc[celltype_order_ctrl_epi].color)
+g_ctrl = sns.pointplot(ax=g_ctrl, x="Cell_type", y="Secretome", data=secretome_ctrl_df_epi,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order_ctrl_epi, color = 'black')
+g_ctrl.set_xticklabels(g_ctrl.get_xticklabels(), rotation=270)
+g_ctrl.spines['top'].set_visible(False)
+g_ctrl.spines['right'].set_visible(False)
+pl.show()
 
 
 # In[19]:
@@ -1805,7 +1724,9 @@ pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretom
 pl.show()
 
 
-# In[18]:
+# ### At 3dpi
+
+# In[49]:
 
 
 HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -1816,233 +1737,85 @@ secretome_3dpi = CountSecretome(HR_Rv_3dpi, secretome)
 secretome_averages_3dpi, secretome_z_averages_3dpi = ExpressedSecretome(HR_Rv_3dpi, secretome)
 
 
-# In[103]:
+# In[50]:
 
 
-#secretome_old_3dpi = CountSecretome(HR_Rv_3dpi, secretome_old)
-#secretome_old_averages_3dpi, secretome_old_z_averages_3dpi = ExpressedSecretome(HR_Rv_3dpi, secretome_old)
-
-
-# In[94]:
-
-
-#adata = HR_Rv_3dpi
-#secretome_ind = [adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index]
-#secretome_ind = np.unique([adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-
-#secretome_slice = adata.X[:,secretome_ind]
-#secretome_dense_slice = adata.X[:,secretome_ind].todense()
-#secretome_dense_slice_z = preprocessing.scale(secretome_dense_slice)
-#secretome_dense_slice_z
-#ctype_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-#ctype_z_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-#ctype_averages
-#for ctype in adata.obs['Cell_type'].cat.categories:
-#    ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
-#    if(len(ctype_index) == 0):
-#        continue
-#    ctype_average = pd.DataFrame({ctype : np.squeeze(np.asarray(secretome_slice[ctype_index, :].mean(axis = 0)))},
-#                                  index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index]) # axis = 0 gets us gene-level averages. #.sum(axis = 1))/len(ctype_index))[0,0]
-#    ctype_averages = ctype_averages.join(ctype_average)
-#        
-#    ctype_z_average = pd.DataFrame({ctype : secretome_dense_slice_z[ctype_index, :].mean(axis = 0)},
-#                                    index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-#    ctype_z_averages = ctype_z_averages.join(ctype_z_average)
-
-
-# In[114]:
-
-
-#len(secretome_ind)
-
-
-# In[115]:
-
-
-#secretome_dense_slice.shape
-
-
-# In[116]:
-
-
-#sec_genes = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index]
-
-
-# In[117]:
-
-
-#sec_genes[1:10]
-
-
-# In[118]:
-
-
-#adata.var.loc[sec_genes[1:10]]
-
-
-# In[119]:
-
-
-#raw_sec_index = [adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index]
+secretome_3dpi_ind = [HR_Rv_3dpi.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in HR_Rv_3dpi.var.index]
+secretome_3dpi_df = HR_Rv_3dpi.obs.loc[:, ['Cell_type']]
+secretome_3dpi_df['Secretome'] = np.nan
+secretome_3dpi_slice = HR_Rv_3dpi.X[:,secretome_ind]
+for ctype in HR_Rv_3dpi.obs['Cell_type'].cat.categories:
+    ctype_index = HR_Rv_3dpi.obs[HR_Rv_3dpi.obs['Cell_type'] == ctype].index
+    ctype_index_numeric = [x for x in range(0, len(HR_Rv_3dpi.obs)) if HR_Rv_3dpi.obs.Cell_type[x] == ctype]
+    if(len(ctype_index_numeric) == 0):
+        continue
+    #print(len(ctype_index_numeric))
+    secretome_3dpi_df.Secretome.loc[ctype_index] = np.array((secretome_3dpi_slice[ctype_index_numeric, :].sum(axis = 1)))[:,0]/100
 
 
 # In[120]:
 
 
-#raw_sec_index[1:10]
+celltype_order_3dpi = (secretome_3dpi.sort_values(by = 'Secretome', ascending = False)).Cell_type
+fig, ax = pl.subplots(figsize=(12,4))
+g_3dpi = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_3dpi_df, scale = 'width', inner=None,
+              order = celltype_order_3dpi, palette = cell_type_colors.loc[celltype_order_3dpi].color)
+pl.setp(ax.collections, alpha=.5)
+g_3dpi = sns.pointplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_3dpi_df,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order_3dpi, color = 'black')
+g_3dpi.set_xticklabels(g_3dpi.get_xticklabels(), rotation=270)
+g_3dpi.spines['top'].set_visible(False)
+g_3dpi.spines['right'].set_visible(False)
+pl.show()
 
 
 # In[121]:
 
 
-#adata.var.iloc[raw_sec_index[1:10]]
+secretome_3dpi_epi = secretome_3dpi[secretome_3dpi.Cell_type.isin(epifibro_types)]
+secretome_3dpi_df_epi = secretome_3dpi_df[secretome_3dpi_df.Cell_type.isin(epifibro_types)]
 
-
-# In[122]:
-
-
-#adata.var.iloc[secretome_ind[1:10]]
-
-
-# In[123]:
-
-
-#adata.var
-
-
-# In[124]:
-
-
-#adata.var.iloc[adata.var.index.get_loc('adprhl1')]
-
-
-# In[125]:
-
-
-#secretome_old_ind[1:10]
-
-
-# In[126]:
-
-
-#[x for x in np.array(secretome_old.external_gene_name) if x in adata.var.index]
-
-
-# In[96]:
-
-
-#adata = HR_Rv_3dpi
-#secretome_old_ind = [adata.var.index.get_loc(x) for x in np.array(secretome_old.external_gene_name) if x in adata.var.index]
-#secretome_old_ind = np.unique([adata.var.index.get_loc(x) for x in np.array(secretome_old.external_gene_name) if x in adata.var.index])
-
-#secretome_old_slice = adata.X[:,secretome_old_ind]
-#secretome_old_dense_slice = adata.X[:,secretome_old_ind].todense()
-#secretome_old_dense_slice_z = preprocessing.scale(secretome_old_dense_slice)
-
-#ctype_old_averages = pd.DataFrame(index = [x for x in np.array(secretome_old.external_gene_name) if x in adata.var.index])
-#ctype_old_z_averages = pd.DataFrame(index = [x for x in np.array(secretome_old.external_gene_name) if x in adata.var.index])
-#ctype_old_averages
-#for ctype_old in adata.obs['Cell_type'].cat.categories:
-#    ctype_old_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype_old]
-#    if(len(ctype_old_index) == 0):
-#        continue
-#    ctype_old_average = pd.DataFrame({ctype_old : np.squeeze(np.asarray(secretome_old_slice[ctype_old_index, :].mean(axis = 0)))},
-#                                  index = [x for x in np.array(secretome_old.external_gene_name) if x in adata.var.index]) # axis = 0 gets us gene-level averages. #.sum(axis = 1))/len(ctype_old_index))[0,0]
-#    ctype_old_averages = ctype_old_averages.join(ctype_old_average)
-        
-#    ctype_old_z_average = pd.DataFrame({ctype_old : secretome_old_dense_slice_z[ctype_old_index, :].mean(axis = 0)},
-#                                    index = [x for x in np.array(secretome_old.external_gene_name) if x in adata.var.index])
-#    ctype_old_z_averages = ctype_old_z_averages.join(ctype_old_z_average)
-
-
-# In[127]:
-
-
-#ctype_averages.loc['c1qa']
-
-
-# In[128]:
-
-
-#ctype_old_averages.loc['c1qa']
-
-
-# In[129]:
-
-
-#secretome_z_averages_3dpi
-
-
-# In[130]:
-
-
-#secretome_old_z_averages_3dpi
-
-
-# In[35]:
-
-
-#secretome_old_averages_3dpi_save = secretome_old_averages_3dpi[secretome_old_averages_3dpi.max(axis = 1) > 10]
-#secretome_old_z_averages_3dpi_save = secretome_old_z_averages_3dpi[secretome_old_z_averages_3dpi.max(axis = 1) > 2]
+celltype_order_3dpi_epi = (secretome_3dpi_epi.sort_values(by = 'Secretome', ascending = False)).Cell_type
+fig, ax = pl.subplots(figsize=(12,4))
+g_3dpi = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_3dpi_df_epi, scale = 'width', inner=None,
+              order = celltype_order_3dpi_epi, palette = cell_type_colors.loc[celltype_order_3dpi_epi].color)
+g_3dpi = sns.pointplot(ax=g_3dpi, x="Cell_type", y="Secretome", data=secretome_3dpi_df_epi,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order_3dpi_epi, color = 'black')
+g_3dpi.set_xticklabels(g_3dpi.get_xticklabels(), rotation=270)
+g_3dpi.spines['top'].set_visible(False)
+g_3dpi.spines['right'].set_visible(False)
+pl.show()
 
 
 # In[131]:
 
 
 secretome_averages_3dpi_save = secretome_averages_3dpi[secretome_averages_3dpi.max(axis = 1) > 10]
-secretome_averages_3dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_3dpi.csv')
+#secretome_averages_3dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_3dpi.csv')
 secretome_z_averages_3dpi_save = secretome_z_averages_3dpi[secretome_z_averages_3dpi.max(axis = 1) > 2]
-secretome_z_averages_3dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_3dpi.csv')
-
-
-# In[132]:
-
-
-#secretome_averages_3dpi.loc['c1qa']
-
-
-# In[133]:
-
-
-#secretome_averages_3dpi.loc['c1qa']
-
-
-# In[134]:
-
-
-#secretome_averages_3dpi.loc['tuft1b']
-
-
-# In[135]:
-
-
-#secretome_old_averages_3dpi.loc['tuft1b']
-
-
-# In[136]:
-
-
-#secretome_old_averages_3dpi.loc['tuft1b']
+#secretome_z_averages_3dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_3dpi.csv')
 
 
 # In[137]:
 
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-secretome_3dpi_plot = secretome_3dpi[secretome_3dpi.Cell_type.isin(epifibro_types)]
-secretome_3dpi_plot = secretome_3dpi_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
-secretome_3dpi_plot = secretome_3dpi_plot.sort_values(by = 'Secretome', ascending = False)
+# secretome_3dpi_plot = secretome_3dpi[secretome_3dpi.Cell_type.isin(epifibro_types)]
+# secretome_3dpi_plot = secretome_3dpi_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+# secretome_3dpi_plot = secretome_3dpi_plot.sort_values(by = 'Secretome', ascending = False)
 
-plt.bar(x = np.arange(len(secretome_3dpi_plot)),
-       height = secretome_3dpi_plot.Secretome/100,
-       yerr = 3 * secretome_3dpi_plot.SEM/100, capsize = 2,
-       color = secretome_3dpi_plot.color)
-plt.xlabel('Cell type')
-plt.xticks(np.arange(len(secretome_3dpi_plot)), secretome_3dpi_plot.Cell_type, rotation=270)
-plt.ylabel('Secretome (%)')
-plt.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_3dpi_fibroniche.pdf', bbox_inches = 'tight', transparent = True)
-plt.show()
+# plt.bar(x = np.arange(len(secretome_3dpi_plot)),
+#        height = secretome_3dpi_plot.Secretome/100,
+#        yerr = 3 * secretome_3dpi_plot.SEM/100, capsize = 2,
+#        color = secretome_3dpi_plot.color)
+# plt.xlabel('Cell type')
+# plt.xticks(np.arange(len(secretome_3dpi_plot)), secretome_3dpi_plot.Cell_type, rotation=270)
+# plt.ylabel('Secretome (%)')
+# plt.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_3dpi_fibroniche.pdf', bbox_inches = 'tight', transparent = True)
+# plt.show()
 
 
 # In[196]:
@@ -2073,7 +1846,9 @@ pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretom
 pl.show()
 
 
-# In[24]:
+# ### At 7dpi
+
+# In[81]:
 
 
 HR_Rv_7dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '7') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -2088,29 +1863,81 @@ secretome_averages_7dpi, secretome_z_averages_7dpi = ExpressedSecretome(HR_Rv_7d
 
 
 secretome_averages_7dpi_save = secretome_averages_7dpi[secretome_averages_7dpi.max(axis = 1) > 10]
-secretome_averages_7dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_7dpi.csv')
+#secretome_averages_7dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_7dpi.csv')
 secretome_z_averages_7dpi_save = secretome_z_averages_7dpi[secretome_z_averages_7dpi.max(axis = 1) > 2]
-secretome_z_averages_7dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_7dpi.csv')
+#secretome_z_averages_7dpi_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_7dpi.csv')
+
+
+# In[82]:
+
+
+secretome_7dpi_ind = [HR_Rv_7dpi.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in HR_Rv_7dpi.var.index]
+secretome_7dpi_df = HR_Rv_7dpi.obs.loc[:, ['Cell_type']]
+secretome_7dpi_df['Secretome'] = np.nan
+secretome_7dpi_slice = HR_Rv_7dpi.X[:,secretome_ind]
+for ctype in HR_Rv_7dpi.obs['Cell_type'].cat.categories:
+    ctype_index = HR_Rv_7dpi.obs[HR_Rv_7dpi.obs['Cell_type'] == ctype].index
+    ctype_index_numeric = [x for x in range(0, len(HR_Rv_7dpi.obs)) if HR_Rv_7dpi.obs.Cell_type[x] == ctype]
+    if(len(ctype_index_numeric) == 0):
+        continue
+    #print(len(ctype_index_numeric))
+    secretome_7dpi_df.Secretome.loc[ctype_index] = np.array((secretome_7dpi_slice[ctype_index_numeric, :].sum(axis = 1)))[:,0]/100
+
+
+# In[122]:
+
+
+celltype_order_7dpi = (secretome_7dpi.sort_values(by = 'Secretome', ascending = False)).Cell_type
+fig, ax = pl.subplots(figsize=(12,4))
+g_7dpi = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_7dpi_df, scale = 'width', inner=None,
+              order = celltype_order_7dpi, palette = cell_type_colors.loc[celltype_order_7dpi].color)
+pl.setp(ax.collections, alpha=.5)
+g_7dpi = sns.pointplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_7dpi_df,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order_7dpi, color = 'black')
+g_7dpi.set_xticklabels(g_7dpi.get_xticklabels(), rotation=270)
+g_7dpi.spines['top'].set_visible(False)
+g_7dpi.spines['right'].set_visible(False)
+pl.show()
+
+
+# In[123]:
+
+
+secretome_7dpi_epi = secretome_7dpi[secretome_7dpi.Cell_type.isin(epifibro_types)]
+secretome_7dpi_df_epi = secretome_7dpi_df[secretome_7dpi_df.Cell_type.isin(epifibro_types)]
+
+celltype_order_7dpi_epi = (secretome_7dpi_epi.sort_values(by = 'Secretome', ascending = False)).Cell_type
+fig, ax = pl.subplots(figsize=(12,4))
+g_7dpi = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_7dpi_df_epi, scale = 'width', inner=None,
+              order = celltype_order_7dpi_epi, palette = cell_type_colors.loc[celltype_order_7dpi_epi].color)
+g_7dpi = sns.pointplot(ax=g_7dpi, x="Cell_type", y="Secretome", data=secretome_7dpi_df_epi,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order_7dpi_epi, color = 'black')
+g_7dpi.set_xticklabels(g_7dpi.get_xticklabels(), rotation=270)
+g_7dpi.spines['top'].set_visible(False)
+g_7dpi.spines['right'].set_visible(False)
+pl.show()
 
 
 # In[142]:
 
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-secretome_7dpi_plot = secretome_7dpi #[secretome_7dpi.Cell_type.isin(epifibro_types)]
-secretome_7dpi_plot = secretome_7dpi_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
-secretome_7dpi_plot = secretome_7dpi_plot.sort_values(by = 'Secretome', ascending = False)
+# secretome_7dpi_plot = secretome_7dpi #[secretome_7dpi.Cell_type.isin(epifibro_types)]
+# secretome_7dpi_plot = secretome_7dpi_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+# secretome_7dpi_plot = secretome_7dpi_plot.sort_values(by = 'Secretome', ascending = False)
 
-pl.bar(x = np.arange(len(secretome_7dpi_plot)),
-       height = secretome_7dpi_plot.Secretome/100,
-       yerr = 3 * secretome_7dpi_plot.SEM/100, capsize = 2,
-       color = secretome_7dpi_plot.color)
-pl.xlabel('Cell type')
-pl.xticks(np.arange(len(secretome_7dpi_plot)), secretome_7dpi_plot.Cell_type, rotation=270)
-pl.ylabel('Secretome (%)')
-pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_7dpi.pdf', bbox_inches = 'tight', transparent = True)
-pl.show()
+# pl.bar(x = np.arange(len(secretome_7dpi_plot)),
+#        height = secretome_7dpi_plot.Secretome/100,
+#        yerr = 3 * secretome_7dpi_plot.SEM/100, capsize = 2,
+#        color = secretome_7dpi_plot.color)
+# pl.xlabel('Cell type')
+# pl.xticks(np.arange(len(secretome_7dpi_plot)), secretome_7dpi_plot.Cell_type, rotation=270)
+# pl.ylabel('Secretome (%)')
+# pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_7dpi.pdf', bbox_inches = 'tight', transparent = True)
+# pl.show()
 
 
 # In[25]:
@@ -2139,6 +1966,138 @@ sns.clustermap(secretome_z_averages_7dpi_plot[secretome_z_averages_7dpi_plot.max
 pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_7dpi_high_z.pdf', bbox_inches = 'tight', transparent = True)
 pl.show()
 
+
+# ### All timepoints together
+
+# In[124]:
+
+
+fig, (ax1, ax2, ax3) = pl.subplots(1, 3, sharey=True, figsize=(13.3,4))
+
+g_ctrl = sns.violinplot(ax=ax1, x="Cell_type", y="Secretome", data=secretome_ctrl_df_epi, scale = 'width', inner=None,
+              order = celltype_order_ctrl_epi, palette = cell_type_colors.loc[celltype_order_ctrl_epi].color,
+                       linewidth = 0)
+g_ctrl = sns.pointplot(ax=ax1, x="Cell_type", y="Secretome", data=secretome_ctrl_df_epi,
+                  capsize=.4, ci=99, join=False, scale = 0.5, errwidth = 0.5,
+              order = celltype_order_ctrl_epi, color = 'black')
+g_ctrl.set_xticklabels(g_ctrl.get_xticklabels(), rotation=270)
+g_ctrl.spines['top'].set_visible(False)
+g_ctrl.spines['right'].set_visible(False)
+
+g_3dpi = sns.violinplot(ax=ax2, x="Cell_type", y="Secretome", data=secretome_3dpi_df_epi, scale = 'width', inner=None,
+              order = celltype_order_3dpi_epi, palette = cell_type_colors.loc[celltype_order_3dpi_epi].color,
+                       linewidth = 0)
+g_3dpi = sns.pointplot(ax=ax2, x="Cell_type", y="Secretome", data=secretome_3dpi_df_epi,
+                  capsize=.4, ci=99, join=False, scale = 0.5, errwidth = 0.5,
+              order = celltype_order_3dpi_epi, color = 'black')
+g_3dpi.set_xticklabels(g_3dpi.get_xticklabels(), rotation=270)
+g_3dpi.spines['top'].set_visible(False)
+g_3dpi.spines['right'].set_visible(False)
+
+g_7dpi = sns.violinplot(ax=ax3, x="Cell_type", y="Secretome", data=secretome_7dpi_df_epi, scale = 'width', inner=None,
+              order = celltype_order_7dpi_epi, palette = cell_type_colors.loc[celltype_order_7dpi_epi].color,
+                       linewidth = 0)
+g_7dpi = sns.pointplot(ax=ax3, x="Cell_type", y="Secretome", data=secretome_7dpi_df_epi,
+                  capsize=.4, ci=99, join=False, scale = 0.5, errwidth = 0.5,
+              order = celltype_order_7dpi_epi, color = 'black')
+g_7dpi.set_xticklabels(g_7dpi.get_xticklabels(), rotation=270)
+g_7dpi.spines['top'].set_visible(False)
+g_7dpi.spines['right'].set_visible(False)
+
+for ax in fig.get_axes():
+    ax.label_outer()
+    #ax.set_yticks([0,5,10,15,20, 25, 30, 35, 40])
+    
+#pl.ylim(0, 20) # For main fig; leave out for S10a.
+
+pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_all_epi_violin_S10a.pdf', 
+           bbox_inches = 'tight', transparent = True)
+
+
+# In[126]:
+
+
+fig, (ax1, ax2, ax3) = pl.subplots(1, 3, sharey=True, figsize=(16,4))
+
+g_ctrl = sns.violinplot(ax=ax1, x="Cell_type", y="Secretome", data=secretome_ctrl_df, scale = 'width', inner=None,
+              order = celltype_order_ctrl, palette = cell_type_colors.loc[celltype_order_ctrl].color,
+                       linewidth = 0)
+g_ctrl = sns.pointplot(ax=ax1, x="Cell_type", y="Secretome", data=secretome_ctrl_df,
+                  capsize=.4, ci=99, join=False, scale = 0.5, errwidth = 0.5,
+              order = celltype_order_ctrl, color = 'black')
+g_ctrl.set_xticklabels(g_ctrl.get_xticklabels(), rotation=270)
+g_ctrl.spines['top'].set_visible(False)
+g_ctrl.spines['right'].set_visible(False)
+
+g_3dpi = sns.violinplot(ax=ax2, x="Cell_type", y="Secretome", data=secretome_3dpi_df, scale = 'width', inner=None,
+              order = celltype_order_3dpi, palette = cell_type_colors.loc[celltype_order_3dpi].color,
+                       linewidth = 0)
+g_3dpi = sns.pointplot(ax=ax2, x="Cell_type", y="Secretome", data=secretome_3dpi_df,
+                  capsize=.4, ci=99, join=False, scale = 0.5, errwidth = 0.5,
+              order = celltype_order_3dpi, color = 'black')
+g_3dpi.set_xticklabels(g_3dpi.get_xticklabels(), rotation=270)
+g_3dpi.spines['top'].set_visible(False)
+g_3dpi.spines['right'].set_visible(False)
+
+g_7dpi = sns.violinplot(ax=ax3, x="Cell_type", y="Secretome", data=secretome_7dpi_df, scale = 'width', inner=None,
+              order = celltype_order_7dpi, palette = cell_type_colors.loc[celltype_order_7dpi].color,
+                       linewidth = 0)
+g_7dpi = sns.pointplot(ax=ax3, x="Cell_type", y="Secretome", data=secretome_7dpi_df,
+                  capsize=.4, ci=99, join=False, scale = 0.5, errwidth = 0.5,
+              order = celltype_order_7dpi, color = 'black')
+g_7dpi.set_xticklabels(g_7dpi.get_xticklabels(), rotation=270)
+g_7dpi.spines['top'].set_visible(False)
+g_7dpi.spines['right'].set_visible(False)
+
+for ax in fig.get_axes():
+    ax.label_outer()
+    #ax.set_yticks([0,5,10,15,20, 25, 30, 35, 40])
+    
+#pl.ylim(0, 20) # For main fig; leave out for S10a.
+
+pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_all_violin_S10a.pdf', 
+           bbox_inches = 'tight', transparent = True)
+
+
+# In[130]:
+
+
+secretome_3dpi_df
+
+
+# In[66]:
+
+
+fig, (ax1, ax2) = pl.subplots(1, 2, sharey=True, figsize=(12,4))
+
+#cell_types_drop = ['Neuronal cells', 'Myelin cells']
+
+celltype_order_ctrl = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
+g_ctrl = sns.violinplot(ax=ax1, x="Cell_type", y="Secretome", data=secretome_ctrl_df, scale = 'width', inner=None,
+              order = celltype_order_ctrl, palette = cell_type_colors.loc[celltype_order_ctrl].color)
+pl.setp(ax1.collections, alpha=.5)
+g_ctrl = sns.pointplot(ax=ax1, x="Cell_type", y="Secretome", data=secretome_ctrl_df,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order_ctrl, color = 'black')
+g_ctrl.set_xticklabels(g_ctrl.get_xticklabels(), rotation=270)
+g_ctrl.spines['top'].set_visible(False)
+g_ctrl.spines['right'].set_visible(False)
+
+celltype_order_3dpi = (secretome_3dpi.sort_values(by = 'Secretome', ascending = False)).Cell_type
+g_3dpi = sns.violinplot(ax=ax2, x="Cell_type", y="Secretome", data=secretome_3dpi_df, scale = 'width', inner=None,
+              order = celltype_order_3dpi, palette = cell_type_colors.loc[celltype_order_3dpi].color)
+pl.setp(ax.collections, alpha=.5)
+g_3dpi = sns.pointplot(ax=ax2, x="Cell_type", y="Secretome", data=secretome_3dpi_df,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order_3dpi, color = 'black')
+g_3dpi.set_xticklabels(g_3dpi.get_xticklabels(), rotation=270)
+g_3dpi.spines['top'].set_visible(False)
+g_3dpi.spines['right'].set_visible(False)
+
+pl.show()
+
+
+# ### Inhibited
 
 # In[26]:
 
@@ -2364,28 +2323,4 @@ for ax in axs.flat:
 
 plt.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_all_conditions_epiniche.pdf', 
             bbox_inches = 'tight', transparent = True)
-
-
-# In[135]:
-
-
-plot_all_secretomes[0]
-
-
-# In[ ]:
-
-
-# Plot all secretome together - selected cell types
-
-
-# In[27]:
-
-
-secretome_averages_3dpi.loc[['wif1', 'dkk3a', 'dkk3b']]
-
-
-# In[26]:
-
-
-secretome_z_averages_7dpi.loc['wif1']
 
