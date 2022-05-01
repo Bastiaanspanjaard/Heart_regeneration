@@ -12,4 +12,4 @@ Data analysis scripts for single cell heart regeneration in zebrafish. External 
 8. __Single-cell trajectory analysis.__ Single-cell trajectories based on PAGA and intron velocity are created in HR_trajectories.py.
 
 # Data description
-We provide a single-cell annotation file /Data/final_celltypes.tsv for cell type annotation and to extract scars on valid transcriptome barcodes. Other datasets can be downloaded from GEO. 
+Transcriptome and scar sequencing data can be downloaded from GEO (accession numbers GSE159032 and GSE158919). In folder /Data in this repository, we provide a single-cell annotation file (final_celltypes.tsv) for cell type annotation, cell type color data files (color_scheme_seurat.rds and Cell_type_colors_2.csv - same underlying color scheme), a list of mitochondrial zebrafish genes (mito.genes.vs.txt), a list of zebrafish secretome genes (Alliance_secretome_gene_names_noDRduplicates.scsv), and the object containing all single-cell lineage trees built for this dataset (Tree_list_oneEndo.rds, scripts for visualization and analysis are in Cell_type_tree_relations.R).
