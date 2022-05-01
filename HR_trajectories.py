@@ -3,7 +3,7 @@
 
 # # Dependencies and parameters
 
-# In[1]:
+# In[9]:
 
 
 from IPython.core.display import display, HTML
@@ -24,26 +24,92 @@ import cellrank as cr
 scv.settings.set_figure_params('scvelo', dpi_save = 300)
 
 
-# In[2]:
+# In[10]:
 
 
 import matplotlib as mpl
 mpl.rcParams['pdf.fonttype'] = 42
 
 
-# In[3]:
+# In[11]:
+
+
+def GetDiffGenes(adata):
+    # Return differentially expressed genes (p < 0.01, logfoldchange > 1) per cell type in a AnnData -
+    # requires calculation of differentially expressed genes first.
+    result = pd.DataFrame({})
+    for ctype in adata.obs['Cell_type'].cat.categories:
+        ctype_d = {'Gene' : adata.uns['rank_genes_groups']['names'][ctype],
+                   'pvals_adj': adata.uns['rank_genes_groups']['pvals_adj'][ctype],
+                   'logfoldchanges': adata.uns['rank_genes_groups']['logfoldchanges'][ctype],
+                   'Cell_type':  np.repeat(ctype, len(adata.var.index))}
+        ctype_degdf = pd.DataFrame(data=ctype_d)
+        result = result.append(ctype_degdf[(ctype_degdf.pvals_adj < 0.01) & (ctype_degdf.logfoldchanges > 1)], ignore_index=True)
+    return result
+
+
+# In[12]:
+
+
+def CountSecretome(adata, secretome):
+    # Return secretome expression per cell type - mean and standard error of the mean.
+    secretome_ind = [adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index]
+
+    result = pd.DataFrame({'Cell_type' : adata.obs['Cell_type'].cat.categories,
+                          'Secretome' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories)),
+                          'SEM' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories))})
+    for ctype in adata.obs['Cell_type'].cat.categories:
+        ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
+        if(len(ctype_index) == 0):
+            continue
+        secretome_slice = adata.X[:,secretome_ind]
+        result.Secretome[result['Cell_type'] == ctype] = (sum(secretome_slice[ctype_index, :].sum(axis = 1))/len(ctype_index))[0,0]
+        result.SEM[result['Cell_type'] == ctype] = np.std(secretome_slice[ctype_index, :].sum(axis = 1))/np.sqrt(len(ctype_index))
+    result = result[result.Secretome != -1]
+    return(result)
+
+
+# In[13]:
+
+
+def ExpressedSecretome(adata, secretome):
+    # Return mean expression and z-score expression (scaled over genes within a cell type) for secretome genes
+    # per cell type in an AnnData object adata.
+    secretome_ind = [adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index]
+
+    secretome_slice = adata.X[:,secretome_ind]
+    secretome_dense_slice = adata.X[:,secretome_ind].todense()
+    secretome_dense_slice_z = preprocessing.scale(secretome_dense_slice)
+
+    ctype_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+    ctype_z_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+    for ctype in adata.obs['Cell_type'].cat.categories:
+        ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
+        if(len(ctype_index) == 0):
+            continue
+        ctype_average = pd.DataFrame({ctype : np.squeeze(np.asarray(secretome_slice[ctype_index, :].mean(axis = 0)))},
+                                  index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index]) # axis = 0 gets us gene-level averages. #.sum(axis = 1))/len(ctype_index))[0,0]
+        ctype_averages = ctype_averages.join(ctype_average)
+        
+        ctype_z_average = pd.DataFrame({ctype : secretome_dense_slice_z[ctype_index, :].mean(axis = 0)},
+                                    index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
+        ctype_z_averages = ctype_z_averages.join(ctype_z_average)
+    return(ctype_averages, ctype_z_averages)
+
+
+# In[14]:
 
 
 annotations = pd.read_csv('~/Documents/Projects/heart_Bo/Data/final_metadata_Tmacromerged_2.csv', index_col = 0)
 
 
-# In[4]:
+# In[15]:
 
 
 cell_type_colors = pd.read_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Cell_type_colors_2.csv', index_col = 0)
 
 
-# In[5]:
+# In[16]:
 
 
 epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (cfd)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
@@ -52,7 +118,7 @@ epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (cfd)', 'Fibroblasts (col
                     'Fibroblasts (proliferating)', 'Perivascular cells']
 
 
-# In[6]:
+# In[17]:
 
 
 connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
@@ -60,7 +126,7 @@ connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'F
                     'Fibroblasts (proliferating)', 'Perivascular cells']
 
 
-# In[7]:
+# In[18]:
 
 
 local_connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a)', 'Fibroblasts (col12a1a)', 
@@ -68,20 +134,20 @@ local_connected_epifibro_types = ['Fibroblasts (const.)', 'Fibroblasts (col11a1a
                     'Fibroblasts (proliferating)', 'Perivascular cells', 'Fibroblasts (cxcl12a)']
 
 
-# In[8]:
+# In[19]:
 
 
 connected_endofibro_types = ['Endocardium (frzb)', 'Endocardium (Ventricle)', 
                             'Fibroblasts (nppc)', 'Fibroblasts (spock3)']
 
 
-# In[9]:
+# In[20]:
 
 
 mito_genes = [line.rstrip('\n').rsplit(',')[2] for line in open('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/mito.genes.vs.txt')]
 
 
-# In[10]:
+# In[21]:
 
 
 HR_setnames = pd.DataFrame({'batch': ['0', '1', '2', '3', '4', 
@@ -125,153 +191,154 @@ HR_setnames.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/HR
 
 # # Load and merge RNA velocity datasets
 
-# In[ ]:
+# In[22]:
 
 
-H5_Rv_data = scv.read('../Data/RNAvelo/H5_v3Dr11.loom', cache=True)
-H5_Rv_data.var_names_make_unique()
-H6_Rv_data = scv.read('../Data/RNAvelo/H6_v3Dr11.loom', cache=True)
-H6_Rv_data.var_names_make_unique()
-H7_Rv_data = scv.read('../Data/RNAvelo/H7_v3Dr11.loom', cache=True)
-H7_Rv_data.var_names_make_unique()
-H8a_Rv_data = scv.read('../Data/RNAvelo/H8a_v3Dr11.loom', cache=True)
-H8a_Rv_data.var_names_make_unique()
-H8v_Rv_data = scv.read('../Data/RNAvelo/H8v_v3Dr11.loom', cache=True)
-H8v_Rv_data.var_names_make_unique()
-Hr1_Rv_data = scv.read('../Data/RNAvelo/Hr1_v3Dr11.loom', cache=True)
-Hr1_Rv_data.var_names_make_unique()
-Hr2a_Rv_data = scv.read('../Data/RNAvelo/Hr2a_v3Dr11.loom', cache=True)
-Hr2a_Rv_data.var_names_make_unique()
-Hr2b_Rv_data = scv.read('../Data/RNAvelo/Hr2b_v3Dr11.loom', cache=True)
-Hr2b_Rv_data.var_names_make_unique()
-Hr3_Rv_data = scv.read('../Data/RNAvelo/Hr3_v3Dr11.loom', cache=True)
-Hr3_Rv_data.var_names_make_unique()
-Hr4_Rv_data = scv.read('../Data/RNAvelo/Hr4_v3Dr11.loom', cache=True)
-Hr4_Rv_data.var_names_make_unique()
-Hr5_Rv_data = scv.read('../Data/RNAvelo/Hr5_v3Dr11.loom', cache=True)
-Hr5_Rv_data.var_names_make_unique()
-Hr6a_Rv_data = scv.read('../Data/RNAvelo/Hr6a_v3Dr11.loom', cache=True)
-Hr6a_Rv_data.var_names_make_unique()
-Hr6v_Rv_data = scv.read('../Data/RNAvelo/Hr6v_v3Dr11.loom', cache=True)
-Hr6v_Rv_data.var_names_make_unique()
-Hr7a_Rv_data = scv.read('../Data/RNAvelo/Hr7a_v3Dr11.loom', cache=True)
-Hr7a_Rv_data.var_names_make_unique()
-Hr7v_Rv_data = scv.read('../Data/RNAvelo/Hr7v_v3Dr11.loom', cache=True)
-Hr7v_Rv_data.var_names_make_unique()
-Hr8_Rv_data = scv.read('../Data/RNAvelo/Hr8_v3Dr11.loom', cache=True)
-Hr8_Rv_data.var_names_make_unique()
-Hr9_Rv_data = scv.read('../Data/RNAvelo/Hr9_v3Dr11.loom', cache=True)
-Hr9_Rv_data.var_names_make_unique()
-Hr10_Rv_data = scv.read('../Data/RNAvelo/Hr10_v3Dr11.loom', cache=True)
-Hr10_Rv_data.var_names_make_unique()
-Hr11_Rv_data = scv.read('../Data/RNAvelo/Hr11_v3Dr11.loom', cache=True)
-Hr11_Rv_data.var_names_make_unique()
-Hr12_Rv_data = scv.read('../Data/RNAvelo/Hr12_v3Dr11.loom', cache=True)
-Hr12_Rv_data.var_names_make_unique()
-Hr13_Rv_data = scv.read('../Data/RNAvelo/Hr13_v3Dr11.loom', cache=True)
-Hr13_Rv_data.var_names_make_unique()
-Hr14_Rv_data = scv.read('../Data/RNAvelo/Hr14_v3Dr11.loom', cache=True)
-Hr14_Rv_data.var_names_make_unique()
-Hr15_Rv_data = scv.read('../Data/RNAvelo/Hr15_v3Dr11.loom', cache=True)
-Hr15_Rv_data.var_names_make_unique()
-Hr16_Rv_data = scv.read('../Data/RNAvelo/Hr16_v3Dr11.loom', cache=True)
-Hr16_Rv_data.var_names_make_unique()
-Hr17_Rv_data = scv.read('../Data/RNAvelo/Hr17_v3Dr11.loom', cache=True)
-Hr17_Rv_data.var_names_make_unique()
-Hr18_Rv_data = scv.read('../Data/RNAvelo/Hr18_v3Dr11.loom', cache=True)
-Hr18_Rv_data.var_names_make_unique()
-Hr19_Rv_data = scv.read('../Data/RNAvelo/Hr19_v3Dr11.loom', cache=True)
-Hr19_Rv_data.var_names_make_unique()
-Hr20_Rv_data = scv.read('../Data/RNAvelo/Hr20_v3Dr11.loom', cache=True)
-Hr20_Rv_data.var_names_make_unique()
-Hr21_Rv_data = scv.read('../Data/RNAvelo/Hr21_v3Dr11.loom', cache=True)
-Hr21_Rv_data.var_names_make_unique()
-Hr22_Rv_data = scv.read('../Data/RNAvelo/Hr22_v3Dr11.loom', cache=True)
-Hr22_Rv_data.var_names_make_unique()
-Hr23_Rv_data = scv.read('../Data/RNAvelo/Hr23_v3Dr11.loom', cache=True)
-Hr23_Rv_data.var_names_make_unique()
-Hr24_Rv_data = scv.read('../Data/RNAvelo/Hr24_v3Dr11.loom', cache=True)
-Hr24_Rv_data.var_names_make_unique()
-Hr25_Rv_data = scv.read('../Data/RNAvelo/Hr25_v3Dr11.loom', cache=True)
-Hr25_Rv_data.var_names_make_unique()
-Hr26_Rv_data = scv.read('../Data/RNAvelo/Hr26_v3Dr11.loom', cache=True)
-Hr26_Rv_data.var_names_make_unique()
-Hr27_Rv_data = scv.read('../Data/RNAvelo/Hr27_v3Dr11.loom', cache=True)
-Hr27_Rv_data.var_names_make_unique()
-Hr28_Rv_data = scv.read('../Data/RNAvelo/Hr28_v3Dr11.loom', cache=True)
-Hr28_Rv_data.var_names_make_unique()
-Hr29_Rv_data = scv.read('../Data/RNAvelo/Hr29_v3Dr11.loom', cache=True)
-Hr29_Rv_data.var_names_make_unique()
-Hr30_Rv_data = scv.read('../Data/RNAvelo/Hr30_v3Dr11.loom', cache=True)
-Hr30_Rv_data.var_names_make_unique()
-Hr31_Rv_data = scv.read('../Data/RNAvelo/Hr31_v3Dr11.loom', cache=True)
-Hr31_Rv_data.var_names_make_unique()
-Hr32_Rv_data = scv.read('../Data/RNAvelo/Hr32_v3Dr11.loom', cache=True)
-Hr32_Rv_data.var_names_make_unique()
-Hr33_Rv_data = scv.read('../Data/RNAvelo/Hr33_v3Dr11.loom', cache=True)
-Hr33_Rv_data.var_names_make_unique()
-Hr34_Rv_data = scv.read('../Data/RNAvelo/Hr34_v3Dr11.loom', cache=True)
-Hr34_Rv_data.var_names_make_unique()
-Hr35_Rv_data = scv.read('../Data/RNAvelo/Hr35_v3Dr11.loom', cache=True)
-Hr35_Rv_data.var_names_make_unique()
+# H5_Rv_data = scv.read('../Data/RNAvelo/H5_v3Dr11.loom', cache=True)
+# H5_Rv_data.var_names_make_unique()
+# H6_Rv_data = scv.read('../Data/RNAvelo/H6_v3Dr11.loom', cache=True)
+# H6_Rv_data.var_names_make_unique()
+# H7_Rv_data = scv.read('../Data/RNAvelo/H7_v3Dr11.loom', cache=True)
+# H7_Rv_data.var_names_make_unique()
+# H8a_Rv_data = scv.read('../Data/RNAvelo/H8a_v3Dr11.loom', cache=True)
+# H8a_Rv_data.var_names_make_unique()
+# H8v_Rv_data = scv.read('../Data/RNAvelo/H8v_v3Dr11.loom', cache=True)
+# H8v_Rv_data.var_names_make_unique()
+# Hr1_Rv_data = scv.read('../Data/RNAvelo/Hr1_v3Dr11.loom', cache=True)
+# Hr1_Rv_data.var_names_make_unique()
+# Hr2a_Rv_data = scv.read('../Data/RNAvelo/Hr2a_v3Dr11.loom', cache=True)
+# Hr2a_Rv_data.var_names_make_unique()
+# Hr2b_Rv_data = scv.read('../Data/RNAvelo/Hr2b_v3Dr11.loom', cache=True)
+# Hr2b_Rv_data.var_names_make_unique()
+# Hr3_Rv_data = scv.read('../Data/RNAvelo/Hr3_v3Dr11.loom', cache=True)
+# Hr3_Rv_data.var_names_make_unique()
+# Hr4_Rv_data = scv.read('../Data/RNAvelo/Hr4_v3Dr11.loom', cache=True)
+# Hr4_Rv_data.var_names_make_unique()
+# Hr5_Rv_data = scv.read('../Data/RNAvelo/Hr5_v3Dr11.loom', cache=True)
+# Hr5_Rv_data.var_names_make_unique()
+# Hr6a_Rv_data = scv.read('../Data/RNAvelo/Hr6a_v3Dr11.loom', cache=True)
+# Hr6a_Rv_data.var_names_make_unique()
+# Hr6v_Rv_data = scv.read('../Data/RNAvelo/Hr6v_v3Dr11.loom', cache=True)
+# Hr6v_Rv_data.var_names_make_unique()
+# Hr7a_Rv_data = scv.read('../Data/RNAvelo/Hr7a_v3Dr11.loom', cache=True)
+# Hr7a_Rv_data.var_names_make_unique()
+# Hr7v_Rv_data = scv.read('../Data/RNAvelo/Hr7v_v3Dr11.loom', cache=True)
+# Hr7v_Rv_data.var_names_make_unique()
+# Hr8_Rv_data = scv.read('../Data/RNAvelo/Hr8_v3Dr11.loom', cache=True)
+# Hr8_Rv_data.var_names_make_unique()
+# Hr9_Rv_data = scv.read('../Data/RNAvelo/Hr9_v3Dr11.loom', cache=True)
+# Hr9_Rv_data.var_names_make_unique()
+# Hr10_Rv_data = scv.read('../Data/RNAvelo/Hr10_v3Dr11.loom', cache=True)
+# Hr10_Rv_data.var_names_make_unique()
+# Hr11_Rv_data = scv.read('../Data/RNAvelo/Hr11_v3Dr11.loom', cache=True)
+# Hr11_Rv_data.var_names_make_unique()
+# Hr12_Rv_data = scv.read('../Data/RNAvelo/Hr12_v3Dr11.loom', cache=True)
+# Hr12_Rv_data.var_names_make_unique()
+# Hr13_Rv_data = scv.read('../Data/RNAvelo/Hr13_v3Dr11.loom', cache=True)
+# Hr13_Rv_data.var_names_make_unique()
+# Hr14_Rv_data = scv.read('../Data/RNAvelo/Hr14_v3Dr11.loom', cache=True)
+# Hr14_Rv_data.var_names_make_unique()
+# Hr15_Rv_data = scv.read('../Data/RNAvelo/Hr15_v3Dr11.loom', cache=True)
+# Hr15_Rv_data.var_names_make_unique()
+# Hr16_Rv_data = scv.read('../Data/RNAvelo/Hr16_v3Dr11.loom', cache=True)
+# Hr16_Rv_data.var_names_make_unique()
+# Hr17_Rv_data = scv.read('../Data/RNAvelo/Hr17_v3Dr11.loom', cache=True)
+# Hr17_Rv_data.var_names_make_unique()
+# Hr18_Rv_data = scv.read('../Data/RNAvelo/Hr18_v3Dr11.loom', cache=True)
+# Hr18_Rv_data.var_names_make_unique()
+# Hr19_Rv_data = scv.read('../Data/RNAvelo/Hr19_v3Dr11.loom', cache=True)
+# Hr19_Rv_data.var_names_make_unique()
+# Hr20_Rv_data = scv.read('../Data/RNAvelo/Hr20_v3Dr11.loom', cache=True)
+# Hr20_Rv_data.var_names_make_unique()
+# Hr21_Rv_data = scv.read('../Data/RNAvelo/Hr21_v3Dr11.loom', cache=True)
+# Hr21_Rv_data.var_names_make_unique()
+# Hr22_Rv_data = scv.read('../Data/RNAvelo/Hr22_v3Dr11.loom', cache=True)
+# Hr22_Rv_data.var_names_make_unique()
+# Hr23_Rv_data = scv.read('../Data/RNAvelo/Hr23_v3Dr11.loom', cache=True)
+# Hr23_Rv_data.var_names_make_unique()
+# Hr24_Rv_data = scv.read('../Data/RNAvelo/Hr24_v3Dr11.loom', cache=True)
+# Hr24_Rv_data.var_names_make_unique()
+# Hr25_Rv_data = scv.read('../Data/RNAvelo/Hr25_v3Dr11.loom', cache=True)
+# Hr25_Rv_data.var_names_make_unique()
+# Hr26_Rv_data = scv.read('../Data/RNAvelo/Hr26_v3Dr11.loom', cache=True)
+# Hr26_Rv_data.var_names_make_unique()
+# Hr27_Rv_data = scv.read('../Data/RNAvelo/Hr27_v3Dr11.loom', cache=True)
+# Hr27_Rv_data.var_names_make_unique()
+# Hr28_Rv_data = scv.read('../Data/RNAvelo/Hr28_v3Dr11.loom', cache=True)
+# Hr28_Rv_data.var_names_make_unique()
+# Hr29_Rv_data = scv.read('../Data/RNAvelo/Hr29_v3Dr11.loom', cache=True)
+# Hr29_Rv_data.var_names_make_unique()
+# Hr30_Rv_data = scv.read('../Data/RNAvelo/Hr30_v3Dr11.loom', cache=True)
+# Hr30_Rv_data.var_names_make_unique()
+# Hr31_Rv_data = scv.read('../Data/RNAvelo/Hr31_v3Dr11.loom', cache=True)
+# Hr31_Rv_data.var_names_make_unique()
+# Hr32_Rv_data = scv.read('../Data/RNAvelo/Hr32_v3Dr11.loom', cache=True)
+# Hr32_Rv_data.var_names_make_unique()
+# Hr33_Rv_data = scv.read('../Data/RNAvelo/Hr33_v3Dr11.loom', cache=True)
+# Hr33_Rv_data.var_names_make_unique()
+# Hr34_Rv_data = scv.read('../Data/RNAvelo/Hr34_v3Dr11.loom', cache=True)
+# Hr34_Rv_data.var_names_make_unique()
+# Hr35_Rv_data = scv.read('../Data/RNAvelo/Hr35_v3Dr11.loom', cache=True)
+# Hr35_Rv_data.var_names_make_unique()
 
 
-# In[ ]:
+# In[23]:
 
 
-HR_Rv =    H5_Rv_data.concatenate(H6_Rv_data, H7_Rv_data, H8a_Rv_data, H8v_Rv_data,
-                        Hr1_Rv_data, Hr2a_Rv_data, Hr2b_Rv_data, Hr3_Rv_data, Hr4_Rv_data, Hr5_Rv_data, 
-                        Hr6a_Rv_data, Hr6v_Rv_data, Hr7a_Rv_data, Hr7v_Rv_data, Hr8_Rv_data, Hr9_Rv_data, Hr10_Rv_data,
-                        Hr11_Rv_data, Hr12_Rv_data, Hr13_Rv_data, Hr14_Rv_data, Hr15_Rv_data,
-                        Hr16_Rv_data, Hr17_Rv_data, Hr18_Rv_data, Hr19_Rv_data, Hr20_Rv_data,
-                        Hr21_Rv_data, Hr22_Rv_data, Hr23_Rv_data, Hr24_Rv_data, Hr25_Rv_data,
-                        Hr26_Rv_data, Hr27_Rv_data, Hr28_Rv_data, Hr29_Rv_data, Hr30_Rv_data,
-                        Hr31_Rv_data, Hr32_Rv_data, Hr33_Rv_data, Hr34_Rv_data, Hr35_Rv_data)
-HR_Rv.shape
+# HR_Rv =\
+#     H5_Rv_data.concatenate(H6_Rv_data, H7_Rv_data, H8a_Rv_data, H8v_Rv_data,
+#                         Hr1_Rv_data, Hr2a_Rv_data, Hr2b_Rv_data, Hr3_Rv_data, Hr4_Rv_data, Hr5_Rv_data, 
+#                         Hr6a_Rv_data, Hr6v_Rv_data, Hr7a_Rv_data, Hr7v_Rv_data, Hr8_Rv_data, Hr9_Rv_data, Hr10_Rv_data,
+#                         Hr11_Rv_data, Hr12_Rv_data, Hr13_Rv_data, Hr14_Rv_data, Hr15_Rv_data,
+#                         Hr16_Rv_data, Hr17_Rv_data, Hr18_Rv_data, Hr19_Rv_data, Hr20_Rv_data,
+#                         Hr21_Rv_data, Hr22_Rv_data, Hr23_Rv_data, Hr24_Rv_data, Hr25_Rv_data,
+#                         Hr26_Rv_data, Hr27_Rv_data, Hr28_Rv_data, Hr29_Rv_data, Hr30_Rv_data,
+#                         Hr31_Rv_data, Hr32_Rv_data, Hr33_Rv_data, Hr34_Rv_data, Hr35_Rv_data)
+# HR_Rv.shape
 
 
-# In[ ]:
+# In[24]:
 
 
-HR_Rv = sc.read('./write/HR_Rv.h5ad')
+# HR_Rv = sc.read('./write/HR_Rv.h5ad')
 
 
-# In[ ]:
+# In[25]:
 
 
-HR_Rv.obs = HR_Rv.obs.reset_index().merge(HR_setnames, how="inner").set_index('index')
+# HR_Rv.obs = HR_Rv.obs.reset_index().merge(HR_setnames, how="inner").set_index('index')
 
 
-# In[ ]:
+# In[26]:
 
 
-# Rename cells to match cell names in annotation file
-HR_Rv.obs_names = [str(HR_Rv.obs.loc[x,'heart'])+'_'+str(x.split(':', 1)[1])[0:16] for x in HR_Rv.obs_names]
-# Drop annotations that are not in the single-cell object
-anno_drop_Rv = annotations.index.difference(HR_Rv.obs_names)
-annotations_Rv = annotations.drop(anno_drop_Rv)
+# # Rename cells to match cell names in annotation file
+# HR_Rv.obs_names = [str(HR_Rv.obs.loc[x,'heart'])+'_'+str(x.split(':', 1)[1])[0:16] for x in HR_Rv.obs_names]
+# # Drop annotations that are not in the single-cell object
+# anno_drop_Rv = annotations.index.difference(HR_Rv.obs_names)
+# annotations_Rv = annotations.drop(anno_drop_Rv)
 
 
-# In[ ]:
+# In[27]:
 
 
-HR_Rv_filter = HR_Rv[annotations_Rv.index]
+# HR_Rv_filter = HR_Rv[annotations_Rv.index]
 
 
-# In[ ]:
+# In[28]:
 
 
-HR_Rv_filter.obs['Cell_type'] = annotations_Rv['Cell_type'].tolist()
+# HR_Rv_filter.obs['Cell_type'] = annotations_Rv['Cell_type'].tolist()
 
 
-# In[11]:
+# In[29]:
 
 
 #HR_Rv_filter.write('./write/HR_Rv_filter.h5ad')
 HR_Rv_filter = sc.read('./write/HR_Rv_filter.h5ad')
 
 
-# In[12]:
+# In[30]:
 
 
 HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -279,7 +346,7 @@ all_genes_but_RFP = [name for name in HR_Rv_3dpi.var_names if not name == 'RFP']
 HR_Rv_3dpi = HR_Rv_3dpi[:, all_genes_but_RFP]
 
 
-# In[13]:
+# In[31]:
 
 
 HR_Rv_3dpi_winh = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] == 'IWR1')]
@@ -287,7 +354,7 @@ all_genes_but_RFP = [name for name in HR_Rv_3dpi_winh.var_names if not name == '
 HR_Rv_3dpi_winh = HR_Rv_3dpi_winh[:, all_genes_but_RFP]
 
 
-# In[14]:
+# In[32]:
 
 
 HR_Rv_7dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '7') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -295,7 +362,7 @@ all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
 HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
 
 
-# In[15]:
+# In[33]:
 
 
 HR_Rv_7dpi_winh = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '7') & (HR_Rv_filter.obs['inhib'] == 'IWR1')]
@@ -1455,68 +1522,18 @@ scv.pl.velocity_embedding_stream(HR_Rv_7dpi_endoconn_all[HR_Rv_7dpi_endoconn_all
 
 # ## Load secretome genes
 
-# In[3]:
-
-
-#secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/1604312481_danio_rerio/Secretome_gene_names.csv', sep = '\t')
-#secretome = secretome[secretome['external_gene_name'].notna()]
-#secretome = (secretome[['external_gene_name']]).drop_duplicates()
-#secretome_nocol = secretome[~secretome['external_gene_name'].str.contains('^col[0-9]', na=False)]
-
-
-# Remove NAs and duplicates
-
-# In[5]:
-
-
-#secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Human_secretome_translated.tsv', sep = '\;')
-#secretome = secretome[secretome['external_gene_name'].notna()]
-#secretome = (secretome[['external_gene_name']]).drop_duplicates()
-
-
-# In[16]:
+# In[34]:
 
 
 secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names_noDRduplicates.scsv', sep = ';')
-#secretome = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names.scsv', sep = '\t')
 secretome = secretome.rename(columns={'DR_name': 'external_gene_name'})
 secretome = secretome[secretome['external_gene_name'].notna()]
 secretome = (secretome[['external_gene_name']]).drop_duplicates()
 
 
-# In[17]:
-
-
-#secretome_old = pd.read_csv('~/Documents/Projects/heart_Bo/Data/Alliance_secretome_gene_names.scsv', sep = '\t')
-#secretome_old = secretome_old.rename(columns={'DR_name': 'external_gene_name'})
-#secretome_old = secretome_old[secretome_old['external_gene_name'].notna()]
-#secretome_old = (secretome_old[['external_gene_name']]).drop_duplicates()
-
-
-# In[18]:
-
-
-#secretome_old
-
-
 # ## Calculate differentially expressed genes per timepoint
 
-# In[17]:
-
-
-def GetDiffGenes(adata):
-    result = pd.DataFrame({})
-    for ctype in adata.obs['Cell_type'].cat.categories:
-        ctype_d = {'Gene' : adata.uns['rank_genes_groups']['names'][ctype],
-                   'pvals_adj': adata.uns['rank_genes_groups']['pvals_adj'][ctype],
-                   'logfoldchanges': adata.uns['rank_genes_groups']['logfoldchanges'][ctype],
-                   'Cell_type':  np.repeat(ctype, len(adata.var.index))}
-        ctype_degdf = pd.DataFrame(data=ctype_d)
-        result = result.append(ctype_degdf[(ctype_degdf.pvals_adj < 0.01) & (ctype_degdf.logfoldchanges > 1)], ignore_index=True)
-    return result
-
-
-# In[18]:
+# In[35]:
 
 
 HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '0') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -1528,7 +1545,7 @@ sc.tl.rank_genes_groups(HR_Rv_ctrl, groupby = 'Cell_type')
 dg_ctrl = GetDiffGenes(HR_Rv_ctrl)
 
 
-# In[19]:
+# In[36]:
 
 
 HR_Rv_3dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '3') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -1540,10 +1557,10 @@ sc.tl.rank_genes_groups(HR_Rv_3dpi, groupby = 'Cell_type')
 dg_3dpi = GetDiffGenes(HR_Rv_3dpi)
 
 
-# In[20]:
+# In[40]:
 
 
-HR_Rv_7dpi = HR_Rv_filter[HR_Rv_filter.obs['dpi'] == '7']
+HR_Rv_7dpi = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '7') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
 all_genes_but_RFP = [name for name in HR_Rv_7dpi.var_names if not name == 'RFP']
 HR_Rv_7dpi = HR_Rv_7dpi[:, all_genes_but_RFP]
 sc.pp.normalize_total(HR_Rv_7dpi, target_sum=1e4)
@@ -1554,7 +1571,7 @@ dg_7dpi = GetDiffGenes(HR_Rv_7dpi)
 
 # ## Annotate genes with secretome and count numbers differentially expressed
 
-# In[21]:
+# In[41]:
 
 
 dg_ctrl_counts = pd.DataFrame({'DG_count' : dg_ctrl.Cell_type.value_counts()})
@@ -1564,7 +1581,7 @@ diff_ctrl_counts = pd.concat([dg_ctrl_counts, ds_ctrl_counts], axis = 1, join='i
 diff_ctrl_counts['DSec_ratio'] = diff_ctrl_counts['DSec_count']/diff_ctrl_counts['DG_count']
 
 
-# In[22]:
+# In[42]:
 
 
 dg_3dpi_counts = pd.DataFrame({'DG_count' : dg_3dpi.Cell_type.value_counts()})
@@ -1574,7 +1591,7 @@ diff_3dpi_counts = pd.concat([dg_3dpi_counts, ds_3dpi_counts], axis = 1, join='i
 diff_3dpi_counts['DSec_ratio'] = diff_3dpi_counts['DSec_count']/diff_3dpi_counts['DG_count']
 
 
-# In[23]:
+# In[43]:
 
 
 dg_7dpi_counts = pd.DataFrame({'DG_count' : dg_7dpi.Cell_type.value_counts()})
@@ -1584,75 +1601,9 @@ diff_7dpi_counts = pd.concat([dg_7dpi_counts, ds_7dpi_counts], axis = 1, join='i
 diff_7dpi_counts['DSec_ratio'] = diff_7dpi_counts['DSec_count']/diff_7dpi_counts['DG_count']
 
 
-# In[24]:
-
-
-#diff_ctrl_counts
-
-
-# In[25]:
-
-
-#diff_3dpi_counts
-
-
-# In[26]:
-
-
-#diff_7dpi_counts
-
-
 # ## Secretome expression per cell type
 
-# In[27]:
-
-
-def CountSecretome(adata, secretome):
-    #secretome_ind = np.unique([adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-    secretome_ind = [adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index]
-
-    result = pd.DataFrame({'Cell_type' : adata.obs['Cell_type'].cat.categories,
-                          'Secretome' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories)),
-                          'SEM' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories))})
-    for ctype in adata.obs['Cell_type'].cat.categories:
-        ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
-        if(len(ctype_index) == 0):
-            continue
-        secretome_slice = adata.X[:,secretome_ind]
-        result.Secretome[result['Cell_type'] == ctype] = (sum(secretome_slice[ctype_index, :].sum(axis = 1))/len(ctype_index))[0,0]
-        result.SEM[result['Cell_type'] == ctype] = np.std(secretome_slice[ctype_index, :].sum(axis = 1))/np.sqrt(len(ctype_index))
-    result = result[result.Secretome != -1]
-    return(result)
-
-
-# In[28]:
-
-
-def ExpressedSecretome(adata, secretome):
-    secretome_ind = [adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index]
-    #secretome_ind = np.unique([adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-
-    secretome_slice = adata.X[:,secretome_ind]
-    secretome_dense_slice = adata.X[:,secretome_ind].todense()
-    secretome_dense_slice_z = preprocessing.scale(secretome_dense_slice)
-
-    ctype_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-    ctype_z_averages = pd.DataFrame(index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-    for ctype in adata.obs['Cell_type'].cat.categories:
-        ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
-        if(len(ctype_index) == 0):
-            continue
-        ctype_average = pd.DataFrame({ctype : np.squeeze(np.asarray(secretome_slice[ctype_index, :].mean(axis = 0)))},
-                                  index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index]) # axis = 0 gets us gene-level averages. #.sum(axis = 1))/len(ctype_index))[0,0]
-        ctype_averages = ctype_averages.join(ctype_average)
-        
-        ctype_z_average = pd.DataFrame({ctype : secretome_dense_slice_z[ctype_index, :].mean(axis = 0)},
-                                    index = [x for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-        ctype_z_averages = ctype_z_averages.join(ctype_z_average)
-    return(ctype_averages, ctype_z_averages)
-
-
-# In[29]:
+# In[44]:
 
 
 HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '0') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
@@ -1666,7 +1617,7 @@ secretome_averages_ctrl, secretome_z_averages_ctrl = ExpressedSecretome(HR_Rv_ct
 # In[30]:
 
 
-secretome_ctrl
+#secretome_ctrl
 
 
 # In[21]:
@@ -1688,13 +1639,13 @@ secretome_ctrl
 #secretome_old_z_averages_ctrl
 
 
-# In[107]:
+# In[45]:
 
 
 secretome_averages_ctrl_save = secretome_averages_ctrl[secretome_averages_ctrl.max(axis = 1) > 10]
-secretome_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_ctrl.csv')
+#secretome_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_averages_alliance_conversion_nodup_ctrl.csv')
 secretome_z_averages_ctrl_save = secretome_z_averages_ctrl[secretome_z_averages_ctrl.max(axis = 1) > 2]
-secretome_z_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_ctrl.csv')
+#secretome_z_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Data/Secretome_z_averages_alliance_conversion_nodup_ctrl.csv')
 
 
 # In[27]:
@@ -1721,113 +1672,110 @@ secretome_z_averages_ctrl_save.to_csv('/Users/bastiaanspanjaard/Documents/Projec
 
 #import matplotlib.pyplot as plt
 
-secretome_ctrl_plot = secretome_ctrl[secretome_ctrl.Cell_type.isin(epifibro_types)] 
-secretome_ctrl_plot = secretome_ctrl_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
-secretome_ctrl_plot = secretome_ctrl_plot.sort_values(by = 'Secretome', ascending = False)
+# secretome_ctrl_plot = secretome_ctrl[secretome_ctrl.Cell_type.isin(epifibro_types)] 
+# secretome_ctrl_plot = secretome_ctrl_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
+# secretome_ctrl_plot = secretome_ctrl_plot.sort_values(by = 'Secretome', ascending = False)
 
-pl.bar(x = np.arange(len(secretome_ctrl_plot)),
-       height = secretome_ctrl_plot.Secretome/100,
-       yerr = 3 * secretome_ctrl_plot.SEM/100, capsize = 2,
-       color = secretome_ctrl_plot.color)
-pl.xlabel('Cell type')
-pl.xticks(np.arange(len(secretome_ctrl_plot)), secretome_ctrl_plot.Cell_type, rotation=270)
-pl.ylabel('Secretome (%)')
-pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_ctrl_fibroniche.pdf', bbox_inches = 'tight', transparent = True)
-pl.show()
+# pl.bar(x = np.arange(len(secretome_ctrl_plot)),
+#        height = secretome_ctrl_plot.Secretome/100,
+#        yerr = 3 * secretome_ctrl_plot.SEM/100, capsize = 2,
+#        color = secretome_ctrl_plot.color)
+# pl.xlabel('Cell type')
+# pl.xticks(np.arange(len(secretome_ctrl_plot)), secretome_ctrl_plot.Cell_type, rotation=270)
+# pl.ylabel('Secretome (%)')
+# pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_ctrl_fibroniche.pdf', bbox_inches = 'tight', transparent = True)
+# pl.show()
+
+
+# In[ ]:
+
+
+# START PLOT IMPROVEMENT
 
 
 # In[31]:
 
 
-HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '0') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
-all_genes_but_RFP = [name for name in HR_Rv_ctrl.var_names if not name == 'RFP']
-HR_Rv_ctrl = HR_Rv_ctrl[:, all_genes_but_RFP]
-sc.pp.normalize_total(HR_Rv_ctrl, target_sum=1e4)
+# HR_Rv_ctrl = HR_Rv_filter[(HR_Rv_filter.obs['dpi'] == '0') & (HR_Rv_filter.obs['inhib'] != 'IWR1')]
+# all_genes_but_RFP = [name for name in HR_Rv_ctrl.var_names if not name == 'RFP']
+# HR_Rv_ctrl = HR_Rv_ctrl[:, all_genes_but_RFP]
+# sc.pp.normalize_total(HR_Rv_ctrl, target_sum=1e4)
 #secretome_ctrl = CountSecretome(HR_Rv_ctrl, secretome)
 
 
-# In[37]:
+# In[47]:
 
 
-# For each cell, calculate % secretome, log cell name, cell type.
-# Use seaborn instead of matplotlib; look into barplots or violin plots.
 secretome_ind = [HR_Rv_ctrl.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in HR_Rv_ctrl.var.index]
+secretome_df = HR_Rv_ctrl.obs.loc[:, ['Cell_type']]
+secretome_df['Secretome'] = np.nan
 secretome_slice = HR_Rv_ctrl.X[:,secretome_ind]
+for ctype in HR_Rv_ctrl.obs['Cell_type'].cat.categories:
+    ctype_index = HR_Rv_ctrl.obs[HR_Rv_ctrl.obs['Cell_type'] == ctype].index
+    ctype_index_numeric = [x for x in range(0, len(HR_Rv_ctrl.obs)) if HR_Rv_ctrl.obs.Cell_type[x] == ctype]
+    if(len(ctype_index_numeric) == 0):
+        continue
+    #print(len(ctype_index_numeric))
+    secretome_df.Secretome.loc[ctype_index] = np.array((secretome_slice[ctype_index_numeric, :].sum(axis = 1)))[:,0]/100
 
 
-#for ctype in adata.obs['Cell_type'].cat.categories:
-#    ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
-#    if(len(ctype_index) == 0):
-#        continue
+# In[126]:
 
 
-
-# In[38]:
-
-
-ctype = "Cardiomyocytes (Ventricle)"
-ctype_index = [x for x in range(0, len(HR_Rv_ctrl.obs) - 1) if HR_Rv_ctrl.obs.Cell_type[x] == ctype]
-ctype_index
-
-
-# In[39]:
+# for ctype in HR_Rv_ctrl.obs['Cell_type'].cat.categories:
+#     ctype_index = HR_Rv_ctrl.obs[HR_Rv_ctrl.obs['Cell_type'] == ctype].index
+#     ctype_index_numeric = [x for x in range(0, len(HR_Rv_ctrl.obs)) if HR_Rv_ctrl.obs.Cell_type[x] == ctype]
+#     if(len(ctype_index_numeric) == 0):
+#         continue
+#     #print(len(ctype_index_numeric))
+#     secretome_df.Secretome.loc[ctype_index] = np.array((secretome_slice[ctype_index_numeric, :].sum(axis = 1)))[:,0]/100
 
 
-secretome_slice
+# In[164]:
 
 
-# In[45]:
+# celltype_order = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
+# fig, ax = pl.subplots(figsize=(12,4))
+# g = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_df, scale = 'width', inner=None,
+#               order = celltype_order, palette = cell_type_colors.loc[celltype_order].color)
+# g.set_xticklabels(g.get_xticklabels(), rotation=270)
+# pl.show()
 
 
-secretome_slice[ctype_index, :].sum(axis = 1)
-# This is the amount of secretome transcript per cell when every cell is scaled to 10,000; divide by 100 to get percentages.
+# In[163]:
 
 
-# In[46]:
+# celltype_order = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
+# fig, ax = pl.subplots(figsize=(12,4))
+# g = sns.pointplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_df,
+#                   capsize=.4, ci=99, join=False,
+#               order = celltype_order, color = 'black')#, palette = cell_type_colors.loc[celltype_order].color)
+# #ax = sns.pointplot(x="day", y="tip", data=tips, ci=68)
+# g.set_xticklabels(g.get_xticklabels(), rotation=270)
+# pl.show()
 
 
-[sorted(np.random.normal(0, std, 100)) for std in range(1, 5)]
+# In[48]:
 
 
-# In[27]:
-
-
-def CountSecretome(adata, secretome):
-    #secretome_ind = np.unique([adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index])
-    secretome_ind = [adata.var.index.get_loc(x) for x in np.array(secretome.external_gene_name) if x in adata.var.index]
-
-    result = pd.DataFrame({'Cell_type' : adata.obs['Cell_type'].cat.categories,
-                          'Secretome' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories)),
-                          'SEM' : np.repeat(-1, len(adata.obs['Cell_type'].cat.categories))})
-    for ctype in adata.obs['Cell_type'].cat.categories:
-        ctype_index = [x for x in range(0, len(adata.obs) - 1) if adata.obs.Cell_type[x] == ctype]
-        if(len(ctype_index) == 0):
-            continue
-        secretome_slice = adata.X[:,secretome_ind]
-        result.Secretome[result['Cell_type'] == ctype] = (sum(secretome_slice[ctype_index, :].sum(axis = 1))/len(ctype_index))[0,0]
-        result.SEM[result['Cell_type'] == ctype] = np.std(secretome_slice[ctype_index, :].sum(axis = 1))/np.sqrt(len(ctype_index))
-    result = result[result.Secretome != -1]
-    return(result)
-
-
-# In[112]:
-
-
-#import matplotlib.pyplot as plt
-
-secretome_ctrl_plot = secretome_ctrl[secretome_ctrl.Cell_type.isin(epifibro_types)] 
-secretome_ctrl_plot = secretome_ctrl_plot.join(cell_type_colors, on = 'Cell_type', how = 'inner')
-secretome_ctrl_plot = secretome_ctrl_plot.sort_values(by = 'Secretome', ascending = False)
-
-pl.bar(x = np.arange(len(secretome_ctrl_plot)),
-       height = secretome_ctrl_plot.Secretome/100,
-       yerr = 3 * secretome_ctrl_plot.SEM/100, capsize = 2,
-       color = secretome_ctrl_plot.color)
-pl.xlabel('Cell type')
-pl.xticks(np.arange(len(secretome_ctrl_plot)), secretome_ctrl_plot.Cell_type, rotation=270)
-pl.ylabel('Secretome (%)')
-pl.savefig('/Users/bastiaanspanjaard/Documents/Projects/heart_Bo/Images/Secretome_Alliance_conversion_nodup_ctrl_fibroniche.pdf', bbox_inches = 'tight', transparent = True)
+celltype_order = (secretome_ctrl.sort_values(by = 'Secretome', ascending = False)).Cell_type
+fig, ax = pl.subplots(figsize=(12,4))
+g = sns.violinplot(ax=ax, x="Cell_type", y="Secretome", data=secretome_df, scale = 'width', inner=None,
+              order = celltype_order, palette = cell_type_colors.loc[celltype_order].color)
+pl.setp(ax.collections, alpha=.5)
+g = sns.pointplot(ax=g, x="Cell_type", y="Secretome", data=secretome_df,
+                  capsize=.4, ci=99, join=False,
+              order = celltype_order, color = 'black')
+g.set_xticklabels(g.get_xticklabels(), rotation=270)
+g.spines['top'].set_visible(False)
+g.spines['right'].set_visible(False)
 pl.show()
+
+
+# In[ ]:
+
+
+# END PLOT IMPROVEMENTS
 
 
 # In[19]:
