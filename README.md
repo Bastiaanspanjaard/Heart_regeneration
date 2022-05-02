@@ -2,7 +2,7 @@
 Data analysis scripts for single cell heart regeneration in zebrafish. External packages used: [Seurat](http://satijalab.org/seurat/) for single-cell transcriptome analysis, [AutoGeneS](https://autogenes.readthedocs.io/en/latest/) for bulk deconvolution, [LINNAEUS](https://github.com/Bastiaanspanjaard/LINNAEUS) for lineage tree building, [CellPhoneDB](https://github.com/Teichlab/cellphonedb) for ligand-receptor analysis, and [scanpy/PAGA](https://scanpy.readthedocs.io/en/stable/) and [scvelo](https://scvelo.readthedocs.io) for single-cell trajectory analysis.
 
 # Data analysis workflow
-1. __Determine cell types and marker gene expression.__ This is done in the script heartregen_clustering.R; our results were obtained using Seurat 3.2.0.
+1. __Determine cell types and marker gene expression.__ This is done in the script heartregen_clustering.R; our results were obtained using Seurat 3.0.
 2. __Determine marker gene expression and cell type dynamics.__ This builds further on the cell type determination and is done in Heart_regen_Seurat_analysis.R.
 3. __Determine cell type locations.__ In tomoDeconv.py, single-cell transcriptomes are combined with spatial RNA-seq to determine the atrium-ventricle location of cell types. 
 4. __Calculate secretome.__ Cellular secretomes are calculated in HR_trajectories.py after an orthologue converion in Translate_secretome.R.
