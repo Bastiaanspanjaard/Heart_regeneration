@@ -2,7 +2,7 @@
 Data analysis scripts for single cell heart regeneration in zebrafish. External packages used: [Seurat](http://satijalab.org/seurat/) for single-cell transcriptome analysis, [AutoGeneS](https://autogenes.readthedocs.io/en/latest/) for bulk deconvolution, [LINNAEUS](https://github.com/Bastiaanspanjaard/LINNAEUS) for lineage tree building, [CellPhoneDB](https://github.com/Teichlab/cellphonedb) for ligand-receptor analysis, and [scanpy/PAGA](https://scanpy.readthedocs.io/en/stable/) and [scvelo](https://scvelo.readthedocs.io) for single-cell trajectory analysis.
 
 # Data analysis workflow
-1. __Determine cell types and marker gene expression.__ This is done in the script heartregen_clustering.R; our results were obtained using Seurat 3.2.0.
+1. __Determine cell types and marker gene expression.__ This is done in the script heartregen_clustering.R; our results were obtained using Seurat 3.0.
 2. __Determine marker gene expression and cell type dynamics.__ This builds further on the cell type determination and is done in Heart_regen_Seurat_analysis.R.
 3. __Determine cell type locations.__ In tomoDeconv.py, single-cell transcriptomes are combined with spatial RNA-seq to determine the atrium-ventricle location of cell types. 
 4. __Calculate secretome.__ Cellular secretomes are calculated in HR_trajectories.py after an orthologue converion in Translate_secretome.R.
@@ -12,4 +12,4 @@ Data analysis scripts for single cell heart regeneration in zebrafish. External 
 8. __Single-cell trajectory analysis.__ Single-cell trajectories based on PAGA and intron velocity are created in HR_trajectories.py.
 
 # Data description
-We provide a single-cell annotation file /Data/final_celltypes.tsv for cell type annotation and to extract scars on valid transcriptome barcodes. Other datasets can be downloaded from GEO. 
+Transcriptome and scar sequencing data can be downloaded from GEO (accession numbers GSE159032 and GSE158919). In folder /Data in this repository, we provide a single-cell annotation file (final_celltypes.tsv) for cell type annotation, cell type color data files (color_scheme_seurat.rds and Cell_type_colors_2.csv - same underlying color scheme), a list of mitochondrial zebrafish genes (mito.genes.vs.txt), a list of zebrafish secretome genes (Alliance_secretome_gene_names_noDRduplicates.scsv), and the object containing all single-cell lineage trees built for this dataset (Tree_list_oneEndo.rds, scripts for visualization and analysis are in Cell_type_tree_relations.R).
