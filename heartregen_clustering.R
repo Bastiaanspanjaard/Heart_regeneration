@@ -159,14 +159,15 @@ mito.genes <- mito.genes$V3
 mito.genes <- as.character(mito.genes)
 
 # load all data
-batches <- c("H5","H6","H7","H8a","H8v","Hr1","Hr2","Hr2","Hr3","Hr4","Hr6a","Hr6v","Hr7a","Hr7v","Hr8",
+counts_folder <- "/data/junker/users/Bo/HeartRegen_paper/heartregen_cellranger_mappingoutput/"
+batches <- c("H5","H6","H7","H8a","H8v","Hr1","Hr2a","Hr2b","Hr3","Hr4","Hr6a","Hr6v","Hr7a","Hr7v","Hr8",
              "Hr9","Hr10","Hr11","Hr12","Hr13","Hr14","Hr15","Hr19","Hr20","Hr21","Hr22","Hr23",
              "Hr24","Hr25","Hr26","Hr27","Hr28","Hr29","Hr30","Hr31","Hr32","Hr33","Hr34","Hr35")
 gather.data <- list()
 data.stats <- numeric()
 
 for (i in batches) {
-  gather.data[[i]] <- Read10X_h5(filename = paste0(i,"_filtered_matrix.h5") )
+  gather.data[[i]] <- Read10X_h5(filename = paste0(counts_folder, i,"_v3Dr11/outs/filtered_feature_bc_matrix.h5") )
   RFP.index <- grep(pattern = "^RFP", x = rownames(gather.data[[i]]), value = FALSE) # Select row indices and not ERCC names 
   gather.data[[i]] <- gather.data[[i]][-RFP.index, ]
   gather.data[[i]] <- CreateSeuratObject(counts = gather.data[[i]],
@@ -205,7 +206,9 @@ all.hearts@meta.data[all.hearts@meta.data$orig.ident %in% c("Hr29","Hr31","Hr32"
 ncol(all.hearts)
 
 # add annotated cell type names with filtering out erythrocytes and dead cells
-cell.id.table <- read.csv("cell.id.table.csv")
+cell.id.table <- read.csv("/local/users/Bastiaan/Projects/heart_Bo/Scripts/Heart_regeneration/Data/cell.id.table.csv",
+                          row.names = "X")
+row.names(cell.id.table) <- paste0(row.names(cell.id.table), "-1")
 all.hearts <- AddMetaData(all.hearts,cell.id.table)
 all.hearts <- subset(all.hearts,cells = rownames(all.hearts@meta.data)[!is.na(all.hearts@meta.data$celltypes)],)
 
@@ -261,5 +264,3 @@ final.all.hearts <- SetIdent(final.all.hearts,value = "first.line.annotation")
 
 #plot umap
 DimPlot(all.hearts,group.by = "celltypes",label = F)
-
-
